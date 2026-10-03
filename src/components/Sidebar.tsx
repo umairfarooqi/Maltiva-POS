@@ -6,8 +6,9 @@ import {
   TrendingUp,
   Settings,
   LogOut,
-  Pin,
-  PinOff,
+  PanelLeft,
+  PanelLeftClose,
+  X,
 } from 'lucide-react';
 import { UserRole } from '../types/pos';
 import { MaltivaLogo } from './MaltivaLogo';
@@ -40,12 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isCashier = userRole === 'cashier';
 
-  // Desktop hover state & user pin toggle
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPinned, setIsPinned] = useState(false);
-
-  // Expanded if hovered OR pinned (on desktop)
-  const isExpandedDesktop = isHovered || isPinned || activeTab === 'manage_dishes';
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isExpandedDesktop = !isCollapsed;
 
   // Pure Takeaway Navigation Items
   const navItems = [
@@ -66,47 +63,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* ======================================================== */}
-      {/* DESKTOP SIDEBAR WITH HOVER-TO-EXPAND & ZERO CONFLICT     */}
-      {/* Base spacer keeps main content grid rock-solid & static */}
-      {/* ======================================================== */}
       <aside
-        className="hidden lg:block relative shrink-0 h-full transition-all duration-300"
-        style={{ width: isPinned || activeTab === 'manage_dishes' ? 240 : 76 }}
+        className="hidden lg:block shrink-0 h-full transition-[width] duration-200 ease-out"
+        style={{ width: isCollapsed ? 76 : 240 }}
       >
-        {/* Floating panel that expands on hover without shifting layout */}
         <div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className={`absolute top-0 left-0 bottom-0 z-40 bg-white h-full border-r border-slate-100 flex flex-col justify-between py-6 transition-all duration-200 ease-out select-none ${
-            isExpandedDesktop
-              ? 'w-60 px-4 shadow-2xl shadow-slate-900/10 border-slate-200/90'
-              : 'w-[76px] px-2.5'
+          className={`h-full w-full bg-white border-r border-slate-100 flex flex-col justify-between py-6 select-none ${
+            isExpandedDesktop ? 'px-4' : 'px-2.5'
           }`}
         >
           <div>
-            {/* Header: Logo & Pin button */}
-            <div className={`flex items-center mb-8 ${isExpandedDesktop ? 'justify-between pl-1' : 'justify-center'}`}>
+            <div className={`flex items-center mb-8 ${isExpandedDesktop ? 'justify-between pl-1' : 'flex-col gap-3'}`}>
               <MaltivaLogo
                 size="sm"
                 showSubtitle={false}
-                collapsed={!isExpandedDesktop}
+                collapsed={isCollapsed}
               />
 
-              {isExpandedDesktop && (
-                <button
-                  type="button"
-                  onClick={() => setIsPinned(!isPinned)}
-                  title={isPinned ? 'Unpin sidebar (auto-collapse)' : 'Pin sidebar open'}
-                  className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
-                    isPinned
-                      ? 'bg-[#E6F7F5] text-[#00A389]'
-                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsCollapsed(prev => !prev)}
+                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+              </button>
             </div>
 
             {/* Primary Navigation Items */}
@@ -120,13 +102,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
                     title={!isExpandedDesktop ? item.label : undefined}
-                    className={`w-full flex items-center rounded-2xl transition cursor-pointer ${
+                    className={`w-full flex items-center rounded-md transition cursor-pointer ${
                       isExpandedDesktop
                         ? 'gap-3.5 px-3.5 py-3 text-[15px]'
                         : 'justify-center p-3'
                     } ${
                       isActive
-                        ? 'bg-[#E6F7F5] text-[#00A389] font-semibold shadow-xs'
+                        ? 'bg-[#E6F7F5] text-[#007462] font-semibold'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
@@ -152,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={() => handleNavClick('settings')}
                 title={!isExpandedDesktop ? 'Settings' : undefined}
-                className={`w-full flex items-center rounded-2xl transition cursor-pointer ${
+                className={`w-full flex items-center rounded-md transition cursor-pointer ${
                   isExpandedDesktop
                     ? 'gap-3.5 px-3.5 py-2.5 text-[15px]'
                     : 'justify-center p-2.5'
@@ -178,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={onLogout}
               title={!isExpandedDesktop ? 'Logout' : undefined}
-              className={`w-full flex items-center rounded-2xl text-[15px] font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer ${
+              className={`w-full flex items-center rounded-md text-[15px] font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer ${
                 isExpandedDesktop
                   ? 'gap-3.5 px-3.5 py-2.5'
                   : 'justify-center p-2.5'
@@ -199,8 +181,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* MOBILE / TABLET DRAWER (< lg)                            */}
       {/* ======================================================== */}
       {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-64 h-full bg-white shadow-2xl animate-in slide-in-from-left duration-200 flex flex-col justify-between py-6 px-4">
+        <div className="lg:hidden fixed inset-0 z-50 flex bg-black/50 animate-in fade-in duration-150">
+          <div className="w-64 h-full bg-white border-r border-slate-200 animate-in slide-in-from-left duration-200 flex flex-col justify-between py-6 px-4">
             <div>
               {/* Brand Logo & Close */}
               <div className="flex items-center justify-between mb-8 pl-1">
@@ -208,9 +190,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {onCloseMobile && (
                   <button
                     onClick={onCloseMobile}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+                    aria-label="Close navigation"
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 cursor-pointer"
                   >
-                    ✕
+                    <X className="w-4 h-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -225,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       key={item.id}
                       onClick={() => handleNavClick(item.id)}
-                      className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-[15px] font-medium transition cursor-pointer ${
+                      className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-md text-[15px] font-medium transition cursor-pointer ${
                         isActive
                           ? 'bg-[#E6F7F5] text-[#00A389] font-semibold'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -248,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {!isCashier && (
                 <button
                   onClick={() => handleNavClick('settings')}
-                  className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-[15px] font-medium transition cursor-pointer ${
+                  className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-md text-[15px] font-medium transition cursor-pointer ${
                     activeTab === 'settings'
                       ? 'bg-[#E6F7F5] text-[#00A389] font-semibold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -265,7 +248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               <button
                 onClick={onLogout}
-                className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-[15px] font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-md text-[15px] font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
               >
                 <LogOut className="w-5 h-5 shrink-0 text-slate-400" />
                 <span>Logout</span>

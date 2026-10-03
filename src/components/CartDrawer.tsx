@@ -46,15 +46,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const cashPaymentValid = cashTendered >= totalPayable;
 
   const drawerContent = (
-    <div className="w-full xl:w-92 h-full bg-white flex flex-col justify-between select-none border-l border-slate-100 font-sans">
-      <div className="flex-1 overflow-y-auto p-6 pb-4">
+    <div className="w-full xl:w-96 h-full bg-white flex flex-col justify-between select-none border-l border-slate-200 font-sans">
+      <div className="flex-1 overflow-y-auto p-5 pb-4">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">
               Order {orderNumber}
             </h2>
-            <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">
+            <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
               Current Transaction
             </p>
           </div>
@@ -62,7 +62,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <button
             onClick={onClearCart}
             disabled={cart.length === 0}
-            className="p-2 text-rose-400 hover:text-rose-600 disabled:opacity-30 transition rounded-xl hover:bg-rose-50 cursor-pointer"
+            className="p-2 text-rose-500 hover:text-rose-700 disabled:opacity-30 transition rounded-md hover:bg-rose-50 cursor-pointer"
             title="Clear Order"
           >
             <Trash2 className="w-4 h-4" />
@@ -74,17 +74,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {/* ORDERED ITEMS */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Ordered Items
             </h3>
-            <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
               {totalCount} Items
             </span>
           </div>
 
           {cart.length === 0 ? (
-            <div className="py-12 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-              <p className="text-xs font-medium text-slate-400">Cart is empty</p>
+            <div className="py-10 text-center bg-slate-50 rounded-lg border border-dashed border-slate-300">
+              <p className="text-xs font-medium text-slate-500">Cart is empty</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -114,8 +114,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         </div>
 
         {/* PAYMENT SUMMARY */}
-        <div className="mt-8 p-5 rounded-3xl bg-slate-50 border border-slate-100 space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+        <div className="mt-6 p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
             Payment Summary
           </h3>
 
@@ -137,7 +137,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
 
           {cart.length > 0 && (
-            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 space-y-3">
+            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700" htmlFor="cash-tendered">
                 Cash Tendered
               </label>
@@ -148,9 +148,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 step="1"
                 value={cashTendered}
                 onChange={event => setCashTendered(Math.max(0, Number(event.target.value) || 0))}
-                className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-[#00A389]"
+                className="w-full rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus-visible:border-[#008f77]"
               />
-              <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+              <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
                 <span>Change Due</span>
                 <span className="font-black text-[#00A389]">{formatPKR(changeDue)}</span>
               </div>
@@ -164,12 +164,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       </div>
 
       {/* BOTTOM ACTIONS */}
-      <div className="p-6 bg-white border-t border-slate-100">
+      <div className="p-5 bg-white border-t border-slate-200">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onOpenPrintModal}
-            className="px-4 py-3 rounded-2xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+            className="px-4 py-3 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>Print</span>
@@ -179,7 +179,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             type="button"
             onClick={() => onPlaceOrder(cashTendered)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
-            className="flex-1 py-3 rounded-2xl bg-[#00A389] hover:bg-[#008f77] text-white text-xs font-bold shadow-lg shadow-[#00A389]/20 flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-95"
+            className="flex-1 py-3 rounded-md bg-[#008f77] hover:bg-[#007462] text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
           >
             <Power className="w-3.5 h-3.5" />
             <span>{isProcessing ? 'Processing...' : 'Complete Order (Cash)'}</span>
@@ -191,12 +191,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   return (
     <>
-      <aside className="hidden xl:block w-92 h-full shrink-0">
+      <aside className="hidden xl:block w-96 h-full shrink-0">
         {drawerContent}
       </aside>
       {isMobileOpen && (
-        <div className="xl:hidden fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-sm h-full bg-white shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="xl:hidden fixed inset-0 z-50 flex justify-end bg-black/50 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm h-full bg-white border-l border-slate-200 animate-in slide-in-from-right duration-200">
             {drawerContent}
           </div>
         </div>

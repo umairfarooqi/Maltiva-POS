@@ -562,7 +562,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <p className="text-sm font-semibold text-slate-600">No dishes found in this category</p>
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
               {categoryProducts.map(rawProduct => {
                 const product = normalizeProduct(rawProduct);
                 const safePrice = Number(product.price) || 0;

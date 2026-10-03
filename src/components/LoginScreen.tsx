@@ -169,21 +169,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <div className="w-screen h-screen bg-[#02302a] flex items-center justify-center p-4 font-sans select-none relative overflow-hidden">
-      {/* Ambient Background Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-1/2 h-1/2 bg-[#00A389]/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-1/2 h-1/2 bg-[#00A389]/10 rounded-full blur-[120px] pointer-events-none" />
-
+    <div className="w-screen h-screen bg-[#0b2421] flex items-center justify-center p-4 font-sans select-none">
       <div className="w-full max-w-md relative z-10">
-        {/* Professional Card Container */}
-        <div className="bg-white rounded-[40px] shadow-2xl border border-white/20 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
           
           {/* Brand Header Section */}
-          <div className="bg-slate-900 p-8 relative overflow-hidden text-center">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-[#00A389]/20 rounded-full blur-3xl" />
-            <div className="relative z-10 flex flex-col items-center gap-3">
+          <div className="bg-[#102a27] p-7 text-center">
+            <div className="flex flex-col items-center gap-3">
               <MaltivaLogo size="md" showSubtitle={true} />
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-[10px] font-mono font-bold text-emerald-400 border border-white/10 uppercase tracking-widest">
+              <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5 text-[10px] font-mono font-bold text-emerald-300 border border-white/10 uppercase tracking-wider">
                 <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
                 <span>{isOnline ? 'System Online' : 'Offline Mode'}</span>
               </div>
@@ -200,7 +194,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </div>
 
                 {errorMessage && (
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-xs flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span className="font-medium">{errorMessage}</span>
                   </div>
@@ -218,7 +212,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                         value={username}
                         onChange={e => setUsername(e.target.value)}
                         placeholder="admin or cashier"
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] transition-all"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm text-slate-800 placeholder:text-slate-500 focus-visible:border-[#008f77] transition-colors"
                       />
                       {detectedUser && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md bg-[#00A389]/10 text-[#00A389] text-[9px] font-bold uppercase">
@@ -247,7 +241,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         placeholder="Enter 4-digit PIN"
-                        className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] transition-all"
+                        className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm text-slate-800 placeholder:text-slate-500 focus-visible:border-[#008f77] transition-colors"
                       />
                       <button
                         type="button"
@@ -262,7 +256,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-3.5 bg-[#00A389] hover:bg-[#008f77] text-white rounded-2xl text-sm font-bold shadow-lg shadow-[#00A389]/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70 cursor-pointer"
+                    className="w-full py-3.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-sm font-bold flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-70 cursor-pointer"
                   >
                     {isLoading ? 'Verifying...' : (
                       <>
@@ -274,17 +268,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </form>
 
                 <div className="pt-6 border-t border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center mb-3">Quick Access</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center mb-3">Quick Access</p>
                   <div className="grid grid-cols-2 gap-3">
                     {availableUsers.slice(0, 2).map(u => (
                       <button
                         key={u.id}
                         type="button"
                         onClick={() => handleQuickFill(u)}
-                        className="p-3 bg-slate-50 hover:bg-[#E6F7F5] border border-slate-200 rounded-2xl text-left transition-all group cursor-pointer"
+                        className="p-3 bg-slate-50 hover:bg-[#E6F7F5] border border-slate-300 rounded-md text-left transition-colors group cursor-pointer"
                       >
                         <span className="block text-[11px] font-bold text-slate-800 group-hover:text-[#00A389] capitalize">{u.role}</span>
-                        <span className="block text-[10px] text-slate-400 font-mono">@{u.username}</span>
+                        <span className="block text-[10px] text-slate-500 font-mono">@{u.username}</span>
                       </button>
                     ))}
                   </div>
@@ -317,23 +311,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                       <label className="text-xs font-bold text-slate-600">Username</label>
                       <div className="relative">
                         <UserIcon className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                        <input type="text" value={forgotIdentifier} onChange={e => setForgotIdentifier(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:border-[#00A389] outline-none" placeholder="e.g. admin" />
+                        <input type="text" value={forgotIdentifier} onChange={e => setForgotIdentifier(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" placeholder="e.g. admin" />
                       </div>
                     </div>
-                    <button type="submit" className="w-full py-3 bg-[#00A389] text-white rounded-2xl text-sm font-bold shadow-md">Find Account</button>
+                    <button type="submit" className="w-full py-3 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-sm font-bold transition-colors">Find Account</button>
                   </form>
                 ) : (
                   <form onSubmit={handleResetPassword} className="space-y-4">
-                    <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-emerald-800 text-xs flex items-center gap-2">
+                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4" />
                       <span>{recoveryAccount?.name} found!</span>
                     </div>
                     <div className="space-y-3">
-                      <input type="text" value={verificationCode} onChange={e => setVerificationCode(e.target.value)} placeholder="Enter Recovery PIN" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none" />
-                      <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none" />
-                      <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm New Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none" />
+                      <input type="text" value={verificationCode} onChange={e => setVerificationCode(e.target.value)} placeholder="Enter Recovery PIN" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" />
+                      <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" />
+                      <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm New Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" />
                     </div>
-                    <button type="submit" className="w-full py-3 bg-[#00A389] text-white rounded-2xl text-sm font-bold shadow-md">Update Password</button>
+                    <button type="submit" className="w-full py-3 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-sm font-bold transition-colors">Update Password</button>
                   </form>
                 )}
               </div>
@@ -347,12 +341,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </div>
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-3">
-                    <input type="text" value={signupName} onChange={e => setSignupName(e.target.value)} placeholder="Full Name" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none" required />
-                    <input type="text" value={signupUsername} onChange={e => setSignupUsername(e.target.value)} placeholder="Username" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none" required />
-                    <input type="password" value={signupPassword} onChange={e => setSignupPassword(e.target.value)} placeholder="Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none" required />
-                    <input type="text" maxLength={4} value={signupPin} onChange={e => setSignupPin(e.target.value)} placeholder="4-Digit Recovery PIN" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono outline-none" />
+                    <input type="text" value={signupName} onChange={e => setSignupName(e.target.value)} placeholder="Full Name" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" required />
+                    <input type="text" value={signupUsername} onChange={e => setSignupUsername(e.target.value)} placeholder="Username" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" required />
+                    <input type="password" value={signupPassword} onChange={e => setSignupPassword(e.target.value)} placeholder="Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]" required />
+                    <input type="text" maxLength={4} value={signupPin} onChange={e => setSignupPin(e.target.value)} placeholder="4-Digit Recovery PIN" className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]" />
                   </div>
-                  <button type="submit" className="w-full py-3 bg-[#00A389] text-white rounded-2xl text-sm font-bold shadow-md">Create Admin Account</button>
+                  <button type="submit" className="w-full py-3 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-sm font-bold transition-colors">Create Admin Account</button>
                 </form>
               </div>
             )}
