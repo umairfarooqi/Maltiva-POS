@@ -1,0 +1,6 @@
+{
+  "name": "Tasty Station POS",
+  "description": "High-performance restaurant point of sale and inventory management system with real-time stock sync, offline capabilities, and thermal receipt printing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
