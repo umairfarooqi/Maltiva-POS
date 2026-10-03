@@ -98,15 +98,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .reduce((sum, o) => sum + o.total, 0);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 select-none bg-[#F8FAFA]">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 select-none bg-[#F4F6F5]">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-2xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-lg border border-slate-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+            <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-[#E6F7F5] text-[#007462]">
               Admin Executive Sales
             </span>
-            <span className="text-xs text-slate-400">Maltiva Crust • Phase 3 DHA Lahore</span>
+            <span className="text-xs text-slate-500">Maltiva Crust • Phase 3 DHA Lahore</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
             Daily Sales & Counter Reports
@@ -118,7 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <button
           onClick={() => onNavigateToTab('order_line')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-xs font-bold shadow-md shadow-[#00A389]/20 transition cursor-pointer self-start md:self-auto"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition cursor-pointer self-start md:self-auto"
         >
           <Receipt className="w-4 h-4" />
           <span>Go to Order Line</span>
@@ -126,7 +126,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Date & Payment Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white p-3 rounded-lg border border-slate-200 flex flex-wrap items-center justify-between gap-3">
         {/* Date Filter Tabs */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
@@ -144,10 +144,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               key={tab.id}
               onClick={() => setDateFilter(tab.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 dateFilter === tab.id
-                  ? 'bg-[#00A389] text-white shadow-xs'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                  ? 'bg-[#008f77] text-white'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
               }`}
             >
               {tab.label}
@@ -170,10 +170,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               key={p.id}
               onClick={() => setPaymentFilter(p.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 paymentFilter === p.id
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                  ? 'bg-slate-800 text-white'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
               }`}
             >
               {p.label}
@@ -184,14 +184,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Custom Date Pickers (if Custom Dates is selected) */}
       {dateFilter === 'custom' && (
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
+        <div className="bg-white p-3 rounded-lg border border-slate-200 flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <label className="text-xs font-bold text-slate-600">From Date:</label>
             <input
               type="date"
               value={customStartDate}
               onChange={e => setCustomStartDate(e.target.value)}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#00A389]"
+              className="px-3 py-1.5 border border-slate-300 rounded-md text-xs text-slate-700 focus-visible:border-[#008f77]"
             />
           </div>
 
@@ -201,7 +201,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               type="date"
               value={customEndDate}
               onChange={e => setCustomEndDate(e.target.value)}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#00A389]"
+              className="px-3 py-1.5 border border-slate-300 rounded-md text-xs text-slate-700 focus-visible:border-[#008f77]"
             />
           </div>
         </div>
@@ -210,19 +210,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Sales */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs space-y-2">
+        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-normal">
               Total Takeaway Sales
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00A389] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-md bg-[#E6F7F5] text-[#007462] flex items-center justify-center">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <p className="text-2xl font-black text-slate-900 font-mono tracking-tight">
             {formatPKR(totalSales)}
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             {dateFilter === 'today'
               ? `Today: ${formatPKR(todayOnlySales)} vs Yest: ${formatPKR(yesterdayOnlySales)}`
               : `Calculated from ${totalOrdersCount} completed orders`}
@@ -230,79 +230,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 2: Total Orders */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs space-y-2">
+        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-normal">
               Orders Served
             </span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-md bg-[#E6F7F5] text-[#007462] flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
           <p className="text-2xl font-black text-slate-900 font-mono tracking-tight">
             {totalOrdersCount}
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             Average ticket size: <span className="font-bold text-slate-700">{formatPKR(averageOrderValue)}</span>
           </p>
         </div>
 
         {/* Card 3: Cash Received */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs space-y-2">
+        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-normal">
               Cash Drawer
             </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-md bg-[#E6F7F5] text-[#007462] flex items-center justify-center">
               <Banknote className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-blue-600 font-mono tracking-tight">
+          <p className="text-2xl font-black text-slate-900 font-mono tracking-tight">
             {formatPKR(cashTotal)}
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             {cashOrders.length} cash orders processed
           </p>
         </div>
 
         {/* Card 4: Card / POS Terminal */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs space-y-2">
+        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-normal">
               Card Terminal
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-md bg-[#E6F7F5] text-[#007462] flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-amber-600 font-mono tracking-tight">
+          <p className="text-2xl font-black text-slate-900 font-mono tracking-tight">
             {formatPKR(cardTotal)}
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             {cardOrders.length} digital card orders
           </p>
         </div>
       </div>
 
       {/* Filtered Orders Breakdown Table */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-slate-800">
               Filtered Orders Register ({filteredOrders.length})
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Itemized takeaway receipts with reprint dual slips capability
             </p>
           </div>
 
-          <span className="text-xs font-mono font-bold text-[#00A389] bg-[#E6F7F5] px-3 py-1 rounded-xl">
+          <span className="text-xs font-mono font-bold text-[#007462] bg-[#E6F7F5] px-2 py-1 rounded">
             Total: {formatPKR(totalSales)}
           </span>
         </div>
 
         {filteredOrders.length === 0 ? (
-          <div className="py-12 text-center text-slate-400 text-xs">
+          <div className="py-12 text-center text-slate-500 text-xs">
             No takeaway orders found for the selected date and payment filter.
           </div>
         ) : (

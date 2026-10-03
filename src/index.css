@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+:root {
+  --pos-surface: #ffffff;
+  --pos-canvas: #f4f6f5;
+  --pos-border: #d9e0df;
+  --pos-text: #18211f;
+  --pos-muted: #52605c;
+  --pos-action: #008f77;
+  --pos-action-hover: #007462;
+  --pos-focus: #008f77;
+  --pos-radius-control: 0.375rem;
+  --pos-radius-panel: 0.5rem;
+}
+
 @layer base {
   *,
   *::before,
@@ -11,7 +24,12 @@
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #F8FAFA;
+    background-color: var(--pos-canvas);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--pos-focus);
+    outline-offset: 2px;
   }
 }
 
@@ -31,13 +49,23 @@
   background: rgba(0, 0, 0, 0.22);
 }
 
-/* Professional POS Shadows & Radii */
 .pos-card-shadow {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 10px -2px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
 }
 
 .pos-card-rounded {
-  border-radius: 1.25rem; /* 20px */
+  border-radius: var(--pos-radius-panel);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Scoped thermal receipt and report print rules */

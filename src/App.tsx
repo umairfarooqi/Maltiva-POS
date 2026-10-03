@@ -506,15 +506,9 @@ export default function App() {
     );
   }
 
-  const isManageDishesTab = activeTab === 'manage_dishes';
-
   return (
-    <div className={`w-screen h-screen overflow-hidden font-sans antialiased text-slate-800 ${
-      isManageDishesTab ? 'bg-[#159F99] p-0 md:p-5 lg:p-7' : 'bg-[#F8FAFA]'
-    }`}>
-      <div className={`flex h-full w-full overflow-hidden ${
-        isManageDishesTab ? 'rounded-xl bg-white shadow-2xl shadow-[#075F5A]/20' : ''
-      }`}>
+    <div className="w-screen h-screen overflow-hidden bg-[#F8FAFA] font-sans antialiased text-slate-800">
+      <div className="flex h-full w-full overflow-hidden">
       {/* Sidebar: Role-gated */}
       <Sidebar
         activeTab={activeTab}
