@@ -24,13 +24,13 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#F4F6F5]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-lg border border-slate-200">
         <div>
           <h1 className="text-xl font-bold text-slate-800 tracking-tight">
             Customer Directory & Loyalty
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Repeat diners, lifetime spend, and branch visit frequency
           </p>
         </div>
@@ -43,11 +43,11 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, phone or email..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#00A389]"
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs text-slate-700 placeholder:text-slate-500 focus-visible:border-[#008f77]"
             />
           </div>
 
-          <button className="flex items-center gap-1.5 px-4 py-2 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-xs font-bold transition shadow-xs">
+          <button className="flex items-center gap-1.5 px-4 py-2 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition">
             <UserPlus className="w-3.5 h-3.5" />
             <span>New Customer</span>
           </button>
@@ -58,7 +58,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         {filtered.map(cust => (
           <div
             key={cust.id}
-            className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs hover:shadow-md transition space-y-3"
+            className="bg-white p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors space-y-3"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -76,7 +76,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 </div>
               </div>
 
-              <span className="text-xs font-mono font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+              <span className="text-xs font-mono font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-300">
                 {formatPKR(cust.totalSpent)}
               </span>
             </div>

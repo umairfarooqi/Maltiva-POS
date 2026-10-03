@@ -107,8 +107,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+      <div className="bg-white rounded-lg max-w-md w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               src={product.image}
               alt={product.name}
               referrerPolicy="no-referrer"
-              className="w-12 h-12 rounded-2xl object-cover border border-slate-100"
+              className="w-12 h-12 rounded-md object-cover border border-slate-200"
             />
             <div>
               <span className="text-[11px] font-semibold text-[#00A389] uppercase tracking-wider">
@@ -132,7 +132,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"
+            aria-label="Close item options"
+            className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -167,7 +168,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() => handleSelectOption(group, opt.id)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs transition ${
+                        className={`w-full flex items-center justify-between p-3 rounded-md border text-xs transition ${
                           isSelected
                             ? 'border-[#00A389] bg-[#E6F7F5] text-slate-900 font-semibold'
                             : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
@@ -210,14 +211,14 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="e.g. Less salt, dressing on the side..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#00A389]"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs text-slate-700 placeholder:text-slate-500 focus-visible:border-[#008f77]"
             />
           </div>
         </div>
 
         {/* Footer: Quantity & Add Button */}
         <div className="p-5 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+          <div className="flex items-center gap-3 bg-white border border-slate-300 rounded-md p-1">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold transition"
@@ -237,7 +238,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
 
           <button
             onClick={handleAdd}
-            className="flex-1 py-3 px-4 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-sm font-bold shadow-md shadow-[#00A389]/25 flex items-center justify-between transition"
+            className="flex-1 py-3 px-4 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-sm font-bold flex items-center justify-between transition"
           >
             <span>Add to Order</span>
             <span className="font-mono">{formatPKR(totalPrice)}</span>

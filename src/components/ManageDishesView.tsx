@@ -42,6 +42,19 @@ interface DynamicVariationOption {
   costDelta: number;
 }
 
+const FAST_FOOD_CATEGORY_EMOJIS = [
+  { emoji: '🍔', label: 'burger' },
+  { emoji: '🍕', label: 'pizza' },
+  { emoji: '🍟', label: 'fries' },
+  { emoji: '🌭', label: 'hot dog' },
+  { emoji: '🥪', label: 'sandwich' },
+  { emoji: '🌮', label: 'taco' },
+  { emoji: '🍗', label: 'chicken' },
+  { emoji: '🥤', label: 'drink' },
+  { emoji: '🍩', label: 'donut' },
+  { emoji: '🍦', label: 'ice cream' },
+];
+
 export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   products,
   categories,
@@ -448,7 +461,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   onClick={() => setSelectedCategoryId(cat.id)}
                   className={`group relative w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
                     isSelected
-                      ? 'bg-white text-[#008f83] border-[#00A389] shadow-sm'
+                      ? 'bg-white text-[#008f83] border-[#00A389]'
                       : 'bg-white border-slate-200/70 text-slate-600 hover:border-slate-300 hover:bg-white'
                   }`}
                 >
@@ -468,13 +481,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   {cat.id !== 'cat-all' && (
                       <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-white px-1 opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 transition-opacity">
                         <button
+                          type="button"
                           onClick={e => openEditCategoryModal(cat, e)}
+                          aria-label={`Edit ${cat.name}`}
                           className="p-1 text-slate-400 hover:text-[#00A389] transition"
                         >
                           <Edit2 className="w-3 h-3" />
                         </button>
                         <button
+                          type="button"
                           onClick={e => handleDeleteCategoryClick(cat.id, e)}
+                          aria-label={`Delete ${cat.name}`}
                           className="p-1 text-slate-400 hover:text-rose-500 transition"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -488,7 +505,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         </div>
         <button
           onClick={openCreateCategoryModal}
-          className="w-full py-2.5 bg-[#00A389] hover:bg-[#008f77] text-white rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+          className="w-full py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Category
@@ -507,7 +524,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 placeholder="Search dishes or deals..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77] transition-colors"
               />
             </div>
             <button
@@ -519,7 +536,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </button>
             <button
               onClick={openCreateDishModal}
-              className="px-3.5 py-2.5 bg-[#00A389] hover:bg-[#008f77] text-white rounded-lg text-xs font-bold transition shadow-sm cursor-pointer flex items-center gap-2"
+              className="px-3.5 py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Add New Dish
@@ -557,7 +574,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
         <div className="flex-1 overflow-y-auto pb-2 scrollbar-none">
           {categoryProducts.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-3xl border border-dashed border-slate-200">
+            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-lg border border-dashed border-slate-300">
               <Package className="w-12 h-12 text-slate-200 mb-3" />
               <p className="text-sm font-semibold text-slate-600">No dishes found in this category</p>
             </div>
@@ -573,7 +590,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-md p-2 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow group relative cursor-pointer flex flex-col"
+                    className="bg-white rounded-md p-2 border border-slate-200 hover:border-slate-300 transition-colors group relative cursor-pointer flex flex-col"
                     onClick={() =>
                       product.isDeal ? openEditDealModal(product) : openEditDishModal(product)
                     }
@@ -602,14 +619,14 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                             e.stopPropagation();
                             setOpenMenuProductId(product.id);
                           }}
-                          className="p-1.5 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-900 transition cursor-pointer shadow-sm z-10"
+                          className="p-1.5 rounded-full bg-white text-slate-400 hover:text-slate-900 transition cursor-pointer z-10"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </button>
 
                         {openMenuProductId === product.id && (
                           <div
-                            className="absolute right-0 mt-1 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
+                            className="absolute right-0 mt-1 w-48 bg-white rounded-md border border-slate-200 z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
                             onClick={e => e.stopPropagation()}
                           >
                             <button
@@ -696,13 +713,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 return (
                   <div
                     key={product.id}
-                    className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between group hover:border-slate-300 transition cursor-pointer"
+                    className="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-between group hover:border-slate-300 transition cursor-pointer"
                     onClick={() =>
                       product.isDeal ? openEditDealModal(product) : openEditDishModal(product)
                     }
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50">
+                      <div className="w-12 h-12 rounded-md overflow-hidden bg-slate-50">
                         <img
                           src={product.image}
                           alt={product.name}
@@ -737,20 +754,21 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DISH MODAL */}
       {isDishModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl p-8 border border-slate-100 max-h-[90vh] overflow-y-auto scrollbar-none">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-bold text-slate-900">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg max-w-3xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto scrollbar-none">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900">
                 {editingProduct ? 'Edit Dish' : 'Add New Dish'}
               </h3>
               <button
                 onClick={() => setIsDishModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close dish editor"
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSaveDish} className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <form onSubmit={handleSaveDish} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-5">
                 <div className="group">
                   <label className="text-xs font-bold text-slate-600 block mb-1.5 uppercase tracking-wider">
@@ -760,7 +778,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     type="text"
                     value={formName}
                     onChange={e => setFormName(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]"
                     required
                   />
                 </div>
@@ -772,7 +790,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <select
                       value={formCategoryId}
                       onChange={e => setFormCategoryId(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all cursor-pointer"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77] cursor-pointer"
                     >
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>
@@ -789,7 +807,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="number"
                       value={formPrice}
                       onChange={e => setFormPrice(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                       required
                     />
                   </div>
@@ -803,7 +821,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="number"
                       value={formCostPrice}
                       onChange={e => setFormCostPrice(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                     />
                   </div>
                   <div className="group">
@@ -814,7 +832,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="number"
                       value={formStock}
                       onChange={e => setFormStock(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                     />
                   </div>
                 </div>
@@ -826,7 +844,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     type="text"
                     value={formImage}
                     onChange={e => setFormImage(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]"
                   />
                 </div>
                 <div className="group">
@@ -837,13 +855,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     value={formDescription}
                     onChange={e => setFormDescription(e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-6">
-                <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 flex flex-col items-center justify-center text-center space-y-2">
+                <div className="p-5 bg-emerald-50 rounded-md border border-emerald-200 flex flex-col items-center justify-center text-center space-y-2">
                   <div className="flex items-center gap-2 text-emerald-900">
                     <TrendingUp className="w-5 h-5" />
                     <span className="text-sm font-bold">Estimated Profit</span>
@@ -871,7 +889,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     {formVariations.map((v, idx) => (
                       <div
                         key={v.id || idx}
-                        className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200"
+                        className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-md border border-slate-300"
                       >
                         <input
                           type="text"
@@ -882,7 +900,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                             updated[idx].name = e.target.value;
                             setFormVariations(updated);
                           }}
-                          className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-[#00A389]"
+                          className="flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                         />
                         <input
                           type="number"
@@ -893,7 +911,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                             updated[idx].priceDelta = parseFloat(e.target.value) || 0;
                             setFormVariations(updated);
                           }}
-                          className="w-20 px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono outline-none focus:border-[#00A389]"
+                          className="w-20 px-2 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
                         />
                         <button
                           type="button"
@@ -911,13 +929,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDishModalOpen(false)}
-                    className="px-5 py-2.5 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    className="px-5 py-2.5 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-[#00A389] hover:bg-[#008f77] text-white rounded-2xl text-xs font-bold transition shadow-lg shadow-[#00A389]/20 cursor-pointer"
+                    className="px-6 py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition cursor-pointer"
                   >
                     Save Dish
                   </button>
@@ -930,20 +948,21 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DEAL MODAL */}
       {isDealModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl p-8 border border-slate-100 max-h-[90vh] overflow-y-auto scrollbar-none">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-bold text-slate-900">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg max-w-3xl w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto scrollbar-none">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900">
                 {editingDeal ? 'Edit Deal' : 'Create New Deal'}
               </h3>
               <button
                 onClick={() => setIsDealModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close deal editor"
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSaveDeal} className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <form onSubmit={handleSaveDeal} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-5">
                 <div className="group">
                   <label className="text-xs font-bold text-slate-600 block mb-1.5 uppercase tracking-wider">
@@ -953,7 +972,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     type="text"
                     value={dealName}
                     onChange={e => setDealName(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]"
                     required
                   />
                 </div>
@@ -966,7 +985,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="number"
                       value={dealPrice}
                       onChange={e => setDealPrice(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                       required
                     />
                   </div>
@@ -978,7 +997,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="number"
                       value={dealCostPrice}
                       onChange={e => setDealCostPrice(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                     />
                   </div>
                 </div>
@@ -991,7 +1010,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="number"
                       value={dealStock}
                       onChange={e => setDealStock(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                     />
                   </div>
                   <div className="group">
@@ -1002,7 +1021,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       type="text"
                       value={dealImage}
                       onChange={e => setDealImage(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]"
                     />
                   </div>
                 </div>
@@ -1014,7 +1033,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     value={dealDescription}
                     onChange={e => setDealDescription(e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm focus-visible:border-[#008f77]"
                   />
                 </div>
               </div>
@@ -1029,7 +1048,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <select
                       value={selectedProductToAdd}
                       onChange={e => setSelectedProductToAdd(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500/20 outline-none"
+                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                     >
                       <option value="">Select Existing Dish...</option>
                       {products
@@ -1043,7 +1062,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <button
                       type="button"
                       onClick={handleAddProductToDeal}
-                      className="px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
+                      className="px-3 py-2 bg-slate-900 text-white rounded-md text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
                     >
                       Add
                     </button>
@@ -1055,12 +1074,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       placeholder="Or Custom Item (e.g. 1.5L Cold Drink)"
                       value={customItemInput}
                       onChange={e => setCustomItemInput(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20"
+                      className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                     />
                     <button
                       type="button"
                       onClick={handleAddCustomItemToDeal}
-                      className="px-3 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition cursor-pointer"
+                      className="px-3 py-2 bg-slate-900 text-white rounded-md text-xs font-bold hover:bg-slate-800 transition cursor-pointer"
                     >
                       Custom
                     </button>
@@ -1070,7 +1089,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     {dealBundledItems.map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs"
+                        className="flex items-center justify-between bg-slate-50 p-2.5 rounded-md border border-slate-300 text-xs"
                       >
                         <span className="font-medium text-slate-800 truncate max-w-[150px]">
                           {item.productName}
@@ -1104,7 +1123,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       </div>
                     ))}
                     {dealBundledItems.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      <p className="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-md border border-dashed border-slate-300">
                         No items added to deal yet.
                       </p>
                     )}
@@ -1115,13 +1134,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDealModalOpen(false)}
-                    className="px-5 py-2.5 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    className="px-5 py-2.5 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-xs font-bold transition shadow-lg shadow-amber-500/20 cursor-pointer"
+                    className="px-6 py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition cursor-pointer"
                   >
                     Save Deal
                   </button>
@@ -1134,55 +1153,75 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* CATEGORY MODAL */}
       {isCategoryModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl p-6 border border-slate-100">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 border border-slate-200">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-900">
                 {editingCategory ? 'Edit Category' : 'New Category'}
               </h3>
               <button
                 onClick={() => setIsCategoryModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition"
+                aria-label="Close category editor"
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSaveCategorySubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1 uppercase tracking-wider">
+                <label htmlFor="category-name-input" className="text-xs font-bold text-slate-600 block mb-1 uppercase tracking-wider">
                   Category Name
                 </label>
                 <input
+                  id="category-name-input"
                   type="text"
                   value={catNameInput}
                   onChange={e => setCatNameInput(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#00A389]/20 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                   required
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1 uppercase tracking-wider">
+                <label htmlFor="category-icon-input" className="text-xs font-bold text-slate-600 block mb-1 uppercase tracking-wider">
                   Icon Emoji
                 </label>
                 <input
+                  id="category-icon-input"
                   type="text"
                   value={catIconInput}
                   onChange={e => setCatIconInput(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-lg text-center focus:ring-2 focus:ring-[#00A389]/20 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-lg text-center focus-visible:border-[#008f77]"
                   required
                 />
+                <div className="mt-2 grid grid-cols-5 gap-2">
+                  {FAST_FOOD_CATEGORY_EMOJIS.map(({ emoji, label }) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setCatIconInput(emoji)}
+                      aria-label={`Use ${label} emoji`}
+                      className={`h-10 rounded-md border text-lg transition hover:border-[#00A389] hover:bg-[#E6F7F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A389] ${
+                        catIconInput === emoji
+                          ? 'border-[#00A389] bg-[#E6F7F5]'
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCategoryModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-xs font-bold transition shadow-md shadow-[#00A389]/20"
+                  className="px-4 py-2 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition"
                 >
                   Save
                 </button>
@@ -1194,13 +1233,14 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* STOCK ADJUSTMENT MODAL */}
       {isStockModalOpen && selectedStockProduct && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl p-6 border border-slate-100">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900">Adjust Stock</h3>
               <button
                 onClick={() => setIsStockModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-full"
+                aria-label="Close stock adjustment"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-md"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1217,7 +1257,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <select
                   value={stockType}
                   onChange={e => setStockType(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                 >
                   <option value="restock">Restock (+ Stock)</option>
                   <option value="adjustment">Manual Adjustment (+ Stock)</option>
@@ -1232,7 +1272,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   type="number"
                   value={stockChangeQty}
                   onChange={e => setStockChangeQty(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
                   required
                 />
               </div>
@@ -1244,7 +1284,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   type="text"
                   value={stockReason}
                   onChange={e => setStockReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                   required
                 />
               </div>
@@ -1252,13 +1292,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsStockModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-bold"
                 >
                   Apply
                 </button>
@@ -1270,9 +1310,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DELETE CONFIRMATION DIALOG */}
       {deleteConfirmTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl p-6 border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 border border-slate-200 text-center">
+            <div className="w-12 h-12 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">Are you sure?</h3>
@@ -1284,14 +1324,14 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <button
                 onClick={() => setDeleteConfirmTarget(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+                className="px-4 py-2 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleExecuteDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-md shadow-rose-500/20"
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-md text-xs font-bold transition"
               >
                 {isDeleting ? 'Deleting...' : 'Yes, Delete'}
               </button>

@@ -10,7 +10,7 @@ const printerSettings: PrinterSettings = {
   address: 'Phase 3 DHA Lahore',
   whatsApp: '03444757082',
   taxRatePercent: 0,
-  paperWidth: '80mm',
+  paperWidth: '58mm',
   autoPrintDualSlips: true,
   customerDisplayGreeting: 'Welcome',
 };
@@ -76,8 +76,12 @@ describe('print output', () => {
     const printArea = document.querySelector('#thermal-receipt-print-area');
 
     expect(printArea).toBeInTheDocument();
+    expect(printArea).toHaveAttribute('data-paper-width', '58mm');
     expect(printArea).toHaveTextContent('#1');
     expect(printArea).toHaveTextContent('Chicken Fajita Pizza');
+    expect(screen.getByText('Customer Receipt')).toBeVisible();
+    expect(screen.queryByText('KITCHEN SLIP - TAKEAWAY')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close receipt preview' })).toBeVisible();
   });
 
   it('renders the P&L summary in profit-loss-print-area', () => {

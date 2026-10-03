@@ -1,4 +1,4 @@
-import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings, Customer } from '../types/pos';
+import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings, Customer, CartItem, PaymentMethod } from '../types/pos';
 import {
   INITIAL_CATEGORIES,
   INITIAL_PRODUCTS,
@@ -8,6 +8,12 @@ import {
   INITIAL_PRINTER_SETTINGS,
   INITIAL_CUSTOMERS,
 } from '../data/initialData';
+
+export interface CheckoutDraft {
+  cart: CartItem[];
+  paymentMethod: PaymentMethod;
+  attempt?: Order;
+}
 
 const STORAGE_KEYS = {
   CATEGORIES: 'tasty_pos_categories',
@@ -20,9 +26,25 @@ const STORAGE_KEYS = {
   LOGS: 'tasty_pos_logs',
   OFFLINE_QUEUE: 'tasty_pos_offline_queue',
   ACTIVE_USER: 'tasty_pos_active_user',
+  DRAFT: 'tasty_pos_checkout_draft',
 };
 
 export class PosStorage {
+  static getDraft(): CheckoutDraft | null {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.DRAFT) || 'null');
+      return value && Array.isArray(value.cart) ? value : null;
+    } catch { return null; }
+  }
+
+  static setDraft(draft: CheckoutDraft) {
+    localStorage.setItem(STORAGE_KEYS.DRAFT, JSON.stringify(draft));
+  }
+
+  static clearDraft() {
+    localStorage.removeItem(STORAGE_KEYS.DRAFT);
+  }
+
   static getCategories(): Category[] {
     const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
     return data ? JSON.parse(data) : INITIAL_CATEGORIES;
@@ -80,7 +102,7 @@ export class PosStorage {
 
   static getTables(): TableItem[] {
     const data = localStorage.getItem(STORAGE_KEYS.TABLES);
-    return data ? JSON.parse(data) : INITIAL_TABLES;
+    try { const parsed = data ? JSON.parse(data) : INITIAL_TABLES; return Array.isArray(parsed) ? parsed : []; } catch { return []; }
   }
 
   static setTables(tables: TableItem[]) {
