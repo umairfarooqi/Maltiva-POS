@@ -254,8 +254,14 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
         </div>
       </div>
 
-      {/* Primary KPI Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="profit-loss-print-area" className="space-y-6">
+        <div className="hidden print:block border-b border-slate-300 pb-4">
+          <h1 className="text-2xl font-black text-slate-900">Profit &amp; Loss Audit</h1>
+          <p className="text-sm text-slate-600">Maltiva Crust • Phase 3 DHA Lahore</p>
+        </div>
+
+        {/* Primary KPI Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Selling Revenue */}
         <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs space-y-1.5">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
@@ -307,10 +313,10 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             Effective gross margin on takeaway menu
           </p>
         </div>
-      </div>
+        </div>
 
-      {/* Itemized Profit & Loss Table */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-2xs overflow-hidden">
+        {/* Itemized Profit & Loss Table */}
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-2xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-slate-800">
@@ -398,6 +404,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

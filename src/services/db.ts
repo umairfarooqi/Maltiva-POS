@@ -1,7 +1,10 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
-const DB_PATH = path.join(process.cwd(), 'maltiva_pos.db');
+const DB_DIR = process.env.MALTIVA_POS_DB_DIR || process.cwd();
+const DB_PATH = path.join(DB_DIR, 'maltiva_pos.db');
+fs.mkdirSync(DB_DIR, { recursive: true });
 const db = new Database(DB_PATH);
 
 export function initDb() {

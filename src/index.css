@@ -40,27 +40,81 @@
   border-radius: 1.25rem; /* 20px */
 }
 
-/* Thermal receipt print rules */
+/* Scoped thermal receipt and report print rules */
 @media print {
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
   #thermal-receipt-print-area,
-  #thermal-receipt-print-area * {
-    visibility: visible;
+  #thermal-receipt-print-area *,
+  #profit-loss-print-area,
+  #profit-loss-print-area * {
+    visibility: visible !important;
   }
   #thermal-receipt-print-area {
-    position: absolute;
+    position: absolute !important;
     left: 0;
     top: 0;
     width: 80mm;
+    max-width: 80mm;
+    box-sizing: border-box;
     margin: 0;
     padding: 2mm;
     background: #fff;
     color: #000;
   }
-  @page {
+
+  #thermal-receipt-print-area[data-paper-width='58mm'] {
+    width: 58mm;
+    max-width: 58mm;
+  }
+
+  #profit-loss-print-area {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 12mm;
+    background: #fff;
+    color: #000;
+  }
+
+  #profit-loss-print-area table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #profit-loss-print-area th,
+  #profit-loss-print-area td {
+    border-bottom: 1px solid #cbd5e1;
+  }
+
+  #thermal-receipt-print-area {
+    page: thermal-receipt-80;
+  }
+
+  #thermal-receipt-print-area[data-paper-width='58mm'] {
+    page: thermal-receipt-58;
+  }
+
+  #profit-loss-print-area {
+    page: profit-loss-report;
+  }
+
+  @page thermal-receipt-80 {
     size: 80mm auto;
+    margin: 0;
+  }
+
+  @page thermal-receipt-58 {
+    size: 58mm auto;
+    margin: 0;
+  }
+
+  @page profit-loss-report {
+    size: A4 portrait;
     margin: 0;
   }
 }

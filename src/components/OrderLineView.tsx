@@ -167,13 +167,13 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     onQuickAddToCart(product);
                   }
                 }}
-                className={`group bg-white rounded-3xl p-5 border transition-all duration-300 flex flex-col cursor-pointer relative ${
+                className={`group h-full bg-white rounded-3xl p-5 border transition-shadow duration-300 flex flex-col cursor-pointer relative ${
                   qtyInCart > 0
                     ? 'border-2 border-[#00A389] shadow-lg shadow-[#00A389]/10'
                     : 'border-slate-100 hover:border-slate-300 hover:shadow-md'
                 }`}
               >
-                <div className="relative mb-5 flex items-center justify-center">
+                <div className="relative mb-4 flex items-center justify-center">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-50 border-4 border-white shadow-sm">
                     <img
                       src={product.image}
@@ -187,17 +187,19 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     />
                   </div>
                   {product.isDeal ? (
-                    <span className="absolute top-0 right-0 px-2 py-1 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
+                    <span className="absolute top-2 left-2 z-10 rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase text-amber-800 shadow-sm">
                       DEAL
                     </span>
                   ) : null}
                 </div>
 
-                <div className="flex-1 mb-4">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    {product.categoryName}
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight line-clamp-1">
+                <div className="mb-4 flex-1">
+                  {!product.isDeal && (
+                    <span className="mb-2 inline-flex max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-bold uppercase text-teal-800 ring-1 ring-teal-100">
+                      {product.categoryName}
+                    </span>
+                  )}
+                  <h3 className="min-h-11 line-clamp-2 text-base font-bold leading-5 text-slate-900">
                     {product.name}
                   </h3>
                 </div>

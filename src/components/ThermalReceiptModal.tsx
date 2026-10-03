@@ -215,7 +215,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         </div>
 
         {/* Scrollable Receipt Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 flex flex-col items-center gap-6">
+        <div
+          id="thermal-receipt-print-area"
+          data-paper-width={paperWidth}
+          className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 flex flex-col items-center gap-6"
+        >
           {/* SLIP 1: CUSTOMER RECEIPT */}
           {(activeTab === 'both' || activeTab === 'customer') && (
             <div
