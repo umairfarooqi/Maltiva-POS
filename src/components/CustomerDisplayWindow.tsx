@@ -35,7 +35,6 @@ export const CustomerDisplayWindow: React.FC = () => {
   });
 
   useEffect(() => {
-    // Listen via BroadcastChannel or storage events for instant real-time sync
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pos_customer_display') : null;
 
     const handleMessage = (event: MessageEvent) => {
@@ -49,7 +48,7 @@ export const CustomerDisplayWindow: React.FC = () => {
     }
 
     const handleStorage = (e: StorageEvent) => {
-      if ((e.key === 'pos_customer_display_state' || e.key === 'maltiva_customer_display_state') && e.newValue) {
+      if (e.key === 'pos_customer_display_state' && e.newValue) {
         try {
           setDisplayState(JSON.parse(e.newValue));
         } catch {
@@ -58,10 +57,11 @@ export const CustomerDisplayWindow: React.FC = () => {
       }
     };
 
-    window.addEventListener('storage', handleStorage);
+    if (!channel) {
+      window.addEventListener('storage', handleStorage);
+    }
 
-    // Initial check from localStorage
-    const saved = localStorage.getItem('pos_customer_display_state') || localStorage.getItem('maltiva_customer_display_state');
+    const saved = localStorage.getItem('pos_customer_display_state');
     if (saved) {
       try {
         setDisplayState(JSON.parse(saved));
@@ -72,7 +72,7 @@ export const CustomerDisplayWindow: React.FC = () => {
 
     return () => {
       if (channel) channel.close();
-      window.removeEventListener('storage', handleStorage);
+      if (!channel) window.removeEventListener('storage', handleStorage);
     };
   }, []);
 

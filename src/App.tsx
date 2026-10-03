@@ -21,7 +21,6 @@ import {
   User,
   CartItem,
   PrinterSettings,
-  PaymentMethod,
   SelectedVariationItem,
 } from './types/pos';
 
@@ -67,7 +66,6 @@ export default function App() {
   const [orderSequence, setOrderSequence] = useState<number>(() => {
     return PosStorage.getOrders().length + 31;
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [isProcessingOrder, setIsProcessingOrder] = useState<boolean>(false);
 
   // Modals & Drawers
@@ -111,7 +109,6 @@ export default function App() {
     try {
       const serializedPayload = JSON.stringify(displayPayload);
       localStorage.setItem('pos_customer_display_state', serializedPayload);
-      localStorage.setItem('maltiva_customer_display_state', serializedPayload);
       customerDisplayChannel.current?.postMessage(displayPayload);
     } catch {
       // ignore
@@ -131,7 +128,12 @@ export default function App() {
 
     PosApi.fetchInitialData().then(data => {
       if (data.categories) setCategories(data.categories);
-      if (data.products) setProducts(data.products.map(normalizeProduct));
+      if (data.products) {
+        const validProducts = data.products.filter(
+          product => product.name !== 'Untitled Dish' && Number(product.price) > 0
+        );
+        setProducts(validProducts.map(normalizeProduct));
+      }
       if (data.orders) setOrders(data.orders);
       if (data.users) setAllUsers(data.users);
       if (data.printerSettings) setPrinterSettings(data.printerSettings);
@@ -292,7 +294,7 @@ export default function App() {
     const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
     const tax = Number(((subtotal * printerSettings.taxRatePercent) / 100).toFixed(2));
     const total = subtotal + tax;
-    if (paymentMethod === 'cash' && cashTendered < total) return;
+    if (cashTendered < total) return;
 
     setIsProcessingOrder(true);
 
@@ -331,7 +333,7 @@ export default function App() {
       totalCost,
       profit,
       profitMarginPercent,
-      paymentMethod,
+      paymentMethod: 'cash',
       cashierId: currentUser.id,
       cashierName: currentUser.name,
       cashierRole: currentUser.role,
@@ -389,7 +391,7 @@ export default function App() {
       totalCost,
       profit: total - totalCost,
       profitMarginPercent: total > 0 ? ((total - totalCost) / total) * 100 : 0,
-      paymentMethod,
+      paymentMethod: 'cash',
       cashierId: currentUser.id,
       cashierName: currentUser.name,
       cashierRole: currentUser.role,
@@ -405,17 +407,22 @@ export default function App() {
     if (productData.id) {
       const existing = products.find(p => p.id === productData.id);
       const merged = normalizeProduct({ ...(existing || {}), ...productData });
+      setProducts(prev => prev.map(product => product.id === merged.id ? merged : product));
       const updated = await PosApi.updateProduct(merged, isOnline);
-      setProducts(prev => prev.map(p => (p.id === updated.id ? normalizeProduct(updated) : p)));
+      const normalizedUpdated = normalizeProduct(updated);
+      setProducts(prev => prev.map(product => product.id === normalizedUpdated.id ? normalizedUpdated : product));
     } else {
-      const created = await PosApi.createProduct(productData, isOnline);
-      setProducts(prev => [normalizeProduct(created), ...prev]);
+      const created = normalizeProduct(productData);
+      setProducts(prev => [created, ...prev]);
+      const savedProduct = await PosApi.createProduct(created, isOnline);
+      const normalizedSaved = normalizeProduct(savedProduct);
+      setProducts(prev => [normalizedSaved, ...prev.filter(product => product.id !== created.id && product.id !== normalizedSaved.id)]);
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    await PosApi.deleteProduct(productId, isOnline);
     setProducts(prev => prev.filter(p => p.id !== productId));
+    await PosApi.deleteProduct(productId, isOnline);
   };
 
   const handleSaveCategory = async (name: string, icon: string) => {
@@ -549,8 +556,6 @@ export default function App() {
                 onRemoveItem={handleRemoveCartItem}
                 onClearCart={handleClearCart}
                 taxRatePercent={printerSettings.taxRatePercent}
-                paymentMethod={paymentMethod}
-                onChangePaymentMethod={setPaymentMethod}
                 onPlaceOrder={handlePlaceOrder}
                 onOpenPrintModal={handleOpenPrintCurrentCart}
                 isProcessing={isProcessingOrder}

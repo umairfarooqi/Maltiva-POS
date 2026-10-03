@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Product, Category, VariationGroup, User, DealBundleItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { normalizeProduct } from '../utils/normalizeProduct';
 
 interface ManageDishesViewProps {
   products: Product[];
@@ -262,6 +263,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       editingProduct?.image ||
       'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop&q=80';
 
+    setIsDishModalOpen(false);
     await onSaveProduct({
       id: editingProduct?.id,
       name: formName.trim() || editingProduct?.name || 'Maltiva Special Dish',
@@ -276,7 +278,6 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       isDeal: false,
       variations: packagedVariations,
     });
-    setIsDishModalOpen(false);
   };
 
   const handleSaveDeal = async (e: React.FormEvent) => {
@@ -298,6 +299,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       editingDeal?.image ||
       'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80';
 
+    setIsDealModalOpen(false);
     await onSaveProduct({
       id: editingDeal?.id,
       name: dealName.trim() || editingDeal?.name || 'Maltiva Mega Combo Deal',
@@ -313,7 +315,6 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       bundledProducts: dealBundledItems,
       variations: [],
     });
-    setIsDealModalOpen(false);
   };
 
   const handleSaveCategorySubmit = async (e: React.FormEvent) => {
@@ -340,9 +341,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setIsDeleting(true);
     try {
       if (deleteConfirmTarget.type === 'category') {
+        setDeleteConfirmTarget(null);
         await onDeleteCategory(deleteConfirmTarget.id);
         if (selectedCategoryId === deleteConfirmTarget.id) setSelectedCategoryId('cat-all');
       } else {
+        setDeleteConfirmTarget(null);
         await onDeleteProduct(deleteConfirmTarget.id);
       }
     } finally {
@@ -558,7 +561,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {categoryProducts.map(product => {
+              {categoryProducts.map(rawProduct => {
+                const product = normalizeProduct(rawProduct);
                 const safePrice = Number(product.price) || 0;
                 const safeCost = Number(product.costPrice) || 0;
                 const margin =
@@ -680,7 +684,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {categoryProducts.map(product => {
+              {categoryProducts.map(rawProduct => {
+                const product = normalizeProduct(rawProduct);
                 const safePrice = Number(product.price) || 0;
                 return (
                   <div
