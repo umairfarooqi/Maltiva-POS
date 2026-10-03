@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isPinned, setIsPinned] = useState(false);
 
   // Expanded if hovered OR pinned (on desktop)
-  const isExpandedDesktop = isHovered || isPinned;
+  const isExpandedDesktop = isHovered || isPinned || activeTab === 'manage_dishes';
 
   // Pure Takeaway Navigation Items
   const navItems = [
@@ -72,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* ======================================================== */}
       <aside
         className="hidden lg:block relative shrink-0 h-full transition-all duration-300"
-        style={{ width: isPinned ? 240 : 76 }}
+        style={{ width: isPinned || activeTab === 'manage_dishes' ? 240 : 76 }}
       >
         {/* Floating panel that expands on hover without shifting layout */}
         <div
