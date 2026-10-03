@@ -68,6 +68,8 @@ export function initDb() {
     db.prepare('ALTER TABLE products ADD COLUMN variations TEXT').run();
   }
 
+  db.prepare("DELETE FROM products WHERE name = 'Untitled Dish' OR price = 0").run();
+
   // 4. Orders Table
   db.prepare(`
     CREATE TABLE IF NOT EXISTS orders (

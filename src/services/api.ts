@@ -24,8 +24,13 @@ export const PosApi = {
         const data = await res.json();
         // Update local cache
         PosStorage.setCategories(data.categories);
-        const products = Array.isArray(data.products) ? data.products.map(normalizeProduct) : [];
-        PosStorage.setProducts(products);
+        const fetchedProducts: Product[] = Array.isArray(data.products) ? data.products : [];
+        const validProducts = fetchedProducts.filter(
+          product => product.name !== 'Untitled Dish' && Number(product.price) > 0
+        );
+        const normalizedProducts = validProducts.map(normalizeProduct);
+        PosStorage.setProducts(normalizedProducts);
+        const products = PosStorage.getProducts();
         PosStorage.setOrders(data.orders);
         PosStorage.setTables(data.tables);
         PosStorage.setUsers(data.users);
