@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Flame background glow -->
+  <defs>
+    <linearGradient id="flameGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FF3B30" />
+      <stop offset="50%" stop-color="#FF9500" />
+      <stop offset="100%" stop-color="#FFCC00" />
+    </linearGradient>
+    <linearGradient id="crustGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E63946" />
+      <stop offset="100%" stop-color="#D62828" />
+    </linearGradient>
+  </defs>
+
+  <!-- Top Fire Flames -->
+  <path d="M100 8 C108 24 122 35 125 50 C128 40 135 32 142 38 C145 52 135 68 148 76 C138 78 128 72 120 78 C112 84 108 92 100 92 C92 92 88 84 80 78 C72 72 62 78 52 76 C65 68 55 52 58 38 C65 32 72 40 75 50 C78 35 92 24 100 8 Z" fill="url(#flameGrad)" />
+
+  <!-- Inner Fire Flame Core -->
+  <path d="M100 25 C105 36 114 44 115 54 C110 50 106 58 100 62 C94 58 90 50 85 54 C86 44 95 36 100 25 Z" fill="#FFE600" />
+
+  <!-- Pizza Crust Cap -->
+  <path d="M46 64 C62 56 138 56 154 64 C160 67 158 74 150 78 C135 86 65 86 50 78 C42 74 40 67 46 64 Z" fill="url(#crustGrad)" stroke="#FFD166" stroke-width="2" />
+
+  <!-- Pepperoni Dots on Crust -->
+  <circle cx="78" cy="72" r="5" fill="#FFE600" />
+  <circle cx="100" cy="76" r="6" fill="#FFE600" />
+  <circle cx="122" cy="72" r="5" fill="#FFE600" />
+
+  <!-- 'M' / Pizza Slice Downward Chevron Shape -->
+  <path d="M54 84 L100 148 L146 84 L134 84 L100 130 L66 84 Z" fill="#FF9500" />
+  <path d="M66 84 L100 134 L134 84 L124 84 L100 118 L76 84 Z" fill="#FFD166" />
+  <path d="M78 84 L100 118 L122 84 L114 84 L100 104 L86 84 Z" fill="#FFE600" />
+
+  <!-- Bottom Fiery Drip -->
+  <path d="M100 132 C96 142 94 154 100 162 C106 154 104 142 100 132 Z" fill="#FF9500" />
+  <path d="M100 140 C98 146 97 152 100 156 C103 152 102 146 100 140 Z" fill="#FFE600" />
+</svg>

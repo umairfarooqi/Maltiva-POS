@@ -1,0 +1,645 @@
+{
+  "categories": [
+    {
+      "id": "cat-all",
+      "name": "All Menu",
+      "icon": "🍲",
+      "itemCount": 12,
+      "order": 0
+    },
+    {
+      "id": "cat-deals",
+      "name": "Cheezious Deals",
+      "icon": "🔥",
+      "itemCount": 4,
+      "order": 1
+    },
+    {
+      "id": "cat-pizza",
+      "name": "Pizza Crust",
+      "icon": "🍕",
+      "itemCount": 2,
+      "order": 2
+    },
+    {
+      "id": "cat-sandwiches",
+      "name": "Sandwiches",
+      "icon": "🥪",
+      "itemCount": 2,
+      "order": 3
+    },
+    {
+      "id": "cat-fries",
+      "name": "Fries & Loaded🍟",
+      "icon": "🍟",
+      "itemCount": 2,
+      "order": 4
+    },
+    {
+      "id": "cat-drinks",
+      "name": "Drinks & Shakes",
+      "icon": "🥤",
+      "itemCount": 2,
+      "order": 5
+    }
+  ],
+  "products": [
+    {
+      "id": "deal-maltiva-special",
+      "name": "Maltiva Bita Deal 1",
+      "categoryId": "cat-deals",
+      "categoryName": "Cheezious Deals",
+      "price": 990,
+      "costPrice": 550,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+      "description": "1x Regular Stuffed Pizza + 1x Gourmet Dip Sauce + 1x 345ml Cold Drink.",
+      "isAvailable": true,
+      "isDeal": true,
+      "bundledProducts": [
+        {
+          "productName": "Regular Stuffed Pizza",
+          "quantity": 1,
+          "unitPrice": 750,
+          "rawCost": 420
+        },
+        {
+          "productName": "Gourmet Garlic Ranch Dip",
+          "quantity": 1,
+          "unitPrice": 120,
+          "rawCost": 50
+        },
+        {
+          "productName": "Chilled Soft Drink 345ml",
+          "quantity": 1,
+          "unitPrice": 120,
+          "rawCost": 80
+        }
+      ],
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.056Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "deal-crown-crust",
+      "name": "Crown Crust Feast Deal",
+      "categoryId": "cat-deals",
+      "categoryName": "Cheezious Deals",
+      "price": 1890,
+      "costPrice": 1050,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&auto=format&fit=crop&q=80",
+      "description": "1x Large Crown Crust Pizza + 1x Large Loaded Fries + 1x 1.5L Beverage.",
+      "isAvailable": true,
+      "isDeal": true,
+      "bundledProducts": [
+        {
+          "productName": "Large Crown Crust Pizza",
+          "quantity": 1,
+          "unitPrice": 1450,
+          "rawCost": 780
+        },
+        {
+          "productName": "Loaded Cheesy Fries",
+          "quantity": 1,
+          "unitPrice": 450,
+          "rawCost": 180
+        },
+        {
+          "productName": "1.5L Cold Beverage",
+          "quantity": 1,
+          "unitPrice": 220,
+          "rawCost": 90
+        }
+      ],
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "deal-sandwich-combo",
+      "name": "Cheesy Sandwich Box",
+      "categoryId": "cat-deals",
+      "categoryName": "Cheezious Deals",
+      "price": 650,
+      "costPrice": 360,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&auto=format&fit=crop&q=80",
+      "description": "1x Grilled Club Sandwich + 1x Masala Fries + 1x Cold Drink.",
+      "isAvailable": true,
+      "isDeal": true,
+      "bundledProducts": [
+        {
+          "productName": "Grilled Chicken Club Sandwich",
+          "quantity": 1,
+          "unitPrice": 420,
+          "rawCost": 220
+        },
+        {
+          "productName": "Masala Fries Cup",
+          "quantity": 1,
+          "unitPrice": 150,
+          "rawCost": 60
+        },
+        {
+          "productName": "345ml Soft Drink",
+          "quantity": 1,
+          "unitPrice": 80,
+          "rawCost": 80
+        }
+      ],
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "deal-sample-profit",
+      "name": "Quick Snack Value Pack",
+      "categoryId": "cat-deals",
+      "categoryName": "Cheezious Deals",
+      "price": 60,
+      "costPrice": 50,
+      "stockQuantity": 998,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=300&auto=format&fit=crop&q=80",
+      "description": "Raw Material Cost: Rs. 50 • Customer Price: Rs. 60 • Net Profit: Rs. 10.",
+      "isAvailable": true,
+      "isDeal": true,
+      "bundledProducts": [
+        {
+          "productName": "Mini Crispy Roll",
+          "quantity": 1,
+          "unitPrice": 40,
+          "rawCost": 35
+        },
+        {
+          "productName": "Garlic Mayo Cup",
+          "quantity": 1,
+          "unitPrice": 20,
+          "rawCost": 15
+        }
+      ],
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:14:08.946Z"
+    },
+    {
+      "id": "prod-fajita-pizza",
+      "name": "Chicken Fajita Stuffed Crust",
+      "categoryId": "cat-pizza",
+      "categoryName": "Pizza Crust",
+      "price": 850,
+      "costPrice": 460,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80",
+      "description": "Fresh hand-tossed dough with mozzarella cheese and Mexican spiced chicken chunks.",
+      "isAvailable": true,
+      "variations": [
+        {
+          "id": "var-faj-size",
+          "name": "Size",
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            {
+              "id": "opt-reg",
+              "name": "Regular (8\")",
+              "priceDelta": 0,
+              "costDelta": 0
+            },
+            {
+              "id": "opt-med",
+              "name": "Medium (10\")",
+              "priceDelta": 400,
+              "costDelta": 200
+            },
+            {
+              "id": "opt-lrg",
+              "name": "Large (13\")",
+              "priceDelta": 850,
+              "costDelta": 420
+            }
+          ]
+        }
+      ],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "prod-tikka-pizza",
+      "name": "Maltiva Supreme Tikka",
+      "categoryId": "cat-pizza",
+      "categoryName": "Pizza Crust",
+      "price": 890,
+      "costPrice": 480,
+      "stockQuantity": 998,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&auto=format&fit=crop&q=80",
+      "description": "Traditional BBQ tikka chicken with onions, capsicum, and melted cheddar.",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:14:08.946Z"
+    },
+    {
+      "id": "prod-club-sandwich",
+      "name": "Grilled Cheesy Club Sandwich",
+      "categoryId": "cat-sandwiches",
+      "categoryName": "Sandwiches",
+      "price": 490,
+      "costPrice": 240,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&auto=format&fit=crop&q=80",
+      "description": "Triple decker toast with shredded chicken, boiled egg, cheese slice & secret dressing.",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "prod-roast-beef-sandwich",
+      "name": "Smoked Roast Beef Sandwich",
+      "categoryId": "cat-sandwiches",
+      "categoryName": "Sandwiches",
+      "price": 590,
+      "costPrice": 310,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1509722747041-616f39b57569?w=300&auto=format&fit=crop&q=80",
+      "description": "Tender roast beef slices on toasted panini bread with caramelized onions.",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "prod-loaded-fries",
+      "name": "Maltiva Cheesy Loaded Fries",
+      "categoryId": "cat-fries",
+      "categoryName": "Fries & Loaded🍟",
+      "price": 480,
+      "costPrice": 190,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=300&auto=format&fit=crop&q=80",
+      "description": "Crisp golden fries drenched in cheese lava sauce, jalapenos, and crispy chicken bites.",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "prod-plain-fries",
+      "name": "Classic Crisp Salted Fries",
+      "categoryId": "cat-fries",
+      "categoryName": "Fries & Loaded🍟",
+      "price": 250,
+      "costPrice": 80,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=300&auto=format&fit=crop&q=80",
+      "description": "Straight-cut jumbo Idaho potato fries tossed in sea salt seasoning.",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    },
+    {
+      "id": "prod-soft-drink",
+      "name": "Chilled Soft Drink 345ml",
+      "categoryId": "cat-drinks",
+      "categoryName": "Drinks & Shakes",
+      "price": 120,
+      "costPrice": 80,
+      "stockQuantity": 998,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80",
+      "description": "Ice-cold carbonated beverage can (Pepsi, 7Up, Mirinda, or Dew).",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:14:08.947Z"
+    },
+    {
+      "id": "prod-mint-lemonade",
+      "name": "Fresh Mint Margarita",
+      "categoryId": "cat-drinks",
+      "categoryName": "Drinks & Shakes",
+      "price": 220,
+      "costPrice": 70,
+      "stockQuantity": 999,
+      "minStockThreshold": 0,
+      "image": "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300&auto=format&fit=crop&q=80",
+      "description": "Crushed ice with fresh garden mint leaves, lemon juice, black salt & soda.",
+      "isAvailable": true,
+      "variations": [],
+      "createdAt": "2026-10-02T20:12:55.058Z",
+      "updatedAt": "2026-10-02T20:12:55.058Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-1790972048943",
+      "orderNumber": "#F0033",
+      "tokenNumber": 33,
+      "customerName": "Takeaway Customer",
+      "status": "in_kitchen",
+      "orderType": "take_away",
+      "items": [
+        {
+          "id": "item-1790972048943-xuuo",
+          "productId": "deal-sample-profit",
+          "productName": "Quick Snack Value Pack",
+          "categoryName": "Cheezious Deals",
+          "unitPrice": 60,
+          "unitCost": 50,
+          "quantity": 1,
+          "totalPrice": 60,
+          "totalCost": 50,
+          "selectedVariations": [],
+          "bundledProducts": [
+            {
+              "productName": "Mini Crispy Roll",
+              "quantity": 1,
+              "unitPrice": 40,
+              "rawCost": 35
+            },
+            {
+              "productName": "Garlic Mayo Cup",
+              "quantity": 1,
+              "unitPrice": 20,
+              "rawCost": 15
+            }
+          ]
+        },
+        {
+          "id": "item-1790972048943-qyno",
+          "productId": "prod-tikka-pizza",
+          "productName": "Maltiva Supreme Tikka",
+          "categoryName": "Pizza Crust",
+          "unitPrice": 890,
+          "unitCost": 480,
+          "quantity": 1,
+          "totalPrice": 890,
+          "totalCost": 480,
+          "selectedVariations": []
+        },
+        {
+          "id": "item-1790972048943-mcnm",
+          "productId": "prod-soft-drink",
+          "productName": "Chilled Soft Drink 345ml",
+          "categoryName": "Drinks & Shakes",
+          "unitPrice": 120,
+          "unitCost": 80,
+          "quantity": 1,
+          "totalPrice": 120,
+          "totalCost": 80,
+          "selectedVariations": []
+        }
+      ],
+      "subtotal": 1070,
+      "tax": 0,
+      "discount": 0,
+      "total": 1070,
+      "totalCost": 610,
+      "profit": 460,
+      "profitMarginPercent": 42.99065420560748,
+      "paymentMethod": "cash",
+      "cashierId": "user-admin",
+      "cashierName": "Ibrahim Kadri",
+      "cashierRole": "admin",
+      "createdAt": "2026-10-02T20:14:08.943Z",
+      "synced": true,
+      "offlineQueueId": "offline-1790972048943"
+    },
+    {
+      "id": "ord-0027",
+      "orderNumber": "#F0027",
+      "tokenNumber": 27,
+      "tableName": "Counter Takeaway",
+      "guestCount": 1,
+      "orderType": "take_away",
+      "status": "in_kitchen",
+      "paymentMethod": "cash",
+      "subtotal": 990,
+      "tax": 0,
+      "discount": 0,
+      "total": 990,
+      "totalCost": 550,
+      "profit": 440,
+      "profitMarginPercent": 44.4,
+      "items": [
+        {
+          "id": "ord-item-1",
+          "productId": "deal-maltiva-special",
+          "productName": "Maltiva Bita Deal 1",
+          "categoryName": "Cheezious Deals",
+          "unitPrice": 990,
+          "unitCost": 550,
+          "quantity": 1,
+          "totalPrice": 990,
+          "totalCost": 550,
+          "selectedVariations": []
+        }
+      ],
+      "cashierId": "user-admin",
+      "cashierName": "Ibrahim Kadri",
+      "cashierRole": "admin",
+      "createdAt": "2026-10-02T20:10:55.058Z",
+      "synced": true
+    },
+    {
+      "id": "ord-0028",
+      "orderNumber": "#F0028",
+      "tokenNumber": 28,
+      "tableName": "Counter Takeaway",
+      "guestCount": 1,
+      "orderType": "take_away",
+      "status": "ready",
+      "paymentMethod": "card",
+      "subtotal": 1340,
+      "tax": 0,
+      "discount": 0,
+      "total": 1340,
+      "totalCost": 700,
+      "profit": 640,
+      "profitMarginPercent": 47.8,
+      "items": [
+        {
+          "id": "ord-item-2",
+          "productId": "prod-fajita-pizza",
+          "productName": "Chicken Fajita Stuffed Crust",
+          "categoryName": "Pizza Crust",
+          "unitPrice": 850,
+          "unitCost": 460,
+          "quantity": 1,
+          "totalPrice": 850,
+          "totalCost": 460,
+          "selectedVariations": []
+        },
+        {
+          "id": "ord-item-3",
+          "productId": "prod-club-sandwich",
+          "productName": "Grilled Cheesy Club Sandwich",
+          "categoryName": "Sandwiches",
+          "unitPrice": 490,
+          "unitCost": 240,
+          "quantity": 1,
+          "totalPrice": 490,
+          "totalCost": 240,
+          "selectedVariations": []
+        }
+      ],
+      "cashierId": "user-admin",
+      "cashierName": "Ibrahim Kadri",
+      "cashierRole": "admin",
+      "createdAt": "2026-10-02T19:57:55.058Z",
+      "synced": true
+    }
+  ],
+  "tables": [],
+  "users": [
+    {
+      "id": "user-admin",
+      "name": "Ibrahim Kadri",
+      "username": "admin",
+      "email": "admin@maltivacrust.com",
+      "role": "admin",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "pin": "1234",
+      "password": "admin123",
+      "active": true,
+      "branch": "Phase 3 DHA Lahore",
+      "securityQuestion": "What is your security recovery PIN?",
+      "securityAnswer": "1234"
+    },
+    {
+      "id": "user-cashier",
+      "name": "Counter Cashier",
+      "username": "cashier",
+      "email": "cashier@maltivacrust.com",
+      "role": "cashier",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "pin": "1234",
+      "password": "cashier123",
+      "active": true,
+      "branch": "Phase 3 DHA Lahore",
+      "securityQuestion": "What is your security recovery PIN?",
+      "securityAnswer": "1234"
+    }
+  ],
+  "customers": [],
+  "printerSettings": {
+    "printerName": "POS-80C Thermal Printer",
+    "paperWidth": "80mm",
+    "autoPrintDualSlips": true,
+    "printCustomerSlip": true,
+    "printKitchenSlip": true,
+    "storeName": "Maltiva Crust",
+    "restaurantName": "Maltiva Crust",
+    "tagline": "Fast Food That Hits Different🔥",
+    "subtitle": "Pizza • Sandwiches • Fries🍟 | Fresh • Cheesy • Loaded",
+    "branchName": "Phase 3 DHA Lahore",
+    "address": "Phase 3 DHA Lahore",
+    "phone": "03444757082",
+    "whatsApp": "03444757082",
+    "taxId": "NTN-92047960-1",
+    "taxRegistrationNumber": "NTN-92047960-1",
+    "headerMessage": "Maltiva Crust - Phase 3 DHA Lahore",
+    "footerMessage": "Thank you for dining with us! WhatsApp: 03444757082",
+    "taxRatePercent": 0,
+    "enableCustomerDisplay": true,
+    "dualScreenCustomerDisplay": true,
+    "customerDisplayGreeting": "Welcome to Maltiva Crust! Fast Food That Hits Different🔥",
+    "customerWelcomeText": "Welcome to Maltiva Crust! Fast Food That Hits Different🔥",
+    "autoPrintReceipt": true,
+    "autoPrintKitchenOrder": true,
+    "cashierUsername": "cashier",
+    "cashierPin": "1234"
+  },
+  "inventoryLogs": [
+    {
+      "id": "log-1790972048947-n4cw",
+      "productId": "prod-soft-drink",
+      "productName": "Chilled Soft Drink 345ml",
+      "previousStock": 999,
+      "changeAmount": -1,
+      "newStock": 998,
+      "type": "sale",
+      "reason": "POS Sale: #F0033 (1x Chilled Soft Drink 345ml)",
+      "userId": "user-admin",
+      "userName": "Ibrahim Kadri",
+      "timestamp": "2026-10-02T20:14:08.947Z"
+    },
+    {
+      "id": "log-1790972048946-hm9n",
+      "productId": "prod-tikka-pizza",
+      "productName": "Maltiva Supreme Tikka",
+      "previousStock": 999,
+      "changeAmount": -1,
+      "newStock": 998,
+      "type": "sale",
+      "reason": "POS Sale: #F0033 (1x Maltiva Supreme Tikka)",
+      "userId": "user-admin",
+      "userName": "Ibrahim Kadri",
+      "timestamp": "2026-10-02T20:14:08.947Z"
+    },
+    {
+      "id": "log-1790972048946-eq0f",
+      "productId": "deal-sample-profit",
+      "productName": "Quick Snack Value Pack",
+      "previousStock": 999,
+      "changeAmount": -1,
+      "newStock": 998,
+      "type": "sale",
+      "reason": "POS Sale: #F0033 (1x Quick Snack Value Pack)",
+      "userId": "user-admin",
+      "userName": "Ibrahim Kadri",
+      "timestamp": "2026-10-02T20:14:08.946Z"
+    },
+    {
+      "id": "log-init-1",
+      "productId": "prod-pasta-roast-beef",
+      "productName": "Pasta with Roast Beef",
+      "previousStock": 50,
+      "changeAmount": -8,
+      "newStock": 42,
+      "type": "sale",
+      "reason": "POS Order #F0027",
+      "userId": "user-1",
+      "userName": "Ibrahim Kadri",
+      "timestamp": "2026-10-02T20:02:55.058Z"
+    },
+    {
+      "id": "log-init-2",
+      "productId": "prod-beef-steak",
+      "productName": "Beef Steak",
+      "previousStock": 20,
+      "changeAmount": -5,
+      "newStock": 15,
+      "type": "sale",
+      "reason": "POS Orders #F0028 & #F0012",
+      "userId": "user-3",
+      "userName": "Marcus Chen",
+      "timestamp": "2026-10-02T18:12:55.058Z"
+    },
+    {
+      "id": "log-init-3",
+      "productId": "prod-croissant-dessert",
+      "productName": "Croissant Dessert",
+      "previousStock": 12,
+      "changeAmount": -8,
+      "newStock": 4,
+      "type": "sale",
+      "reason": "Breakfast Rush Rush Orders",
+      "userId": "user-2",
+      "userName": "Sarah Jenkins",
+      "timestamp": "2026-10-02T16:12:55.058Z"
+    }
+  ]
+}
