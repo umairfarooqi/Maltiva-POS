@@ -258,18 +258,17 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       )}
 
       {totalCartQty > 0 && onOpenMobileCart && (
-        <div className="xl:hidden fixed bottom-4 left-4 right-4 z-40">
+        <div className="xl:hidden fixed bottom-4 right-4 z-40">
           <button
             onClick={onOpenMobileCart}
-            className="w-full bg-[#008f77] hover:bg-[#007462] text-white py-3 px-4 rounded-lg border border-[#007462] flex items-center justify-between font-bold text-sm transition active:scale-[0.98] cursor-pointer"
+            aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
+            className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-[#008f77] hover:bg-[#007462] text-white py-2.5 px-3 rounded-lg border border-[#007462] font-bold text-sm shadow-lg transition active:scale-[0.98] cursor-pointer"
           >
-            <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded bg-white text-[#008f77] flex items-center justify-center text-xs font-black">
-                {totalCartQty}
-              </span>
-              <span className="tracking-tight">Proceed to Checkout</span>
-            </div>
-            <span className="text-lg font-black">{formatPKR(totalCartPrice)}</span>
+            <span className="w-7 h-7 shrink-0 rounded bg-white text-[#008f77] flex items-center justify-center text-xs font-black">
+              {totalCartQty}
+            </span>
+            <span className="whitespace-nowrap">Checkout</span>
+            <span className="text-base font-black whitespace-nowrap">{formatPKR(totalCartPrice)}</span>
           </button>
         </div>
       )}

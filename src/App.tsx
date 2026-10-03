@@ -11,7 +11,8 @@ import { VariationModal } from './components/VariationModal';
 import { ThermalReceiptModal } from './components/ThermalReceiptModal';
 import { LoginScreen } from './components/LoginScreen';
 import { CustomerDisplayWindow } from './components/CustomerDisplayWindow';
-import { PosApi } from './services/api';
+import { PosApi, SaleResult } from './services/api';
+import { PendingOutbox } from './services/pendingOutbox';
 import { PosStorage } from './services/storage';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from './utils/normalizeProduct';
 import {
@@ -21,6 +22,7 @@ import {
   User,
   CartItem,
   PrinterSettings,
+  PaymentMethod,
   SelectedVariationItem,
 } from './types/pos';
 
@@ -56,24 +58,57 @@ export default function App() {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
-  const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(
-    PosStorage.getOfflineQueue().length
-  );
+  const [pendingOfflineCount, setPendingOfflineCount] = useState(0);
+  const [recoveryError, setRecoveryError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Takeaway Cart & Active Checkout
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const initialDraft = useRef(PosStorage.getDraft());
+  const [cart, setCart] = useState<CartItem[]>(initialDraft.current?.cart || []);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialDraft.current?.paymentMethod || 'cash');
+  const checkoutAttempt = useRef<Order | undefined>(initialDraft.current?.attempt);
+  const attemptCart = useRef(JSON.stringify(initialDraft.current?.cart || []));
+  const checkoutRecoveryPending = useRef(Boolean(initialDraft.current?.attempt));
+  const orderInFlight = useRef(checkoutRecoveryPending.current);
+  const [saleFeedback, setSaleFeedback] = useState<SaleResult | null>(() => {
+    const attempt = initialDraft.current?.attempt;
+    return attempt?.persistenceState === 'rejected' ? { success: false, state: 'rejected', order: attempt, error: attempt.rejectionReason } : null;
+  });
   const [orderSequence, setOrderSequence] = useState<number>(() => {
     return PosStorage.getOrders().length + 31;
   });
-  const [isProcessingOrder, setIsProcessingOrder] = useState<boolean>(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState<boolean>(checkoutRecoveryPending.current);
 
   // Modals & Drawers
   const [variationModalProduct, setVariationModalProduct] = useState<Product | null>(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const customerDisplayChannel = useRef<BroadcastChannel | null>(null);
+
+  const reconcileCheckoutDraft = (recoveredOrders: Order[]) => {
+    if (!checkoutRecoveryPending.current) return;
+    const attempt = checkoutAttempt.current;
+    const recovered = attempt && recoveredOrders.find(order =>
+      (order.idempotencyKey || order.id) === (attempt.idempotencyKey || attempt.id));
+    if (recovered?.persistenceState === 'saved' || recovered?.persistenceState === 'pending') {
+      // This basket already belongs to a submitted sale. Do not restore it as a new editable cart.
+      checkoutAttempt.current = undefined;
+      attemptCart.current = '[]';
+      PosStorage.clearDraft();
+      setCart([]);
+      setPaymentMethod('cash');
+      setOrderSequence(previous => previous + 1);
+      setSaleFeedback({ success: recovered.persistenceState === 'saved', state: recovered.persistenceState, order: recovered });
+    } else if (recovered?.persistenceState === 'rejected') {
+      checkoutAttempt.current = recovered;
+      setSaleFeedback({ success: false, state: 'rejected', order: recovered, error: recovered.rejectionReason });
+    }
+    checkoutRecoveryPending.current = false;
+    orderInFlight.current = false;
+    setIsProcessingOrder(false);
+  };
 
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return;
@@ -102,6 +137,7 @@ export default function App() {
             orderNumber: receiptModalOrder.orderNumber,
             tokenNumber: receiptModalOrder.tokenNumber,
             total: receiptModalOrder.total,
+            persistenceState: receiptModalOrder.persistenceState,
           }
         : null,
     };
@@ -115,46 +151,72 @@ export default function App() {
     }
   }, [cart, orderSequence, receiptModalOrder, printerSettings]);
 
-  // Initial Data Fetch & Online/Offline Listeners
+  // Draft recovery is separate from the durable sale outbox.
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      handleManualSync();
+    if (attemptCart.current !== JSON.stringify(cart)) {
+      checkoutAttempt.current = undefined;
+      setSaleFeedback(previous => previous?.state === 'rejected' ? null : previous);
+    }
+    try { PosStorage.setDraft({ cart, paymentMethod, attempt: checkoutAttempt.current }); }
+    catch { setRecoveryError('Draft could not be stored. Keep this window open and review storage.'); }
+  }, [cart, paymentMethod]);
+
+  useEffect(() => {
+    let active = true;
+    const updateCount = async () => {
+      try {
+        const count = (await PendingOutbox.list()).length;
+        if (active) setPendingOfflineCount(count);
+      } catch { if (active) setRecoveryError('Recovery storage is unavailable. Existing pending sales are retained.'); }
     };
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
+    const sync = () => { if (!orderInFlight.current) void handleManualSync(); };
+    const onStorage = (event: StorageEvent) => { if (event.key === 'pos-outbox-update') void updateCount(); };
+    window.addEventListener('online', sync);
+    window.addEventListener('pos-outbox-changed', updateCount);
+    window.addEventListener('storage', onStorage);
+    void updateCount();
     PosApi.fetchInitialData().then(data => {
-      if (data.categories) setCategories(data.categories);
-      if (data.products) {
-        const validProducts = data.products.filter(
-          product => product.name !== 'Untitled Dish' && Number(product.price) > 0
-        );
-        setProducts(validProducts.map(normalizeProduct));
-      }
-      if (data.orders) setOrders(data.orders);
-      if (data.users) setAllUsers(data.users);
-      if (data.printerSettings) setPrinterSettings(data.printerSettings);
+      if (!active) return;
+      reconcileCheckoutDraft(data.orders);
+      setCategories(data.categories);
+      setProducts(data.products.map(normalizeProduct));
+      setOrders(data.orders);
+      setAllUsers(data.users);
+      setPrinterSettings(data.printerSettings);
       setIsOnline(data.isOnline);
-      setPendingOfflineCount(PosStorage.getOfflineQueue().length);
-    });
-
+      sync();
+    }).catch(() => { if (active) setRecoveryError('Could not load recovery data. Keep this window open and retry sync.'); });
+    // Local server recovery does not depend on browser internet connectivity events.
+    const timer = window.setInterval(sync, 5000);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('online', sync);
+      window.removeEventListener('pos-outbox-changed', updateCount);
+      window.removeEventListener('storage', onStorage);
     };
   }, []);
 
-  // Offline Queue Synchronizer
   const handleManualSync = async () => {
-    const res = await PosApi.syncOfflineQueue();
-    setPendingOfflineCount(PosStorage.getOfflineQueue().length);
-    if (res.syncedCount > 0) {
-      setProducts(PosStorage.getProducts().map(normalizeProduct));
+    try {
+      if (checkoutRecoveryPending.current) {
+        const data = await PosApi.fetchInitialData();
+        reconcileCheckoutDraft(data.orders);
+      }
+      const res = await PosApi.syncOfflineQueue();
+      setPendingOfflineCount(res.pendingCount);
+      setIsOnline(res.reachable);
       setOrders(PosStorage.getOrders());
-    }
+      if (res.syncedCount > 0) {
+        const data = await PosApi.fetchInitialData();
+        setProducts(data.products.map(normalizeProduct));
+        setOrders(data.orders);
+        setReceiptModalOrder(previous => previous ? data.orders.find(order => order.id === previous.id) || previous : null);
+        setSaleFeedback(previous => previous?.state === 'pending' && data.orders.some(order => order.id === previous.order.id && order.persistenceState === 'saved')
+          ? { success: true, state: 'saved', order: data.orders.find(order => order.id === previous.order.id)! } : previous);
+      }
+      setRecoveryError('');
+    } catch { setRecoveryError('Sync could not finish. Pending sales are retained; retry sync.'); }
   };
 
   // Login handler
@@ -166,17 +228,27 @@ export default function App() {
     }
   };
 
-  // Logout / Lock Terminal handler
+  // Logout / Lock Terminal handlers
   const handleLogout = () => {
+    setIsLogoutConfirmOpen(true);
+    setIsMobileSidebarOpen(false);
+  };
+
+  const confirmLogout = () => {
+    setIsLogoutConfirmOpen(false);
     PosStorage.clearSession();
     setCurrentUser(null);
     setCart([]);
+    checkoutAttempt.current = undefined;
+    PosStorage.clearDraft();
+    setSaleFeedback(null);
     setIsMobileSidebarOpen(false);
     setIsMobileCartOpen(false);
   };
 
   // Cart operations
   const handleQuickAddToCart = (product: Product) => {
+    if (orderInFlight.current) return;
     const unitPrice = product.price;
     const unitCost = product.costPrice || 0;
     setCart(prev => {
@@ -212,6 +284,7 @@ export default function App() {
   };
 
   const handleQuickDecrementFromCart = (product: Product) => {
+    if (orderInFlight.current) return;
     setCart(prev => {
       const existingIdx = prev.findIndex(
         item => item.product.id === product.id && item.selectedVariations.length === 0
@@ -240,6 +313,7 @@ export default function App() {
     selectedVariations: SelectedVariationItem[],
     quantity: number
   ) => {
+    if (orderInFlight.current) return;
     const deltaPrice = selectedVariations.reduce((sum, v) => sum + v.priceDelta, 0);
     const deltaCost = selectedVariations.reduce((sum, v) => sum + v.costDelta, 0);
 
@@ -262,6 +336,7 @@ export default function App() {
   };
 
   const handleUpdateCartQuantity = (cartItemId: string, delta: number) => {
+    if (orderInFlight.current) return;
     setCart(prev =>
       prev
         .map(item => {
@@ -280,22 +355,27 @@ export default function App() {
   };
 
   const handleRemoveCartItem = (cartItemId: string) => {
+    if (orderInFlight.current) return;
     setCart(prev => prev.filter(item => item.cartItemId !== cartItemId));
   };
 
   const handleClearCart = () => {
+    if (orderInFlight.current) return;
+    checkoutAttempt.current = undefined;
+    setSaleFeedback(null);
     setCart([]);
   };
 
   // Place Takeaway Order & Generate 2 Slips
-  const handlePlaceOrder = async (cashTendered: number) => {
-    if (cart.length === 0 || isProcessingOrder || !currentUser) return;
+  const handlePlaceOrder = async (cashTendered: number, selectedPaymentMethod: PaymentMethod) => {
+    if (cart.length === 0 || orderInFlight.current || !currentUser) return;
 
     const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
     const tax = Number(((subtotal * printerSettings.taxRatePercent) / 100).toFixed(2));
     const total = subtotal + tax;
-    if (cashTendered < total) return;
+    if (selectedPaymentMethod === 'cash' && cashTendered < total) return;
 
+    orderInFlight.current = true;
     setIsProcessingOrder(true);
 
     const totalCost = cart.reduce((sum, item) => sum + item.totalCost, 0);
@@ -305,8 +385,11 @@ export default function App() {
     const orderNum = `#F00${orderSequence}`;
     const tokenNum = orderSequence % 100 || orderSequence;
 
-    const newOrder: Order = {
-      id: `ord-${Date.now()}`,
+    let newOrder: Order = checkoutAttempt.current || {
+      id: crypto.randomUUID(),
+      idempotencyKey: crypto.randomUUID(),
+      cashTendered: selectedPaymentMethod === 'cash' ? cashTendered : undefined,
+      changeDue: selectedPaymentMethod === 'cash' ? cashTendered - total : 0,
       orderNumber: orderNum,
       tokenNumber: tokenNum,
       customerName: 'Takeaway Customer',
@@ -333,27 +416,70 @@ export default function App() {
       totalCost,
       profit,
       profitMarginPercent,
-      paymentMethod: 'cash',
+      paymentMethod: selectedPaymentMethod,
       cashierId: currentUser.id,
       cashierName: currentUser.name,
       cashierRole: currentUser.role,
       createdAt: new Date().toISOString(),
-      synced: isOnline,
-      offlineQueueId: `offline-${Date.now()}`,
+      synced: false,
     };
 
-    // Save order
+    newOrder = { ...newOrder, paymentMethod: selectedPaymentMethod,
+      cashTendered: selectedPaymentMethod === 'cash' ? cashTendered : undefined,
+      changeDue: selectedPaymentMethod === 'cash' ? cashTendered - newOrder.total : 0 };
+    checkoutAttempt.current = newOrder;
+    attemptCart.current = JSON.stringify(cart);
     try {
+      PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: newOrder });
       const result = await PosApi.placeOrder(newOrder, isOnline);
-      setOrders(prev => [result.order, ...prev]);
-      setProducts(PosStorage.getProducts().map(normalizeProduct));
+      if (result.state === 'rejected') {
+        setSaleFeedback(result);
+        checkoutAttempt.current = result.order;
+        PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: result.order });
+        return;
+      }
+      setOrders(PosStorage.getOrders());
+      setPendingOfflineCount((await PendingOutbox.list()).length);
+      setSaleFeedback(result);
+      checkoutAttempt.current = undefined;
+      PosStorage.clearDraft();
       setCart([]);
+      setPaymentMethod('cash');
       setOrderSequence(prev => prev + 1);
       setIsMobileCartOpen(false);
       setReceiptModalOrder(result.order);
+      if (result.state === 'saved') {
+        // Refresh stock from the transaction that was acknowledged, without resubmitting it.
+        const data = await PosApi.fetchInitialData();
+        setProducts(data.products.map(normalizeProduct));
+        setOrders(data.orders);
+      }
+    } catch {
+      // A transport or storage exception may happen after submission. Resolve the same key before cart edits.
+      checkoutRecoveryPending.current = true;
+      setRecoveryError('Checkout could not finish. Keep this cart and retry sync before submitting another sale.');
     } finally {
-      setIsProcessingOrder(false);
+      orderInFlight.current = checkoutRecoveryPending.current;
+      setIsProcessingOrder(checkoutRecoveryPending.current);
     }
+  };
+
+  const handleReviewRejected = (order: Order) => {
+    if (cart.length || orderInFlight.current) return;
+    const restored = order.items.map(item => ({
+      cartItemId: item.id,
+      product: normalizeProduct({ ...(products.find(product => product.id === item.productId) || {}),
+        id: item.productId, name: item.productName, categoryName: item.categoryName,
+        price: item.unitPrice, costPrice: item.unitCost, bundledProducts: item.bundledProducts }),
+      quantity: item.quantity, selectedVariations: item.selectedVariations, notes: item.notes,
+      unitPrice: item.unitPrice, unitCost: item.unitCost, totalPrice: item.totalPrice, totalCost: item.totalCost,
+    }));
+    attemptCart.current = JSON.stringify(restored);
+    checkoutAttempt.current = order;
+    setCart(restored);
+    setPaymentMethod(order.paymentMethod);
+    setActiveTab('order_line');
+    setSaleFeedback({ success: false, state: 'rejected', order, error: order.rejectionReason });
   };
 
   // Open Preview Modal for existing or current cart
@@ -366,6 +492,7 @@ export default function App() {
 
     const tempOrder: Order = {
       id: 'preview-cart',
+      persistenceState: 'draft',
       orderNumber: `#F00${orderSequence}`,
       tokenNumber: orderSequence % 100 || orderSequence,
       customerName: currentUser?.name || 'Walk-in Customer',
@@ -494,15 +621,25 @@ export default function App() {
     PosStorage.setSession(newAdmin);
   };
 
+  const pendingBadge = (
+    <div role="status" aria-label="Pending sales" className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2 text-sm shrink-0">
+      <span>{pendingOfflineCount} {pendingOfflineCount === 1 ? 'order' : 'orders'} waiting to sync</span>
+      <button type="button" onClick={() => void handleManualSync()} className="font-semibold text-emerald-700">Retry sync</button>
+    </div>
+  );
+
   // IF NOT LOGGED IN: DISPLAY AUTHENTICATION GATEWAY
   if (!currentUser) {
     return (
+      <>
+      <div className="fixed top-0 inset-x-0 z-50">{pendingBadge}</div>
       <LoginScreen
         onLoginSuccess={handleLoginSuccess}
         availableUsers={allUsers}
         isOnline={isOnline}
         onAdminRegistered={handleAdminRegistered}
       />
+      </>
     );
   }
 
@@ -535,6 +672,23 @@ export default function App() {
           cartItemCount={cart.reduce((sum, it) => sum + it.quantity, 0)}
         />
 
+        {pendingBadge}
+        {recoveryError && <div role="alert" className="bg-amber-50 px-4 py-2 text-sm">{recoveryError}</div>}
+        {saleFeedback && (
+          <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-slate-50 px-4 py-2 text-sm shrink-0">
+            {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
+              ? 'Pending — recovery copy stored; waiting for the server.' : `Rejected — ${saleFeedback.error}`}
+            {saleFeedback.state === 'rejected' && <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTendered ?? saleFeedback.order.total, paymentMethod)} className="ml-3 font-semibold text-emerald-700">Retry sale</button>}
+          </div>
+        )}
+        {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
+          <div key={order.id} role="alert" className="bg-amber-50 px-4 py-2 text-sm">
+            Rejected {order.orderNumber}: {order.rejectionReason}
+            <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-emerald-700">Review rejected order {order.orderNumber}</button>
+            {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
+          </div>
+        ))}
+
         {/* View Body */}
         <div className="flex-1 flex overflow-hidden">
           {activeTab === 'order_line' && (
@@ -556,6 +710,8 @@ export default function App() {
                 onRemoveItem={handleRemoveCartItem}
                 onClearCart={handleClearCart}
                 taxRatePercent={printerSettings.taxRatePercent}
+                paymentMethod={paymentMethod}
+                onSelectPaymentMethod={setPaymentMethod}
                 onPlaceOrder={handlePlaceOrder}
                 onOpenPrintModal={handleOpenPrintCurrentCart}
                 isProcessing={isProcessingOrder}
@@ -627,6 +783,41 @@ export default function App() {
           settings={printerSettings}
           onClose={() => setReceiptModalOrder(null)}
         />
+      )}
+
+      {isLogoutConfirmOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+            aria-describedby="logout-confirm-description"
+            className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6"
+          >
+            <h2 id="logout-confirm-title" className="mb-2 text-lg font-bold text-slate-900">
+              Log out?
+            </h2>
+            <p id="logout-confirm-description" className="mb-6 text-sm text-slate-600">
+              Are you sure you want to log out of this terminal?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLogoutConfirmOpen(false)}
+                className="rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmLogout}
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

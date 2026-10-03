@@ -37,26 +37,26 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5 bg-[#F4F6F5]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-2xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-lg border border-slate-200">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
             Floor Plan & Table Management
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Maltiva Dining Room • 12 Active Tables
           </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs overflow-x-auto max-w-full scrollbar-none">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md text-xs overflow-x-auto max-w-full scrollbar-none">
           {(['all', 'available', 'occupied', 'reserved', 'cleaning'] as const).map(s => (
             <button
               key={s}
               onClick={() => setFilter(s)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-lg capitalize font-semibold transition shrink-0 ${
-                filter === s ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-600'
+              className={`px-2.5 sm:px-3 py-1.5 rounded capitalize font-semibold transition shrink-0 ${
+                filter === s ? 'bg-white text-slate-800' : 'text-slate-600'
               }`}
             >
               {s} ({s === 'all' ? tables.length : tables.filter(t => t.status === s).length})
@@ -74,7 +74,7 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
           return (
             <div
               key={table.id}
-              className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs hover:shadow-md transition flex flex-col justify-between"
+              className="bg-white rounded-lg p-4 border border-slate-200 hover:border-slate-300 transition-colors flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -113,14 +113,14 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
                 {table.status === 'occupied' ? (
                   <button
                     onClick={() => onSelectTableForOrder(table)}
-                    className="w-full py-2 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-xs font-bold shadow-xs transition"
+                    className="w-full py-2 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition"
                   >
                     View / Edit Bill
                   </button>
                 ) : (
                   <button
                     onClick={() => onSelectTableForOrder(table)}
-                    className="w-full py-2 bg-[#E6F7F5] hover:bg-[#00A389] text-[#00A389] hover:text-white rounded-xl text-xs font-bold transition"
+                    className="w-full py-2 bg-[#E6F7F5] hover:bg-[#008f77] text-[#007462] hover:text-white rounded-md text-xs font-bold transition"
                   >
                     Seat & Start Order
                   </button>

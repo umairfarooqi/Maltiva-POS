@@ -14,11 +14,15 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   settings,
   onClose,
 }) => {
-  const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>(settings.paperWidth || '80mm');
-  const [activeTab, setActiveTab] = useState<'both' | 'customer' | 'kitchen'>('both');
+  const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>(settings.paperWidth || '58mm');
+  const [activeTab, setActiveTab] = useState<'both' | 'customer' | 'kitchen'>('customer');
   const [copied, setCopied] = useState(false);
 
   if (!order) return null;
+
+  const isPending = order.persistenceState === 'pending';
+  const isDraft = order.persistenceState === 'draft';
+  const persistenceLabel = isPending ? 'PENDING — awaiting server save' : isDraft ? 'DRAFT — unpaid preview' : '';
 
   const formattedDate = new Date(order.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -41,10 +45,10 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
     // --- SLIP 1: CUSTOMER RECEIPT ---
     if (activeTab === 'both' || activeTab === 'customer') {
       lines.push('==========================================');
+      if (persistenceLabel) lines.push(persistenceLabel);
       lines.push('             MALTIVA CRUST                ');
-      lines.push('      Fast Food That Hits Different🔥      ');
-      lines.push('   Pizza • Sandwiches • Fries🍟           ');
-      lines.push('      Fresh • Cheesy • Loaded             ');
+      lines.push('         COUNTER TAKEAWAY                 ');
+      lines.push('      Fresh food. Clear pickup.           ');
       lines.push('        Phase 3 DHA Lahore                ');
       lines.push('       WhatsApp: 03444757082              ');
       lines.push(divider);
@@ -100,6 +104,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         lines.push('');
       }
       lines.push('==========================================');
+      if (persistenceLabel) lines.push(persistenceLabel);
       lines.push('     *** KITCHEN SLIP - TAKEAWAY ***      ');
       lines.push(`           TOKEN #: ${order.tokenNumber || order.orderNumber.replace('#F', '')}           `);
       lines.push(`ORDER: ${order.orderNumber}  | TIME: ${formattedTime}`);
@@ -140,51 +145,60 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[96vh]">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
+      <div className="bg-white rounded-lg max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[96vh]">
         {/* Modal Top Bar */}
-        <div className="p-4 px-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/80">
-          <div className="flex items-center gap-2">
-            <Printer className="w-5 h-5 text-[#00A389]" />
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">
-                Takeaway Thermal Printer
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Order {order.orderNumber} • Token #{order.tokenNumber}
-              </p>
+        <div className="p-4 px-6 border-b border-slate-100 bg-slate-50/80">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Printer className="w-5 h-5 text-[#00A389]" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">
+                  Takeaway Thermal Printer
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Order {order.orderNumber} • Token #{order.tokenNumber}
+                </p>
+              </div>
             </div>
-          </div>
-
-          {/* Slip Filter Tabs */}
-          <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-xl text-xs font-semibold">
             <button
-              onClick={() => setActiveTab('both')}
-              className={`px-3 py-1 rounded-lg transition ${
-                activeTab === 'both' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              onClick={onClose}
+              aria-label="Close receipt preview"
+              className="w-8 h-8 shrink-0 rounded-md bg-slate-200/80 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition"
             >
-              Both Slips (2)
-            </button>
-            <button
-              onClick={() => setActiveTab('customer')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                activeTab === 'customer' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Customer Slip
-            </button>
-            <button
-              onClick={() => setActiveTab('kitchen')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                activeTab === 'kitchen' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Kitchen Slip (KOT)
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            {/* Slip Filter Tabs */}
+            <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-md text-xs font-semibold">
+              <button
+                onClick={() => setActiveTab('both')}
+                className={`px-3 py-1 rounded-lg transition ${
+                  activeTab === 'both' ? 'bg-white text-slate-800' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Both Slips (2)
+              </button>
+              <button
+                onClick={() => setActiveTab('customer')}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  activeTab === 'customer' ? 'bg-white text-slate-800' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Customer Slip
+              </button>
+              <button
+                onClick={() => setActiveTab('kitchen')}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  activeTab === 'kitchen' ? 'bg-white text-slate-800' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Kitchen Slip (KOT)
+              </button>
+            </div>
+
             {/* Paper Width */}
             <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 text-xs">
               <button
@@ -204,13 +218,6 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 58mm
               </button>
             </div>
-
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-200/80 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
@@ -223,10 +230,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
           {/* SLIP 1: CUSTOMER RECEIPT */}
           {(activeTab === 'both' || activeTab === 'customer') && (
             <div
-              className={`bg-white shadow-md p-6 font-mono text-slate-800 text-xs border border-slate-200 rounded-lg print:border-none print:shadow-none ${
+              className={`bg-white p-6 font-mono text-slate-800 text-xs border border-slate-200 rounded-md print:border-none print:shadow-none ${
                 paperWidth === '80mm' ? 'w-full max-w-[340px]' : 'w-full max-w-[260px]'
               }`}
             >
+              {persistenceLabel && <p className="border-b border-dashed border-slate-500 pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
               <div className="text-center pb-3 border-b border-dashed border-slate-300">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#00A389] block mb-0.5">
                   Customer Receipt
@@ -235,16 +243,16 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                   MALTIVA CRUST
                 </h2>
                 <p className="text-[11px] font-bold text-slate-700">
-                  Fast Food That Hits Different🔥
+                  Counter Takeaway
                 </p>
                 <p className="text-[10px] text-slate-500">
-                  Pizza • Sandwiches • Fries🍟
+                  Fresh food. Clear pickup.
                 </p>
                 <p className="text-[10px] text-slate-500">
                   Phase 3 DHA Lahore
                 </p>
                 <p className="text-[10px] text-slate-600 font-bold mt-0.5">
-                  📲 WhatsApp: 03444757082
+                  WhatsApp: 03444757082
                 </p>
               </div>
 
@@ -311,7 +319,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-black text-slate-900 pt-1 border-t border-slate-200">
-                  <span>TOTAL PAID</span>
+                  <span>{isPending ? 'TOTAL' : isDraft ? 'TOTAL (UNPAID)' : 'TOTAL PAID'}</span>
                   <span>{formatPKR(order.total)}</span>
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-500 pt-0.5">
@@ -323,7 +331,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               {/* Customer Footer */}
               <div className="pt-3 text-center text-[10px] text-slate-500 space-y-0.5">
                 <p className="font-bold text-slate-700">Thank you for ordering at Maltiva Crust!</p>
-                <p>Fresh • Cheesy • Loaded</p>
+                <p>Fresh food. Clear pickup.</p>
                 <p>Order / WhatsApp: 03444757082</p>
               </div>
             </div>
@@ -344,10 +352,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
           {/* SLIP 2: KITCHEN ORDER TICKET (KOT) */}
           {(activeTab === 'both' || activeTab === 'kitchen') && (
             <div
-              className={`bg-white shadow-md p-6 font-mono text-slate-900 text-xs border border-slate-200 rounded-lg print:border-none print:shadow-none ${
+              className={`bg-white p-6 font-mono text-slate-900 text-xs border border-slate-200 rounded-md print:border-none print:shadow-none ${
                 paperWidth === '80mm' ? 'w-full max-w-[340px]' : 'w-full max-w-[260px]'
               }`}
             >
+              {persistenceLabel && <p className="border-b border-dashed border-slate-500 pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
               <div className="text-center pb-2 border-b-2 border-slate-900">
                 <span className="text-[11px] font-black uppercase tracking-wider block bg-slate-900 text-white py-0.5 rounded">
                   *** KITCHEN ORDER SLIP ***
@@ -355,7 +364,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 <p className="text-[10px] font-bold text-slate-600 mt-1 uppercase">
                   TAKEAWAY COUNTER
                 </p>
-                <div className="my-2 py-2 bg-slate-100 rounded-lg border border-slate-300">
+                <div className="my-2 py-2 bg-slate-100 rounded-md border border-slate-300">
                   <span className="text-3xl font-black text-slate-900 tracking-tight block">
                     TOKEN #{order.tokenNumber || order.orderNumber.replace('#F', '')}
                   </span>
@@ -423,7 +432,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         <div className="p-4 px-6 border-t border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 transition"
+            className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 hover:bg-slate-50 rounded-md text-xs font-semibold text-slate-700 transition"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'Copied to Clipboard' : 'Copy Text (ESC/POS)'}</span>
@@ -432,13 +441,13 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-semibold"
+              className="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-md text-xs font-semibold"
             >
               Done
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-xs font-bold shadow-md shadow-[#00A389]/20 transition"
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition"
             >
               <Printer className="w-4 h-4" />
               <span>Print {activeTab === 'both' ? 'Both Slips (2)' : activeTab === 'customer' ? 'Customer Slip' : 'Kitchen Slip'}</span>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Trash2, Printer, Power } from 'lucide-react';
-import { CartItem } from '../types/pos';
+import { Trash2, Printer, Power, X, Banknote, CreditCard, ScanLine } from 'lucide-react';
+import { CartItem, PaymentMethod } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 
 interface CartDrawerProps {
@@ -11,7 +11,9 @@ interface CartDrawerProps {
   onRemoveItem: (cartItemId: string) => void;
   onClearCart: () => void;
   taxRatePercent: number;
-  onPlaceOrder: (cashTendered: number) => void;
+  paymentMethod: PaymentMethod;
+  onSelectPaymentMethod: (method: PaymentMethod) => void;
+  onPlaceOrder: (cashTendered: number, paymentMethod: PaymentMethod) => void;
   onOpenPrintModal: () => void;
   isProcessing: boolean;
   isMobileOpen?: boolean;
@@ -26,6 +28,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem: _onRemoveItem,
   onClearCart,
   taxRatePercent,
+  paymentMethod,
+  onSelectPaymentMethod,
   onPlaceOrder,
   onOpenPrintModal,
   isProcessing,
@@ -43,7 +47,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   }, [totalPayable]);
 
   const changeDue = Math.max(0, cashTendered - totalPayable);
-  const cashPaymentValid = cashTendered >= totalPayable;
+  const cashPaymentValid = paymentMethod !== 'cash' || cashTendered >= totalPayable;
+  const paymentMethods = [
+    { value: 'cash', label: 'Cash', Icon: Banknote },
+    { value: 'card', label: 'Card', Icon: CreditCard },
+    { value: 'scan', label: 'Scan', Icon: ScanLine },
+  ] as const;
 
   const drawerContent = (
     <div className="w-full xl:w-96 h-full bg-white flex flex-col justify-between select-none border-l border-slate-200 font-sans">
@@ -59,14 +68,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={onClearCart}
-            disabled={cart.length === 0}
-            className="p-2 text-rose-500 hover:text-rose-700 disabled:opacity-30 transition rounded-md hover:bg-rose-50 cursor-pointer"
-            title="Clear Order"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onClearCart}
+              disabled={cart.length === 0}
+              className="p-2 text-rose-500 hover:text-rose-700 disabled:opacity-30 transition rounded-md hover:bg-rose-50 cursor-pointer"
+              title="Clear Order"
+              aria-label="Clear order"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            {isMobileOpen && onCloseMobile && (
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="p-2 text-slate-500 hover:text-slate-800 transition rounded-md hover:bg-slate-100 cursor-pointer"
+                title="Close order drawer"
+                aria-label="Close order drawer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="border-b border-slate-100 mb-6" />
@@ -136,7 +159,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <span className="text-xl font-black text-[#00A389]">{formatPKR(totalPayable)}</span>
           </div>
 
-          {cart.length > 0 && (
+          {cart.length > 0 && paymentMethod === 'cash' && (
             <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700" htmlFor="cash-tendered">
                 Cash Tendered
@@ -164,7 +187,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       </div>
 
       {/* BOTTOM ACTIONS */}
-      <div className="p-5 bg-white border-t border-slate-200">
+      <div className="shrink-0 p-4 bg-white border-t border-slate-200">
+        <div className="mb-3 rounded-lg border border-slate-200 p-3 space-y-2">
+          <h3 className="text-xs font-bold text-slate-700">Payment Method</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {paymentMethods.map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={paymentMethod === value}
+                onClick={() => onSelectPaymentMethod(value)}
+                className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-semibold transition cursor-pointer ${
+                  paymentMethod === value
+                    ? 'border-[#00A389] bg-[#E6F7F5] text-[#007462]'
+                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -177,12 +221,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           <button
             type="button"
-            onClick={() => onPlaceOrder(cashTendered)}
+            onClick={() => onPlaceOrder(cashTendered, paymentMethod)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
             className="flex-1 py-3 rounded-md bg-[#008f77] hover:bg-[#007462] text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
           >
             <Power className="w-3.5 h-3.5" />
-            <span>{isProcessing ? 'Processing...' : 'Complete Order (Cash)'}</span>
+            <span>{isProcessing ? 'Processing...' : `Complete Order (${paymentMethod === 'scan' ? 'Scan' : paymentMethod === 'card' ? 'Card' : 'Cash'})`}</span>
           </button>
         </div>
       </div>
@@ -195,8 +239,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {drawerContent}
       </aside>
       {isMobileOpen && (
-        <div className="xl:hidden fixed inset-0 z-50 flex justify-end bg-black/50 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm h-full bg-white border-l border-slate-200 animate-in slide-in-from-right duration-200">
+        <div
+          className="xl:hidden fixed inset-0 z-50 flex justify-end bg-black/50 animate-in fade-in duration-150"
+          onClick={onCloseMobile}
+        >
+          <div
+            className="w-full max-w-sm h-full bg-white border-l border-slate-200 animate-in slide-in-from-right duration-200"
+            onClick={event => event.stopPropagation()}
+          >
             {drawerContent}
           </div>
         </div>

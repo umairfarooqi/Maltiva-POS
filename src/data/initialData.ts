@@ -387,7 +387,7 @@ export const INITIAL_ORDERS: Order[] = [
 
 export const INITIAL_PRINTER_SETTINGS: PrinterSettings = {
   printerName: 'POS-80C Thermal Printer',
-  paperWidth: '80mm',
+  paperWidth: '58mm',
   autoPrintDualSlips: true,
   printCustomerSlip: true,
   printKitchenSlip: true,

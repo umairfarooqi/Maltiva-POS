@@ -1,6 +1,80 @@
 import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings } from '../types/pos';
 import { PosStorage } from './storage';
+import { PendingOutbox } from './pendingOutbox';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from '../utils/normalizeProduct';
+
+export type SaleResult = { success: boolean; state: 'saved' | 'pending' | 'rejected'; order: Order; error?: string };
+
+function mergeOrders(serverOrders: Order[], pending: Order[], rejected: Order[] = []): Order[] {
+  const merged = new Map<string, Order>();
+  for (const order of [...rejected, ...serverOrders, ...pending]) merged.set(order.idempotencyKey || order.id, order);
+  return [...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+function mergeRecovery(serverOrders: Order[], pending: Order[], rejected: Order[]): Order[] {
+  // Read the cache after the asynchronous recovery snapshots: a 201 may have arrived meanwhile.
+  const cached = PosStorage.getOrders();
+  const acknowledged = cached.filter(order => order.persistenceState === 'saved');
+  const acknowledgedKeys = new Set(acknowledged.map(order => order.idempotencyKey || order.id));
+  return mergeOrders([...acknowledged, ...serverOrders],
+    pending.filter(order => !acknowledgedKeys.has(order.idempotencyKey || order.id)),
+    [...cached.filter(order => order.persistenceState === 'rejected'), ...rejected]);
+}
+
+function cacheOrder(order: Order) {
+  PosStorage.setOrders(mergeOrders([order], [], PosStorage.getOrders()));
+}
+
+async function saved(order: Order): Promise<Order> {
+  const canonical: Order = { ...order, idempotencyKey: order.idempotencyKey || order.id, persistenceState: 'saved', synced: true };
+  cacheOrder(canonical);
+  await PendingOutbox.remove(canonical.idempotencyKey!);
+  return canonical;
+}
+
+const submissions = new Map<string, Promise<SaleResult>>();
+
+async function submitSale(order: Order): Promise<SaleResult> {
+  const key = order.idempotencyKey!;
+  const existing = submissions.get(key);
+  if (existing) return existing;
+  const request = sendSale(order);
+  submissions.set(key, request);
+  try { return await request; } finally { submissions.delete(key); }
+}
+
+async function sendSale(order: Order): Promise<SaleResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let response: Response;
+  let body: any;
+  try {
+    response = await fetch('/api/orders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey! },
+      body: JSON.stringify(order), signal: controller.signal,
+    });
+    try { body = await response.json(); } catch (error) {
+      if (response.status === 201 && (error instanceof TypeError || (error as any)?.name === 'AbortError')) throw error;
+      body = {};
+    }
+  } catch (error) {
+    if (error instanceof TypeError || (error as any)?.name === 'AbortError') {
+      try { cacheOrder(order); } catch { /* the IndexedDB recovery copy is already committed */ }
+      return { success: false, state: 'pending', order };
+    }
+    throw error;
+  } finally { clearTimeout(timeout); }
+  if (response.status === 201 && body.order?.id && Array.isArray(body.order.items) &&
+      (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
+    return { success: true, state: 'saved', order: await saved(body.order) };
+  }
+  const error = typeof body.error === 'string' ? body.error : body.error?.message ||
+    `Server rejected the sale (HTTP ${response.status}). Retry or review this cart.`;
+  const rejected = await PendingOutbox.reject(order, error);
+  return { success: false, state: 'rejected', order: rejected, error };
+}
+
+let replay: Promise<{ syncedCount: number; pendingCount: number; reachable: boolean }> | null = null;
 
 export const PosApi = {
   // Sync all data from backend or return local cache
@@ -14,11 +88,10 @@ export const PosApi = {
     inventoryLogs: InventoryLog[];
     isOnline: boolean;
   }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
       const res = await fetch('/api/data', { signal: controller.signal });
-      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
@@ -31,22 +104,30 @@ export const PosApi = {
         const normalizedProducts = validProducts.map(normalizeProduct);
         PosStorage.setProducts(normalizedProducts);
         const products = PosStorage.getProducts();
-        PosStorage.setOrders(data.orders);
-        PosStorage.setTables(data.tables);
+        const serverOrders: Order[] = (data.orders || []).map((order: Order) => ({ ...order, idempotencyKey: order.idempotencyKey || order.id, synced: true, persistenceState: 'saved' }));
+        const pending = await PendingOutbox.list();
+        const rejected = await PendingOutbox.rejected();
+        const orders = mergeRecovery(serverOrders, pending, rejected);
+        PosStorage.setOrders(orders);
+        PosStorage.setTables(data.tables || []);
         PosStorage.setUsers(data.users);
         PosStorage.setPrinterSettings(data.printerSettings);
         PosStorage.setInventoryLogs(data.inventoryLogs || []);
 
-        return { ...data, products, isOnline: true };
+        return { ...data, products, orders, tables: data.tables || [], isOnline: true };
       }
     } catch {
       // Network failed or offline: fall back to local storage seamlessly
-    }
+    } finally { clearTimeout(timeoutId); }
 
+    const pending = await PendingOutbox.list();
+    const rejected = await PendingOutbox.rejected();
+    const orders = mergeRecovery(PosStorage.getOrders().filter(order => order.persistenceState !== 'pending'), pending, rejected);
+    PosStorage.setOrders(orders);
     return {
       categories: PosStorage.getCategories(),
       products: PosStorage.getProducts(),
-      orders: PosStorage.getOrders(),
+      orders,
       tables: PosStorage.getTables(),
       users: PosStorage.getUsers(),
       printerSettings: PosStorage.getPrinterSettings(),
@@ -55,89 +136,43 @@ export const PosApi = {
     };
   },
 
-  // Save new order with offline queueing & deduplication
-  async placeOrder(order: Order, isOnline: boolean): Promise<{ success: boolean; order: Order }> {
-    // 1. Immediately deduct local stock
-    const products = PosStorage.getProducts();
-    const logs = PosStorage.getInventoryLogs();
-
-    order.items.forEach(item => {
-      const p = products.find(prod => prod.id === item.productId);
-      if (p) {
-        const prev = p.stockQuantity;
-        p.stockQuantity = Math.max(0, prev - item.quantity);
-        logs.unshift({
-          id: `log-local-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-          productId: p.id,
-          productName: p.name,
-          previousStock: prev,
-          changeAmount: -item.quantity,
-          newStock: p.stockQuantity,
-          type: 'sale',
-          reason: `Sale ${order.orderNumber} (${item.quantity}x ${item.productName})`,
-          userId: order.cashierId,
-          userName: order.cashierName,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-
-    PosStorage.setProducts(products);
-    PosStorage.setInventoryLogs(logs);
-
-    // 2. Save order locally
-    const currentOrders = PosStorage.getOrders();
-    currentOrders.unshift(order);
-    PosStorage.setOrders(currentOrders);
-
-    // 3. If online, send to server. If fails or offline, enqueue in offline queue
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(order),
-        });
-        if (res.ok) {
-          const result = await res.json();
-          order.synced = true;
-          return { success: true, order: result.order || order };
-        }
-      } catch {
-        // failed network, queue for background sync
-      }
+  // Persist the recovery copy before transport, including when internet connectivity is absent.
+  async placeOrder(order: Order, _isOnline: boolean): Promise<SaleResult> {
+    let staged: Order;
+    try { staged = await PendingOutbox.put(order); }
+    catch {
+      const error = 'Cannot store a recovery copy. The sale was not sent; keep this cart and retry.';
+      return { success: false, state: 'rejected', order: { ...order, persistenceState: 'rejected', rejectionReason: error }, error };
     }
-
-    // Queue for sync
-    order.synced = false;
-    PosStorage.addToOfflineQueue(order);
-    return { success: true, order };
+    return submitSale(staged);
   },
 
-  // Synchronize queued offline orders
-  async syncOfflineQueue(): Promise<{ syncedCount: number }> {
-    const queue = PosStorage.getOfflineQueue();
-    if (queue.length === 0) return { syncedCount: 0 };
-
-    try {
-      const res = await fetch('/api/orders/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ queuedOrders: queue }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        PosStorage.clearOfflineQueue();
-        if (data.products) PosStorage.setProducts(data.products);
-        if (data.orders) PosStorage.setOrders(data.orders);
-        return { syncedCount: data.syncedCount || queue.length };
+  async syncOfflineQueue(): Promise<{ syncedCount: number; pendingCount: number; reachable: boolean }> {
+    if (replay) return replay;
+    replay = (async () => {
+      let syncedCount = 0;
+      let reachable = false;
+      const queue = await PendingOutbox.list();
+      // Read server status in bounded batches. Only a POST acknowledgment (201) clears a recovery copy.
+      for (let offset = 0; offset < Math.max(1, queue.length); offset += 100) {
+        const batch = queue.slice(offset, offset + 100);
+        const query = new URLSearchParams();
+        batch.forEach(order => query.append('key', order.idempotencyKey!));
+        try {
+          const response = await fetch(`/api/orders/pending-status?${query}`, { signal: AbortSignal.timeout(5000) });
+          reachable = true;
+          if (response.ok) await response.json();
+        } catch { return { syncedCount, pendingCount: (await PendingOutbox.list()).length, reachable: false }; }
       }
-    } catch {
-      // Still offline, will retry next turn
-    }
-
-    return { syncedCount: 0 };
+      for (const order of await PendingOutbox.list()) {
+        const result = await submitSale(order);
+        if (result.state === 'saved') syncedCount++;
+        if (result.state === 'rejected') { try { cacheOrder(result.order); } catch { /* rejection remains durable in IndexedDB */ } }
+        if (result.state === 'pending') { reachable = false; break; }
+      }
+      return { syncedCount, pendingCount: (await PendingOutbox.list()).length, reachable };
+    })();
+    try { return await replay; } finally { replay = null; }
   },
 
   // Product CRUD
@@ -230,7 +265,10 @@ export const PosApi = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newCat),
         });
-        if (res.ok) return await res.json();
+        if (res.ok) {
+          const saved = await res.json();
+          return { ...newCat, ...saved, id: newCat.id };
+        }
       } catch {
         // saved locally
       }
@@ -274,6 +312,20 @@ export const PosApi = {
 
   async deleteCategory(categoryId: string, isOnline: boolean): Promise<boolean> {
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return false;
+    if (isOnline) {
+      const res = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        let message = 'Delete failed';
+        try {
+          const body = await res.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // keep fallback message
+        }
+        throw new Error(message);
+      }
+    }
+
     const cats = PosStorage.getCategories().filter(c => c.id !== categoryId);
     if (!cats.some(category => category.id === DEFAULT_UNCATEGORIZED_CATEGORY.id)) {
       cats.push(DEFAULT_UNCATEGORIZED_CATEGORY);
@@ -291,13 +343,6 @@ export const PosApi = {
     );
     PosStorage.setProducts(products);
 
-    if (isOnline) {
-      try {
-        await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
-      } catch {
-        // saved locally
-      }
-    }
     return true;
   },
 

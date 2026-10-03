@@ -14,6 +14,7 @@ import {
   UserCog,
   ChefHat,
   Trash2,
+  AlertTriangle,
   FileDown,
   Settings2,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [cashierPass, setCashierPass] = useState(settings.cashierPin || '1234');
   const [saved, setSaved] = useState(false);
   const [cashierSaved, setCashierSaved] = useState(false);
+  const [isWipeSalesDialogOpen, setIsWipeSalesDialogOpen] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,20 +80,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleClearDemoOrders = () => {
-    if (confirm('Clear all orders? Products and settings will stay.')) {
-      PosStorage.setOrders([]);
-      PosStorage.clearOfflineQueue();
-      window.location.reload();
-    }
+    PosStorage.setOrders([]);
+    // Pending recovery copies (IndexedDB and legacy queue) must survive history clearing.
+    window.location.reload();
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-[#F8FAFA] select-none">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#F4F6F5] select-none">
       {/* Top Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-lg border border-slate-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-[#E6F7F5] text-[#007462]">
               System Administration
             </span>
           </div>
@@ -100,24 +100,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-3 bg-[#00A389] hover:bg-[#008f77] text-white rounded-2xl text-xs font-bold shadow-lg shadow-[#00A389]/20 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-5 py-3 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
         >
           {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
           <span>{saved ? 'Settings Applied!' : 'Apply All Changes'}</span>
         </button>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         
         {/* SECTION 1: STORE IDENTITY */}
-        <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+        <section className="bg-white p-5 rounded-lg border border-slate-200 space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-50">
             <div className="p-2 bg-emerald-50 rounded-lg">
               <Store className="w-5 h-5 text-[#00A389]" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-800">Store Identity</h2>
-              <p className="text-[11px] text-slate-400">Brand details printed on receipts</p>
+              <p className="text-[11px] text-slate-500">Brand details printed on receipts</p>
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="text"
                 value={formData.storeName}
                 onChange={e => setFormData({ ...formData, storeName: e.target.value })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
               />
             </div>
             <div className="md:col-span-2">
@@ -139,7 +139,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                 />
               </div>
             </div>
@@ -151,7 +151,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={formData.whatsApp}
                   onChange={e => setFormData({ ...formData, whatsApp: e.target.value })}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
                 />
               </div>
             </div>
@@ -161,22 +161,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="number"
                 value={formData.taxRatePercent}
                 onChange={e => setFormData({ ...formData, taxRatePercent: parseFloat(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#00A389]/20 focus:border-[#00A389] outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
               />
             </div>
           </div>
         </section>
 
         {/* SECTION 2: HARDWARE CONFIGURATION */}
-        <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+        <section className="bg-white p-5 rounded-lg border border-slate-200 space-y-5">
           <div className="flex items-center justify-between pb-4 border-b border-slate-50">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Printer className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-[#E6F7F5] rounded-md">
+                <Printer className="w-5 h-5 text-[#007462]" />
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-800">Hardware & Terminal</h2>
-                <p className="text-[11px] text-slate-400">Printer and dual-screen optimization</p>
+                <p className="text-[11px] text-slate-500">Printer and dual-screen optimization</p>
               </div>
             </div>
             <button
@@ -191,27 +191,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setFormData({ ...formData, paperWidth: '80mm' })}
-                className={`py-2.5 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                className={`py-2.5 px-4 rounded-md border text-xs font-bold transition-colors cursor-pointer ${
                   formData.paperWidth === '80mm'
-                    ? 'border-blue-600 bg-blue-50 text-blue-600'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    ? 'border-[#008f77] bg-[#E6F7F5] text-[#007462]'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 80mm Standard
               </button>
               <button
                 onClick={() => setFormData({ ...formData, paperWidth: '58mm' })}
-                className={`py-2.5 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                className={`py-2.5 px-4 rounded-md border text-xs font-bold transition-colors cursor-pointer ${
                   formData.paperWidth === '58mm'
-                    ? 'border-blue-600 bg-blue-50 text-blue-600'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    ? 'border-[#008f77] bg-[#E6F7F5] text-[#007462]'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 58mm Compact
               </button>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+            <div className="p-4 bg-slate-50 rounded-md border border-slate-200 space-y-3">
               <label className="flex items-center justify-between cursor-pointer group">
                 <div className="flex items-center gap-3">
                   <ChefHat className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
@@ -245,14 +245,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
+            <div className="flex items-center justify-between p-4 bg-[#E6F7F5] border border-emerald-100 rounded-md">
               <div className="flex items-center gap-3">
-                <Monitor className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-bold text-blue-900">Customer Facing Display</span>
+                <Monitor className="w-4 h-4 text-[#007462]" />
+                <span className="text-xs font-bold text-slate-800">Customer Facing Display</span>
               </div>
               <button
                 onClick={handleOpenCustomerDisplay}
-                className="p-2 bg-white border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all cursor-pointer"
+                className="p-2 bg-white border border-emerald-200 text-[#007462] rounded-md hover:bg-[#008f77] hover:text-white transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
@@ -261,19 +261,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
 
         {/* SECTION 3: BUSINESS RULES (The KFC Level) */}
-        <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+        <section className="bg-white p-5 rounded-lg border border-slate-200 space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-50">
-            <div className="p-2 bg-orange-50 rounded-lg">
-              <ShieldCheck className="w-5 h-5 text-orange-600" />
+              <div className="p-2 bg-[#E6F7F5] rounded-md">
+                <ShieldCheck className="w-5 h-5 text-[#007462]" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-800">Business Operations</h2>
-              <p className="text-[11px] text-slate-400">Permissions, shifts, and inventory rules</p>
+              <p className="text-[11px] text-slate-500">Permissions, shifts, and inventory rules</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+            <div className="p-4 bg-slate-50 rounded-md border border-slate-200 space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-2">Order Void Permission</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -283,8 +283,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       onClick={() => setFormData({ ...formData, voidOrderPermission: role })}
                       className={`py-2 px-1 rounded-lg border text-[10px] font-bold capitalize transition-all cursor-pointer ${
                         formData.voidOrderPermission === role
-                          ? 'border-orange-600 bg-orange-50 text-orange-600'
-                          : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                          ? 'border-[#008f77] bg-[#E6F7F5] text-[#007462]'
+                          : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       {role}
@@ -296,7 +296,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="pt-4 border-t border-slate-200">
                 <label className="flex items-center justify-between cursor-pointer group">
                   <div className="flex items-center gap-3">
-                    <Settings2 className="w-4 h-4 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                    <Settings2 className="w-4 h-4 text-slate-400 group-hover:text-[#008f77] transition-colors" />
                     <div>
                       <p className="text-xs font-bold text-slate-700">Enable Shift Tracking</p>
                       <p className="text-[10px] text-slate-500">Track cash drawer open/close totals</p>
@@ -306,7 +306,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type="checkbox"
                     checked={formData.enableShiftTracking}
                     onChange={e => setFormData({ ...formData, enableShiftTracking: e.target.checked })}
-                    className="w-4 h-4 accent-orange-600"
+                    className="w-4 h-4 accent-[#008f77]"
                   />
                 </label>
               </div>
@@ -321,7 +321,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     type="number"
                     value={formData.globalLowStockThreshold}
                     onChange={e => setFormData({ ...formData, globalLowStockThreshold: parseInt(e.target.value) || 0 })}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
                   />
                 </div>
               </div>
@@ -333,14 +333,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
 
         {/* SECTION 4: USER & SECURITY (Admin Control) */}
-        <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+        <section className="bg-white p-5 rounded-lg border border-slate-200 space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-50">
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <UserCog className="w-5 h-5 text-purple-600" />
+              <div className="p-2 bg-[#E6F7F5] rounded-md">
+                <UserCog className="w-5 h-5 text-[#007462]" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-800">Staff Security</h2>
-              <p className="text-[11px] text-slate-400">Manage terminal access and PINs</p>
+              <p className="text-[11px] text-slate-500">Manage terminal access and PINs</p>
             </div>
           </div>
 
@@ -353,7 +353,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   required
                   value={cashierUser}
                   onChange={e => setCashierUser(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
                 />
               </div>
               <div>
@@ -363,14 +363,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   required
                   value={cashierPass}
                   onChange={e => setCashierPass(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl text-xs font-bold shadow-lg shadow-purple-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 px-4 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               {cashierSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               <span>{cashierSaved ? 'Credentials Updated!' : 'Update Security PIN'}</span>
@@ -380,7 +380,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* DATABASE MAINTENANCE (Bottom Bar) */}
-      <footer className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+      <footer className="bg-white p-5 rounded-lg border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-5">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-slate-100 rounded-lg">
             <HardDrive className="w-5 h-5 text-slate-600" />
@@ -393,20 +393,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex gap-3">
           <button
             onClick={handleExportBackup}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-bold transition cursor-pointer"
           >
             <FileDown className="w-4 h-4 text-[#00A389]" />
             <span>Backup DB</span>
           </button>
           <button
-            onClick={handleClearDemoOrders}
-            className="flex items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition cursor-pointer"
+            onClick={() => setIsWipeSalesDialogOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md text-xs font-bold transition cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             <span>Wipe Sales</span>
           </button>
         </div>
       </footer>
+
+      {isWipeSalesDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="wipe-sales-title"
+            aria-describedby="wipe-sales-description"
+            className="bg-white rounded-lg max-w-sm w-full p-6 border border-slate-200 text-center"
+          >
+            <div className="w-12 h-12 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h2 id="wipe-sales-title" className="text-lg font-bold text-slate-900 mb-2">
+              Wipe all sales?
+            </h2>
+            <p id="wipe-sales-description" className="text-xs text-slate-500 mb-6">
+              Clear cached sales history on this device. Pending sales remain available for recovery; saved sales reload from the server.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsWipeSalesDialogOpen(false)}
+                className="px-4 py-2 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearDemoOrders}
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-md text-xs font-bold transition"
+              >
+                Wipe Sales
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

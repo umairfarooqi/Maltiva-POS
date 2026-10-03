@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import { randomUUID } from 'node:crypto';
 import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
@@ -65,6 +66,17 @@ function seedDatabase() {
 
 seedDatabase();
 
+function loadOrder(id: string): Order | undefined {
+  const row = db.prepare('SELECT * FROM orders WHERE id = ?').get(id) as any;
+  if (!row) return undefined;
+  const items = db.prepare('SELECT * FROM order_items WHERE orderId = ? ORDER BY rowid').all(id).map((item: any) => ({
+    ...item, selectedVariations: parseJson(item.selectedVariations), bundledProducts: parseJson(item.bundledProducts),
+  }));
+  const cash = db.prepare("SELECT tendered FROM payments WHERE order_id = ? AND method = 'cash'").get(id) as any;
+  return { ...row, idempotencyKey: row.idempotency_key, items, cashTendered: cash?.tendered,
+    synced: true, persistenceState: 'saved' };
+}
+
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
@@ -91,7 +103,8 @@ async function startServer() {
       variations: parseJson(p.variations_json || p.variations || '[]'),
     })) as Product[];
     const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0);
-    const orders = db.prepare('SELECT * FROM orders').all() as Order[];
+    const orders = (db.prepare('SELECT id FROM orders ORDER BY createdAt DESC, rowid DESC').all() as { id: string }[]).map(row => loadOrder(row.id)!);
+    const tables = db.prepare('SELECT * FROM tables').all();
     const users = db.prepare('SELECT * FROM users').all() as User[];
     
     // Get settings from KV table
@@ -116,6 +129,7 @@ async function startServer() {
       categories,
       products: validProducts,
       orders,
+      tables,
       users,
       printerSettings,
       inventoryLogs,
@@ -187,10 +201,10 @@ async function startServer() {
 
   // CATEGORIES CRUD
   app.post('/api/categories', (req: Request, res: Response) => {
-    const { name, icon } = req.body;
-    const id = `cat-${Date.now()}`;
+    const { name, icon, id: requestedId } = req.body;
+    const id = requestedId || `cat-${Date.now()}`;
     db.prepare('INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)').run(id, name, icon, 0);
-    res.status(201).json({ id, name, icon });
+    res.status(201).json({ id, name, icon, itemCount: 0, order: 0 });
   });
 
   app.put('/api/categories/:id', (req: Request, res: Response) => {
@@ -222,56 +236,84 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // ORDERS PIPELINE
+  // Reconcile keys from this browser's durable outbox. Unsent keys are known only to the browser.
+  app.get('/api/orders/pending-status', (req: Request, res: Response) => {
+    const input = req.query.key;
+    const keys = input === undefined ? [] : Array.isArray(input) ? input : [input];
+    if (keys.length > 100 || keys.some(key => typeof key !== 'string' || key.length > 200)) {
+      res.status(400).json({ error: 'Provide at most 100 valid outbox keys' });
+      return;
+    }
+    const savedOrders: Order[] = [];
+    const pendingKeys: string[] = [];
+    for (const key of keys) {
+      const row = db.prepare('SELECT id FROM orders WHERE idempotency_key = ?').get(key) as { id: string } | undefined;
+      if (row) savedOrders.push(loadOrder(row.id)!);
+      else pendingKeys.push(key as string);
+    }
+    res.json({ savedOrders, pendingKeys, pendingCount: pendingKeys.length });
+  });
+
+  // Phase 1 preserves the existing accounting inputs; authoritative pricing is phase 2.
+  const createOrder = db.transaction((order: Order, key: string) => {
+    const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key = ?').get(key) as { id: string } | undefined;
+    if (existing) return loadOrder(existing.id)!;
+    if (!order.id || !order.orderNumber || !Array.isArray(order.items) || order.items.length === 0 ||
+        !Number.isFinite(order.total) || order.total < 0 ||
+        order.items.some(item => !item.id || !item.productId || !Number.isInteger(item.quantity) || item.quantity <= 0)) {
+      throw Object.assign(new Error('The sale needs valid items and a total'), { status: 400 });
+    }
+    const createdAt = new Date().toISOString();
+    const tendered = order.paymentMethod === 'cash' ? (order.cashTendered ?? order.total) : null;
+    const changeDue = tendered === null ? 0 : Math.max(0, tendered - order.total);
+    db.prepare(`
+      INSERT INTO orders (id, idempotency_key, orderNumber, tokenNumber, customerName, status, orderType,
+        subtotal, tax, discount, total, totalCost, profit, profitMarginPercent, paymentMethod,
+        cashierId, cashierName, cashierRole, createdAt, changeDue)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(order.id, key, order.orderNumber, order.tokenNumber, order.customerName ?? null, order.status,
+      order.orderType, order.subtotal, order.tax, order.discount, order.total, order.totalCost,
+      order.profit, order.profitMarginPercent, order.paymentMethod, order.cashierId, order.cashierName,
+      order.cashierRole, createdAt, changeDue);
+    const itemStmt = db.prepare(`
+      INSERT INTO order_items (id, orderId, productId, productName, categoryName, unitPrice, unitCost,
+        quantity, totalPrice, totalCost, selectedVariations, notes, bundledProducts)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const item of order.items) {
+      const prod = db.prepare('SELECT name, stockQuantity FROM products WHERE id = ?').get(item.productId) as any;
+      if (!prod) throw Object.assign(new Error(`Product is no longer present: ${item.productName}`), { status: 400 });
+      itemStmt.run(item.id, order.id, item.productId, item.productName, item.categoryName, item.unitPrice,
+        item.unitCost, item.quantity, item.totalPrice, item.totalCost, stringifyJson(item.selectedVariations || []),
+        item.notes ?? null, stringifyJson(item.bundledProducts || []));
+      db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE id = ?').run(item.quantity, item.productId);
+      db.prepare(`INSERT INTO stock_movements (id, product_id, delta, type, ref, user_id, created_at)
+        VALUES (?, ?, ?, 'sale', ?, ?, ?)`).run(randomUUID(), item.productId, -item.quantity, order.id, order.cashierId, createdAt);
+      db.prepare(`INSERT INTO inventory_logs (id, productId, productName, previousStock, changeAmount,
+        newStock, type, reason, userId, userName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(randomUUID(), item.productId, prod.name, prod.stockQuantity, -item.quantity,
+        prod.stockQuantity - item.quantity, 'sale', `Order ${order.orderNumber}`, order.cashierId, order.cashierName, createdAt);
+    }
+    db.prepare(`INSERT INTO payments (id, order_id, method, amount, tendered, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)`).run(randomUUID(), order.id, order.paymentMethod, order.total, tendered, createdAt);
+    return loadOrder(order.id)!;
+  });
+
   app.post('/api/orders', (req: Request, res: Response) => {
-    const order: Order = req.body;
-    
-    // Wrap order and items in a transaction for "Atomic" safety
-    const transaction = db.transaction(() => {
-      // 1. Save Order
-      db.prepare(`
-        INSERT INTO orders (id, orderNumber, tokenNumber, customerName, status, orderType, subtotal, tax, discount, total, totalCost, profit, profitMarginPercent, paymentMethod, cashierId, cashierName, cashierRole, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).run(
-        order.id, order.orderNumber, order.tokenNumber, order.customerName, 
-        order.status, order.orderType, order.subtotal, order.tax, order.discount, 
-        order.total, order.totalCost, order.profit, order.profitMarginPercent, 
-        order.paymentMethod, order.cashierId, order.cashierName, order.cashierRole
-      );
-
-      // 2. Save Order Items
-      const itemStmt = db.prepare(`
-        INSERT INTO order_items (id, orderId, productId, productName, categoryName, unitPrice, unitCost, quantity, totalPrice, totalCost, selectedVariations, notes, bundledProducts)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      order.items.forEach(item => {
-        itemStmt.run(
-          item.id, order.id, item.productId, item.productName, item.categoryName,
-          item.unitPrice, item.unitCost, item.quantity, item.totalPrice, 
-          item.totalCost, stringifyJson(item.selectedVariations), item.notes, stringifyJson(item.bundledProducts)
-        );
-
-        // 3. Deduct Stock
-        db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE id = ?').run(item.quantity, item.productId);
-        
-        // 4. Inventory Log
-        const prod = db.prepare('SELECT name, stockQuantity FROM products WHERE id = ?').get() as any;
-        db.prepare(`
-          INSERT INTO inventory_logs (id, productId, productName, previousStock, changeAmount, newStock, type, reason, userId, userName, timestamp)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).run(
-          `log-${Date.now()}-${Math.random()}`, item.productId, prod?.name, prod?.stockQuantity + item.quantity,
-          -item.quantity, prod?.stockQuantity, 'sale', `Order ${order.orderNumber}`, order.cashierId, order.cashierName
-        );
-      });
-    });
-
+    const key = req.get('Idempotency-Key') || req.body?.idempotencyKey;
+    if (typeof key !== 'string' || !key.trim() || key.length > 200) {
+      res.status(400).json({ error: 'An idempotency key is required' });
+      return;
+    }
     try {
-      transaction();
+      const order = createOrder(req.body, key);
+      // A replay also returns 201: it acknowledges this key's original committed sale.
       res.status(201).json({ success: true, order });
-    } catch (err) {
-      res.status(500).json({ error: 'Database transaction failed' });
+    } catch (err: any) {
+      const status = err.status || (['SQLITE_CONSTRAINT_UNIQUE', 'SQLITE_CONSTRAINT_PRIMARYKEY'].includes(err.code) ? 409 : 500);
+      res.status(status).json({ error: err.status ? err.message : status === 409
+        ? 'Sale conflicts with an existing record. Review the order before retrying.'
+        : 'Sale could not be saved. Your cart is retained; retry or review it.' });
     }
   });
 

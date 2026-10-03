@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isCashier = userRole === 'cashier';
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const isExpandedDesktop = !isCollapsed;
 
   // Pure Takeaway Navigation Items

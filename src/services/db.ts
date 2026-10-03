@@ -101,6 +101,30 @@ export function initDb() {
   `).run();
 
   // 5. Order Items Table
+  const orderColumns = db.prepare('PRAGMA table_info(orders)').all() as Array<{ name: string }>;
+  if (!orderColumns.some(column => column.name === 'idempotency_key')) {
+    db.prepare('ALTER TABLE orders ADD COLUMN idempotency_key TEXT').run();
+  }
+  if (!orderColumns.some(column => column.name === 'changeDue')) {
+    db.prepare('ALTER TABLE orders ADD COLUMN changeDue REAL DEFAULT 0').run();
+  }
+  // Old order IDs remain usable when recovering the legacy browser queue.
+  db.prepare('UPDATE orders SET idempotency_key = id WHERE idempotency_key IS NULL').run();
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency ON orders(idempotency_key)');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY, order_id TEXT NOT NULL REFERENCES orders(id),
+      method TEXT NOT NULL, amount REAL NOT NULL, tendered REAL, reference TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS stock_movements (
+      id TEXT PRIMARY KEY, product_id TEXT NOT NULL, delta INTEGER NOT NULL,
+      type TEXT NOT NULL, ref TEXT NOT NULL, user_id TEXT, created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
+    CREATE INDEX IF NOT EXISTS idx_stock_movements_ref ON stock_movements(ref);
+  `);
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS order_items (
       id TEXT PRIMARY KEY,

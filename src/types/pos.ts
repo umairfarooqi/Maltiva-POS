@@ -75,6 +75,11 @@ export type UserRole = 'admin' | 'cashier' | 'manager';
 
 export interface Order {
   id: string;
+  idempotencyKey?: string;
+  persistenceState?: 'saved' | 'pending' | 'rejected' | 'draft';
+  rejectionReason?: string;
+  cashTendered?: number;
+  changeDue?: number;
   orderNumber: string;
   tokenNumber: number;
   customerName?: string;
