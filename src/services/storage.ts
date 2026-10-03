@@ -34,11 +34,39 @@ export class PosStorage {
 
   static getProducts(): Product[] {
     const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    return data ? JSON.parse(data) : INITIAL_PRODUCTS;
+    if (!data) {
+      return this.filterValidProducts(INITIAL_PRODUCTS);
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(data);
+      if (!Array.isArray(parsed)) throw new Error('Invalid product cache');
+
+      const products = this.filterValidProducts(parsed as Product[]);
+      if (products.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+      }
+      return products;
+    } catch {
+      const products = this.filterValidProducts(INITIAL_PRODUCTS);
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+      return products;
+    }
   }
 
   static setProducts(products: Product[]) {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    localStorage.setItem(
+      STORAGE_KEYS.PRODUCTS,
+      JSON.stringify(this.filterValidProducts(products))
+    );
+  }
+
+  private static filterValidProducts(products: Product[]): Product[] {
+    return products.filter(product =>
+      product &&
+      product.name !== 'Untitled Dish' &&
+      Number(product.price) > 0
+    );
   }
 
   static getOrders(): Order[] {

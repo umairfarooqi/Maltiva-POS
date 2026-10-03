@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-  Trash2,
-  Printer,
-  Power,
-  Banknote,
-  CreditCard,
-  QrCode,
-} from 'lucide-react';
-import { CartItem, PaymentMethod } from '../types/pos';
+import { Trash2, Printer, Power } from 'lucide-react';
+import { CartItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 
 interface CartDrawerProps {
@@ -18,8 +11,6 @@ interface CartDrawerProps {
   onRemoveItem: (cartItemId: string) => void;
   onClearCart: () => void;
   taxRatePercent: number;
-  paymentMethod: PaymentMethod | 'scan';
-  onChangePaymentMethod: (method: any) => void;
   onPlaceOrder: (cashTendered: number) => void;
   onOpenPrintModal: () => void;
   isProcessing: boolean;
@@ -35,8 +26,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem: _onRemoveItem,
   onClearCart,
   taxRatePercent,
-  paymentMethod,
-  onChangePaymentMethod,
   onPlaceOrder,
   onOpenPrintModal,
   isProcessing,
@@ -50,11 +39,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [cashTendered, setCashTendered] = React.useState(totalPayable);
 
   React.useEffect(() => {
-    setCashTendered(current => Math.max(current, totalPayable));
+    setCashTendered(totalPayable);
   }, [totalPayable]);
 
   const changeDue = Math.max(0, cashTendered - totalPayable);
-  const cashPaymentValid = paymentMethod !== 'cash' || cashTendered >= totalPayable;
+  const cashPaymentValid = cashTendered >= totalPayable;
 
   const drawerContent = (
     <div className="w-full xl:w-92 h-full bg-white flex flex-col justify-between select-none border-l border-slate-100 font-sans">
@@ -147,7 +136,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <span className="text-xl font-black text-[#00A389]">{formatPKR(totalPayable)}</span>
           </div>
 
-          {paymentMethod === 'cash' && cart.length > 0 && (
+          {cart.length > 0 && (
             <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 space-y-3">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700" htmlFor="cash-tendered">
                 Cash Tendered
@@ -172,36 +161,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           )}
         </div>
 
-        {/* PAYMENT METHOD */}
-        <div className="mt-6 space-y-3">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">
-            Payment Method
-          </span>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'cash', icon: Banknote, label: 'Cash' },
-              { id: 'card', icon: CreditCard, label: 'Card' },
-              { id: 'scan', icon: QrCode, label: 'Scan' },
-            ].map(method => {
-              const isActive = paymentMethod === method.id;
-              const Icon = method.icon;
-              return (
-                <button
-                  key={method.id}
-                  onClick={() => onChangePaymentMethod(method.id)}
-                  className={`py-2.5 px-1 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    isActive
-                      ? 'border-2 border-[#00A389] bg-white text-[#00A389] shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#00A389]' : 'text-slate-400'}`} />
-                  <span className="text-[10px] font-bold">{method.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* BOTTOM ACTIONS */}
@@ -223,7 +182,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             className="flex-1 py-3 rounded-2xl bg-[#00A389] hover:bg-[#008f77] text-white text-xs font-bold shadow-lg shadow-[#00A389]/20 flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-95"
           >
             <Power className="w-3.5 h-3.5" />
-            <span>{isProcessing ? 'Processing...' : 'Place Order'}</span>
+            <span>{isProcessing ? 'Processing...' : 'Complete Order (Cash)'}</span>
           </button>
         </div>
       </div>

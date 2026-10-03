@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Product, Category, CartItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { normalizeProduct } from '../utils/normalizeProduct';
 
 interface OrderLineViewProps {
   products: Product[];
@@ -151,7 +152,8 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-          {filteredProducts.map(product => {
+          {filteredProducts.map(rawProduct => {
+            const product = normalizeProduct(rawProduct);
             const qtyInCart = getProductCartQty(product.id);
             const hasVariations = product.variations && product.variations.length > 0;
 

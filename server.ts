@@ -45,13 +45,15 @@ function seedDatabase() {
       INSERT INTO products (id, name, categoryId, categoryName, price, costPrice, stockQuantity, minStockThreshold, image, description, isAvailable, isDeal, bundledProducts, variations)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    INITIAL_PRODUCTS.forEach(p => {
+    INITIAL_PRODUCTS
+      .filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0)
+      .forEach(p => {
       insertProd.run(
         p.id, p.name, p.categoryId, p.categoryName, p.price, p.costPrice,
         p.stockQuantity, p.minStockThreshold, p.image, p.description,
         1, p.isDeal ? 1 : 0, stringifyJson(p.bundledProducts || []), stringifyJson(p.variations || [])
       );
-    });
+      });
 
     // Seed initial settings
     const setStmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
@@ -88,11 +90,12 @@ async function startServer() {
   // Full Initial Data Sync
   app.get('/api/data', (req: Request, res: Response) => {
     const categories = db.prepare('SELECT * FROM categories').all() as Category[];
-    const products = db.prepare('SELECT *, bundledProducts as bundledProducts_json, variations as variations_json FROM products').all().map((p: any) => ({
+    const fetchedProducts = db.prepare('SELECT *, bundledProducts as bundledProducts_json, variations as variations_json FROM products').all().map((p: any) => ({
       ...p,
       bundledProducts: parseJson(p.bundledProducts_json || p.bundledProducts),
       variations: parseJson(p.variations_json || p.variations || '[]'),
     })) as Product[];
+    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0);
     const orders = db.prepare('SELECT * FROM orders').all() as Order[];
     const users = db.prepare('SELECT * FROM users').all() as User[];
     
@@ -116,7 +119,7 @@ async function startServer() {
 
     res.json({
       categories,
-      products,
+      products: validProducts,
       orders,
       users,
       printerSettings,
@@ -127,12 +130,13 @@ async function startServer() {
 
   // PRODUCTS CRUD
   app.get('/api/products', (req: Request, res: Response) => {
-    const products = db.prepare('SELECT *, bundledProducts as bundledProducts_json, variations as variations_json FROM products').all().map((p: any) => ({
+    const fetchedProducts = db.prepare('SELECT *, bundledProducts as bundledProducts_json, variations as variations_json FROM products').all().map((p: any) => ({
       ...p,
       bundledProducts: parseJson(p.bundledProducts_json || p.bundledProducts),
       variations: parseJson(p.variations_json || p.variations || '[]'),
     })) as Product[];
-    res.json(products);
+    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0);
+    res.json(validProducts);
   });
 
   app.post('/api/products', (req: Request, res: Response) => {
