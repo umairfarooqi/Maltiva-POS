@@ -39,10 +39,13 @@ describe('phase 1 actual server restart', () => {
     } finally { db.close(); }
     expect(PosStorage.getOrders()).toMatchObject([{ id: 'sale-restart', persistenceState: 'saved' }]);
   }, 15000);
-  it('losing a committed response and restarting does not duplicate the sale or stock deduction', async () => {
+  it.each(['lost response', 'invalid JSON'])('a committed sale with %s survives restart without duplicate stock deduction', async failure => {
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
       const response = await realFetch(`${server.url}${url}`, init);
-      if (url === '/api/orders') throw new TypeError('Acknowledgment lost');
+      if (url === '/api/orders') {
+        if (failure === 'invalid JSON') return new Response('{"order":', { status: 201 });
+        throw new TypeError('Acknowledgment lost');
+      }
       return response;
     });
     expect((await PosApi.placeOrder(saleFixture('lost-response'), true)).state).toBe('pending');

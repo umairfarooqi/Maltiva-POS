@@ -11,10 +11,10 @@ function mergeOrders(serverOrders: Order[], pending: Order[], rejected: Order[] 
   return [...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-function mergeRecovery(serverOrders: Order[], pending: Order[], rejected: Order[]): Order[] {
+function mergeRecovery(serverOrders: Order[], pending: Order[], rejected: Order[], durableSaved: Order[] = []): Order[] {
   // Read the cache after the asynchronous recovery snapshots: a 201 may have arrived meanwhile.
   const cached = PosStorage.getOrders();
-  const acknowledged = cached.filter(order => order.persistenceState === 'saved');
+  const acknowledged = [...cached.filter(order => order.persistenceState === 'saved'), ...durableSaved];
   const acknowledgedKeys = new Set(acknowledged.map(order => order.idempotencyKey || order.id));
   return mergeOrders([...acknowledged, ...serverOrders],
     pending.filter(order => !acknowledgedKeys.has(order.idempotencyKey || order.id)),
@@ -25,9 +25,21 @@ function cacheOrder(order: Order) {
   PosStorage.setOrders(mergeOrders([order], [], PosStorage.getOrders()));
 }
 
+function optionalCache(write: () => void) {
+  try { write(); } catch { /* Cache capacity must not block durable sale recovery. */ }
+}
+
+function pendingResult(order: Order): SaleResult {
+  optionalCache(() => cacheOrder(order));
+  return { success: false, state: 'pending', order };
+}
+
 async function saved(order: Order): Promise<Order> {
   const canonical: Order = { ...order, idempotencyKey: order.idempotencyKey || order.id, persistenceState: 'saved', synced: true };
-  cacheOrder(canonical);
+  try { cacheOrder(canonical); } catch {
+    await PendingOutbox.acknowledge(canonical);
+    return canonical;
+  }
   await PendingOutbox.remove(canonical.idempotencyKey!);
   return canonical;
 }
@@ -54,21 +66,24 @@ async function sendSale(order: Order): Promise<SaleResult> {
       body: JSON.stringify(order), signal: controller.signal,
     });
     try { body = await response.json(); } catch (error) {
-      if (response.status === 201 && (error instanceof TypeError || (error as any)?.name === 'AbortError')) throw error;
+      // A 201 may already have committed, even if its body cannot be decoded.
+      if (response.status === 201) return pendingResult(order);
       body = {};
     }
   } catch (error) {
     if (error instanceof TypeError || (error as any)?.name === 'AbortError') {
-      try { cacheOrder(order); } catch { /* the IndexedDB recovery copy is already committed */ }
-      return { success: false, state: 'pending', order };
+      return pendingResult(order);
     }
     throw error;
   } finally { clearTimeout(timeout); }
-  if (response.status === 201 && body.order?.id && Array.isArray(body.order.items) &&
-      (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
-    return { success: true, state: 'saved', order: await saved(body.order) };
+  if (response.status === 201) {
+    if (body?.order?.id && Array.isArray(body.order.items) &&
+        (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
+      return { success: true, state: 'saved', order: await saved(body.order) };
+    }
+    return pendingResult(order);
   }
-  const error = typeof body.error === 'string' ? body.error : body.error?.message ||
+  const error = typeof body?.error === 'string' ? body.error : body?.error?.message ||
     `Server rejected the sale (HTTP ${response.status}). Retry or review this cart.`;
   const rejected = await PendingOutbox.reject(order, error);
   return { success: false, state: 'rejected', order: rejected, error };
@@ -96,23 +111,24 @@ export const PosApi = {
       if (res.ok) {
         const data = await res.json();
         // Update local cache
-        PosStorage.setCategories(data.categories);
+        optionalCache(() => PosStorage.setCategories(data.categories));
         const fetchedProducts: Product[] = Array.isArray(data.products) ? data.products : [];
         const validProducts = fetchedProducts.filter(
           product => product.name !== 'Untitled Dish' && Number(product.price) > 0
         );
         const normalizedProducts = validProducts.map(normalizeProduct);
-        PosStorage.setProducts(normalizedProducts);
-        const products = PosStorage.getProducts();
+        optionalCache(() => PosStorage.setProducts(normalizedProducts));
+        const products = normalizedProducts;
         const serverOrders: Order[] = (data.orders || []).map((order: Order) => ({ ...order, idempotencyKey: order.idempotencyKey || order.id, synced: true, persistenceState: 'saved' }));
         const pending = await PendingOutbox.list();
         const rejected = await PendingOutbox.rejected();
-        const orders = mergeRecovery(serverOrders, pending, rejected);
-        PosStorage.setOrders(orders);
-        PosStorage.setTables(data.tables || []);
-        PosStorage.setUsers(data.users);
-        PosStorage.setPrinterSettings(data.printerSettings);
-        PosStorage.setInventoryLogs(data.inventoryLogs || []);
+        const acknowledged = await PendingOutbox.acknowledged();
+        const orders = mergeRecovery(serverOrders, pending, rejected, acknowledged);
+        optionalCache(() => PosStorage.setOrders(orders));
+        optionalCache(() => PosStorage.setTables(data.tables || []));
+        optionalCache(() => PosStorage.setUsers(data.users));
+        optionalCache(() => PosStorage.setPrinterSettings(data.printerSettings));
+        optionalCache(() => PosStorage.setInventoryLogs(data.inventoryLogs || []));
 
         return { ...data, products, orders, tables: data.tables || [], isOnline: true };
       }
@@ -122,8 +138,9 @@ export const PosApi = {
 
     const pending = await PendingOutbox.list();
     const rejected = await PendingOutbox.rejected();
-    const orders = mergeRecovery(PosStorage.getOrders().filter(order => order.persistenceState !== 'pending'), pending, rejected);
-    PosStorage.setOrders(orders);
+    const acknowledged = await PendingOutbox.acknowledged();
+    const orders = mergeRecovery(PosStorage.getOrders().filter(order => order.persistenceState !== 'pending' && order.persistenceState !== 'rejected'), pending, rejected, acknowledged);
+    optionalCache(() => PosStorage.setOrders(orders));
     return {
       categories: PosStorage.getCategories(),
       products: PosStorage.getProducts(),

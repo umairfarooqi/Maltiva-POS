@@ -49,7 +49,16 @@ export const PendingOutbox = {
       notify();
     }
     const orders = await transaction('readonly', store => store.getAll()) as Order[];
-    return orders.filter(order => order.persistenceState !== 'rejected');
+    return orders.filter(order => order.persistenceState !== 'rejected' && order.persistenceState !== 'saved');
+  },
+  async acknowledged(): Promise<Order[]> {
+    const orders = await transaction('readonly', store => store.getAll()) as Order[];
+    return orders.filter(order => order.persistenceState === 'saved');
+  },
+  async acknowledge(order: Order): Promise<void> {
+    // A full optional cache must not turn a confirmed sale back into a pending sale.
+    await transaction('readwrite', store => store.put(order));
+    notify();
   },
   async rejected(): Promise<Order[]> {
     const orders = await transaction('readonly', store => store.getAll()) as Order[];
