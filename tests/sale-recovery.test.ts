@@ -22,7 +22,7 @@ async function pending(): Promise<any[]> {
       if (!db.objectStoreNames.contains('orders')) { db.close(); resolve([]); return; }
       const tx = db.transaction('orders', 'readonly');
       const rows = tx.objectStore('orders').getAll();
-      tx.oncomplete = () => { db.close(); resolve(rows.result.filter((order: any) => order.persistenceState !== 'rejected')); };
+      tx.oncomplete = () => { db.close(); resolve(rows.result.filter((order: any) => order.persistenceState !== 'rejected' && order.persistenceState !== 'saved')); };
       tx.onerror = () => { db.close(); reject(tx.error); };
     };
     request.onerror = () => reject(request.error);
@@ -183,8 +183,73 @@ describe('phase 1 durable sale recovery', () => {
 
   it('a 201 acknowledgment for another key cannot complete this sale', async () => {
     vi.stubGlobal('fetch', async () => json({ order: saleFixture('other-sale') }, 201));
-    expect(await PosApi.placeOrder(saleFixture('expected-sale'), true)).toMatchObject({ state: 'rejected' });
-    expect(PosStorage.getOrders()).toEqual([]);
+    expect(await PosApi.placeOrder(saleFixture('expected-sale'), true)).toMatchObject({ state: 'pending' });
+    expect((await pending())[0].idempotencyKey).toBe('key-expected-sale');
+    expect(await PendingOutbox.rejected()).toEqual([]);
+  });
+
+  it.each(['invalid JSON', 'missing snapshot', 'null body'])('an uncertain 201 with %s replays the original key', async kind => {
+    const order = saleFixture('uncertain-201');
+    vi.stubGlobal('fetch', async () => kind === 'invalid JSON'
+      ? new Response('{"order":', { status: 201 })
+      : json(kind === 'null body' ? null : { success: true }, 201));
+    expect(await PosApi.placeOrder(order, true)).toMatchObject({ state: 'pending' });
+    expect(await PendingOutbox.rejected()).toEqual([]);
+    PosStorage.setOrders([]);
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/data') return json(bootstrap([order]));
+      if (url.startsWith('/api/orders/pending-status')) return json({ savedOrders: [order], pendingKeys: [] });
+      expect(JSON.parse(init!.body as string).idempotencyKey).toBe(order.idempotencyKey);
+      return json({ order }, 201);
+    });
+    expect((await PosApi.fetchInitialData()).orders).toMatchObject([{ persistenceState: 'pending', idempotencyKey: order.idempotencyKey }]);
+    expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 1, pendingCount: 0 });
+    expect(PosStorage.getOrders()).toMatchObject([{ persistenceState: 'saved', idempotencyKey: order.idempotencyKey }]);
+  });
+
+  it('a confirmed sale survives reload with a full cache and is never replayed', async () => {
+    const order = saleFixture('quota-saved');
+    const cache = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Cache full', 'QuotaExceededError');
+    });
+    vi.stubGlobal('fetch', async () => json({ order }, 201));
+    expect(await PosApi.placeOrder(order, true)).toMatchObject({ state: 'saved', success: true });
+    expect(await PendingOutbox.list()).toEqual([]);
+    expect(await PendingOutbox.acknowledged()).toMatchObject([{ id: order.id, persistenceState: 'saved' }]);
+    vi.resetModules();
+    const recovered = (await import('../src/services/api')).PosApi;
+    vi.stubGlobal('fetch', async () => { throw new TypeError('Offline'); });
+    expect((await recovered.fetchInitialData()).orders).toMatchObject([{ id: order.id, persistenceState: 'saved' }]);
+    const transport = vi.fn(async (url: string) => {
+      expect(url).not.toBe('/api/orders');
+      return url === '/api/data' ? json(bootstrap()) : json({});
+    });
+    vi.stubGlobal('fetch', transport);
+    expect(await recovered.syncOfflineQueue()).toMatchObject({ syncedCount: 0, pendingCount: 0 });
+    expect(await recovered.fetchInitialData()).toMatchObject({ isOnline: true, orders: [{ id: order.id, persistenceState: 'saved' }] });
+    cache.mockRestore();
+  });
+
+  it('replay can acknowledge a sale while the order cache is full', async () => {
+    const order = saleFixture('quota-replay');
+    await PendingOutbox.put(order);
+    vi.spyOn(PosStorage, 'setOrders').mockImplementation(() => { throw new DOMException('Cache full', 'QuotaExceededError'); });
+    vi.stubGlobal('fetch', async (url: string) => url.startsWith('/api/orders/pending-status') ? json({}) : json({ order }, 201));
+    expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 1, pendingCount: 0 });
+    expect(await PendingOutbox.list()).toEqual([]);
+    vi.stubGlobal('fetch', async () => { throw new TypeError('Offline'); });
+    expect((await PosApi.fetchInitialData()).orders).toMatchObject([{ id: order.id, persistenceState: 'saved' }]);
+  });
+
+  it('a durable acknowledgment supersedes a cached rejection when an explicit retry succeeds', async () => {
+    const order = saleFixture('quota-retry');
+    PosStorage.setOrders([{ ...order, persistenceState: 'rejected', rejectionReason: 'Review sale' }]);
+    vi.spyOn(PosStorage, 'setOrders').mockImplementation(() => { throw new DOMException('Cache full', 'QuotaExceededError'); });
+    vi.stubGlobal('fetch', async () => json({ order }, 201));
+    expect(await PosApi.placeOrder(order, true)).toMatchObject({ state: 'saved' });
+    vi.stubGlobal('fetch', async () => { throw new TypeError('Offline'); });
+    expect((await PosApi.fetchInitialData()).orders).toMatchObject([{ id: order.id, persistenceState: 'saved' }]);
+    expect(await PendingOutbox.rejected()).toEqual([]);
   });
 
   it('checks the local server even when browser internet connectivity says offline', async () => {

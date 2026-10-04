@@ -52,6 +52,30 @@ describe('phase 1 cashier decisions', () => {
     expect(screen.getByText('Cart is empty')).toBeVisible();
     expect(PosStorage.getOrders()[0]).toMatchObject({ persistenceState: 'saved' });
   });
+  it('a full order cache does not strand an acknowledged checkout or its recovered draft', async () => {
+    vi.spyOn(PosStorage, 'setOrders').mockImplementation(() => { throw new DOMException('Cache full', 'QuotaExceededError'); });
+    await checkout();
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
+    expect(screen.getByText('Cart is empty')).toBeVisible();
+    expect(await PendingOutbox.list()).toEqual([]);
+    expect(await PendingOutbox.acknowledged()).toHaveLength(1);
+    // Simulate a crash before the submitted draft was cleared.
+    const product = INITIAL_PRODUCTS[0];
+    PosStorage.setDraft({ paymentMethod: 'cash', attempt: requests[0], cart: [{
+      cartItemId: 'crash-quota', product, quantity: 1, selectedVariations: [],
+      unitPrice: product.price, unitCost: product.costPrice || 0, totalPrice: product.price, totalCost: product.costPrice || 0,
+    }] });
+    outcome = 'pending';
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/data') throw new TypeError('Server stopped');
+      return originalFetch(url, init);
+    });
+    cleanup(); render(<App />);
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
+    expect(screen.getByText('Cart is empty')).toBeVisible();
+    expect(requests).toHaveLength(1);
+  });
   it('locks an uncertain checkout until its recovery key is reconciled after a storage exception', async () => {
     const deletion = vi.spyOn(PendingOutbox, 'remove').mockRejectedValue(new Error('Recovery storage interrupted'));
     const user = await checkout();

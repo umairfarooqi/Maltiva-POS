@@ -54,3 +54,20 @@ Section 16.7 phase-1 evidence:
 Tests use temporary isolated databases; the user's live SQLite database was not started or modified. Existing empty-image warnings and jsdom's unsupported page-reload message remain non-failing. No backup restore feature was introduced (phase 6).
 
 The user requested committing the current work on a new branch, `feature/phase1-sale-recovery`. The commit includes the existing staged UX changes alongside phase-1 sale persistence, recovery and lifecycle tests. Phase 2 remains deferred.
+
+## Recovery review follow-up (2026-10-05)
+
+- An unreadable, missing or mismatched HTTP 201 snapshot now remains pending under the original idempotency key. A 201 may already represent a committed sale, so it must not be treated as a rejection that permits editing and resubmitting the same basket under a new key. HTTP errors still require an explicit cashier decision.
+- A confirmed sale whose optional localStorage history write fails is retained as a saved snapshot in IndexedDB. Saved snapshots are excluded from replay and pending counts, and bootstrap merges them even when offline. They also supersede stale cached rejections after an explicit retry succeeds.
+- Bootstrap cache writes are optional: full localStorage no longer blocks recovery or prevents fresh server data from reaching the UI. Submitted crash drafts reconcile against the durable saved snapshots before cart edits resume.
+- Added regression coverage for uncertain 201 bodies, cache quota failures, reload, rejected-sale retry, cashier draft reconciliation and malformed acknowledgments from a real server followed by restart. Tests use temporary databases; the live SQLite database was not modified.
+
+Verification in this checkout:
+
+- `npm test -- --reporter=dot`: **64 passed, 10 files passed**, exit 0.
+- `npm run lint`: passed, exit 0.
+- `npm run build:electron`: renderer and server builds passed, exit 0.
+- `npm run test:electron`: configuration checks passed, exit 0.
+- `git diff --check`: passed.
+
+Dependency restoration: regular `npm ci` attempted a native SQLite compilation and failed because the installed Visual Studio lacks a VC++ toolset. `npm ci --ignore-scripts --no-audit --no-fund` restored the locked packages; `npm rebuild electron esbuild --no-audit --no-fund` also passed. The bundled `better-sqlite3` Windows binary passed an in-memory query and the server lifecycle tests. Electron validation covers builds and configuration; the desktop application was not launched. Package manifests and the lockfile were unchanged. Existing empty-image and jsdom navigation warnings remain non-failing. Phase 2 money, accounting, permissions and authentication work remains deferred.
