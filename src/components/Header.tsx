@@ -1,4 +1,5 @@
 import React from 'react';
+import { Menu, ShoppingCart } from 'lucide-react';
 import { User } from '../types/pos';
 
 interface HeaderProps {
@@ -15,16 +16,17 @@ export const Header: React.FC<HeaderProps> = ({
   cartItemCount = 0,
 }) => {
   return (
-    <header className="h-16 px-6 lg:px-8 bg-white border-b border-slate-100 flex items-center justify-between gap-4 shrink-0 select-none font-sans">
+    <header className="h-16 px-6 lg:px-8 bg-pos-chrome border-b border-pos-divider flex items-center justify-between gap-4 shrink-0 select-none font-sans">
       {/* Left: Mobile menu toggle only (< lg), completely clean */}
       <div className="flex items-center gap-3">
         {onOpenMobileSidebar && (
           <button
             onClick={onOpenMobileSidebar}
-            className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 cursor-pointer"
-            title="Open Menu"
+            aria-label="Open navigation"
+            className="lg:hidden p-2 -ml-2 text-pos-secondary hover:text-pos-text rounded-md hover:bg-pos-raised cursor-pointer"
+            title="Open navigation"
           >
-            <span className="text-xl">☰</span>
+            <Menu className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -35,10 +37,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenMobileCart && (
           <button
             onClick={onOpenMobileCart}
-            className="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00A389] text-white font-bold text-xs shadow-xs"
+            aria-label={`Open cart, ${cartItemCount} items`}
+            className="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-pos-action text-white font-bold text-xs"
             title="View Cart"
           >
-            <span>🛒</span>
+            <ShoppingCart className="w-4 h-4" aria-hidden="true" />
             <span>{cartItemCount}</span>
           </button>
         )}
@@ -48,13 +51,13 @@ export const Header: React.FC<HeaderProps> = ({
           <img
             src={currentUser.avatar}
             alt={currentUser.name}
-            className="w-10 h-10 rounded-full object-cover border border-slate-200"
+            className="w-10 h-10 rounded-full object-cover border border-pos-border"
           />
           <div className="text-left leading-tight hidden sm:block">
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-pos-text">
               {currentUser.name}
             </h3>
-            <p className="text-xs text-slate-400 capitalize mt-0.5">
+            <p className="text-xs text-pos-muted capitalize mt-0.5">
               {currentUser.role}
             </p>
           </div>

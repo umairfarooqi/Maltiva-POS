@@ -53,10 +53,10 @@ export const MaltivaLogo: React.FC<MaltivaLogoProps> = ({
       {/* Brand Name matching Image 2 ("Tasty Station" typography style) */}
       {!collapsed && (
         <div className="leading-tight animate-in fade-in duration-150 overflow-hidden whitespace-nowrap">
-          <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">
+          <h1 className="text-lg font-bold text-pos-text tracking-tight leading-none">
             Maltiva
           </h1>
-          <p className="text-sm font-medium text-slate-500 leading-none mt-1">
+          <p className="text-sm font-medium text-pos-muted leading-none mt-1">
             Crust
           </p>
         </div>

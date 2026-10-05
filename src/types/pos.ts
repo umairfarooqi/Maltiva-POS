@@ -1,10 +1,11 @@
 export interface Product {
+  moneySchemaVersion?: 2;
   id: string;
   name: string;
   categoryId: string;
   categoryName: string;
-  price: number;
-  costPrice: number;
+  pricePaisa: number;
+  costPricePaisa: number;
   stockQuantity: number;
   minStockThreshold: number;
   image: string;
@@ -28,16 +29,16 @@ export interface VariationGroup {
 export interface VariationOption {
   id: string;
   name: string;
-  priceDelta: number;
-  costDelta: number;
+  priceDeltaPaisa: number;
+  costDeltaPaisa: number;
 }
 
 export interface BundledProduct {
   productId?: string;
   productName: string;
   quantity: number;
-  unitPrice?: number;
-  rawCost?: number;
+  unitPricePaisa?: number;
+  rawCostPaisa?: number;
 }
 
 export type DealBundleItem = BundledProduct;
@@ -55,10 +56,10 @@ export interface CartItem {
   product: Product;
   quantity: number;
   selectedVariations: SelectedVariationItem[];
-  unitPrice: number;
-  unitCost: number;
-  totalPrice: number;
-  totalCost: number;
+  unitPricePaisa: number;
+  unitCostPaisa: number;
+  totalPricePaisa: number;
+  totalCostPaisa: number;
   notes?: string;
 }
 
@@ -67,14 +68,27 @@ export interface SelectedVariationItem {
   groupName: string;
   optionId: string;
   optionName: string;
-  priceDelta: number;
-  costDelta: number;
+  priceDeltaPaisa: number;
+  costDeltaPaisa: number;
 }
 
 export type UserRole = 'admin' | 'cashier' | 'manager';
 
 export interface Order {
+  moneySchemaVersion?: 2;
+  pricingFingerprint?: string;
+  netRevenuePaisa?: number;
+  marginBp?: number;
+  taxBp?: number;
+  taxInclusive?: boolean;
+  profitIncomplete?: boolean;
+  legacyDerived?: boolean;
   id: string;
+  idempotencyKey?: string;
+  persistenceState?: 'saved' | 'pending' | 'rejected' | 'draft';
+  rejectionReason?: string;
+  cashTenderedPaisa?: number;
+  changeDuePaisa?: number;
   orderNumber: string;
   tokenNumber: number;
   customerName?: string;
@@ -82,12 +96,12 @@ export interface Order {
   status: 'pending' | 'in_kitchen' | 'ready' | 'served' | 'cancelled';
   orderType: 'take_away' | 'dine_in';
   items: OrderItem[];
-  subtotal: number;
-  tax: number;
-  discount: number;
-  total: number;
-  totalCost: number;
-  profit: number;
+  subtotalPaisa: number;
+  taxPaisa: number;
+  discountPaisa: number;
+  totalPaisa: number;
+  totalCostPaisa: number;
+  profitPaisa: number;
   profitMarginPercent: number;
   paymentMethod: PaymentMethod;
   cashierId: string;
@@ -101,15 +115,18 @@ export interface Order {
 }
 
 export interface OrderItem {
+  netRevenuePaisa?: number;
+  lineDiscountPaisa?: number;
+  categoryId?: string;
   id: string;
   productId: string;
   productName: string;
   categoryName: string;
-  unitPrice: number;
-  unitCost: number;
+  unitPricePaisa: number;
+  unitCostPaisa: number;
   quantity: number;
-  totalPrice: number;
-  totalCost: number;
+  totalPricePaisa: number;
+  totalCostPaisa: number;
   selectedVariations: SelectedVariationItem[];
   notes?: string;
   bundledProducts?: BundledProduct[];
@@ -133,11 +150,13 @@ export interface User {
 export type PaymentMethod = 'cash' | 'card' | 'online' | 'mixed' | 'scan';
 
 export interface PrinterSettings {
+  moneySchemaVersion?: 2;
+  taxInclusive?: boolean;
   storeName: string;
   tagline: string;
   address: string;
   whatsApp: string;
-  taxRatePercent: number;
+  taxBp: number;
   paperWidth: '80mm' | '58mm';
   autoPrintDualSlips: boolean;
   customerDisplayGreeting: string;
@@ -197,6 +216,6 @@ export interface Customer {
   phone: string;
   email?: string;
   totalOrders: number;
-  totalSpent: number;
+  totalSpentPaisa: number;
   lastVisit: string;
 }

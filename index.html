@@ -1,8 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem('maltiva-theme') === 'light' ? 'light' : 'dark';
+      } catch { document.documentElement.dataset.theme = 'dark'; }
+      document.documentElement.style.colorScheme = document.documentElement.dataset.theme;
+    </script>
+    <style>
+      html { background: #121416; color: #eef1f4; }
+      html[data-theme="light"] { background: #f4f6f5; color: #18211f; }
+    </style>
     <title>Maltiva POS</title>
     <meta name="description" content="Maltiva restaurant point of sale and inventory management system with real-time stock sync, offline capabilities, and thermal receipt printing." />
     <meta property="og:title" content="Maltiva POS" />
@@ -14,7 +24,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300A389' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E%3Cpath d='M2 12h20'/%3E%3C/svg%3E" />
   </head>
-  <body class="bg-[#05826f] text-slate-800 antialiased selection:bg-[#00A389]/20 selection:text-[#00A389]">
+  <body class="bg-pos-canvas text-pos-text antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,4 +1,5 @@
-import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings, Customer } from '../types/pos';
+import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings, Customer, CartItem, PaymentMethod } from '../types/pos';
+import { upgradeMoney } from '../shared/moneyUpgrade';
 import {
   INITIAL_CATEGORIES,
   INITIAL_PRODUCTS,
@@ -8,6 +9,12 @@ import {
   INITIAL_PRINTER_SETTINGS,
   INITIAL_CUSTOMERS,
 } from '../data/initialData';
+
+export interface CheckoutDraft {
+  cart: CartItem[];
+  paymentMethod: PaymentMethod;
+  attempt?: Order;
+}
 
 const STORAGE_KEYS = {
   CATEGORIES: 'tasty_pos_categories',
@@ -20,9 +27,26 @@ const STORAGE_KEYS = {
   LOGS: 'tasty_pos_logs',
   OFFLINE_QUEUE: 'tasty_pos_offline_queue',
   ACTIVE_USER: 'tasty_pos_active_user',
+  DRAFT: 'tasty_pos_checkout_draft',
 };
 
 export class PosStorage {
+  static getDraft(): CheckoutDraft | null {
+    let value: any;
+    try {
+      value = JSON.parse(localStorage.getItem(STORAGE_KEYS.DRAFT) || 'null');
+    } catch { return null; }
+    return value && Array.isArray(value.cart) ? upgradeMoney(value) : null;
+  }
+
+  static setDraft(draft: CheckoutDraft) {
+    localStorage.setItem(STORAGE_KEYS.DRAFT, JSON.stringify(upgradeMoney(draft)));
+  }
+
+  static clearDraft() {
+    localStorage.removeItem(STORAGE_KEYS.DRAFT);
+  }
+
   static getCategories(): Category[] {
     const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
     return data ? JSON.parse(data) : INITIAL_CATEGORIES;
@@ -35,29 +59,25 @@ export class PosStorage {
   static getProducts(): Product[] {
     const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     if (!data) {
-      return this.filterValidProducts(INITIAL_PRODUCTS);
+      return upgradeMoney(this.filterValidProducts(INITIAL_PRODUCTS));
     }
 
+    let parsed: unknown;
     try {
-      const parsed: unknown = JSON.parse(data);
+      parsed = JSON.parse(data);
       if (!Array.isArray(parsed)) throw new Error('Invalid product cache');
-
-      const products = this.filterValidProducts(parsed as Product[]);
-      if (products.length !== parsed.length) {
-        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-      }
-      return products;
     } catch {
       const products = this.filterValidProducts(INITIAL_PRODUCTS);
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-      return products;
+      return upgradeMoney(products);
     }
+    // A conversion error leaves the original cache intact and reports the invalid row.
+    return this.filterValidProducts(upgradeMoney<Product[]>(parsed));
   }
 
   static setProducts(products: Product[]) {
     localStorage.setItem(
       STORAGE_KEYS.PRODUCTS,
-      JSON.stringify(this.filterValidProducts(products))
+      JSON.stringify(this.filterValidProducts(upgradeMoney<Product[]>(products)))
     );
   }
 
@@ -65,22 +85,22 @@ export class PosStorage {
     return products.filter(product =>
       product &&
       product.name !== 'Untitled Dish' &&
-      Number(product.price) > 0
+      Number(product.pricePaisa ?? (product as any).price) > 0
     );
   }
 
   static getOrders(): Order[] {
     const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    return data ? JSON.parse(data) : INITIAL_ORDERS;
+    return upgradeMoney(data ? JSON.parse(data) : []);
   }
 
   static setOrders(orders: Order[]) {
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(upgradeMoney(orders)));
   }
 
   static getTables(): TableItem[] {
     const data = localStorage.getItem(STORAGE_KEYS.TABLES);
-    return data ? JSON.parse(data) : INITIAL_TABLES;
+    try { const parsed = data ? JSON.parse(data) : INITIAL_TABLES; return Array.isArray(parsed) ? parsed : []; } catch { return []; }
   }
 
   static setTables(tables: TableItem[]) {
@@ -98,25 +118,25 @@ export class PosStorage {
 
   static getCustomers(): Customer[] {
     const data = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
-    return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
+    return upgradeMoney(data ? JSON.parse(data) : INITIAL_CUSTOMERS);
   }
 
   static setCustomers(customers: Customer[]) {
-    localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+    localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(upgradeMoney(customers)));
   }
 
   static getPrinterSettings(): PrinterSettings {
     const data = localStorage.getItem(STORAGE_KEYS.PRINTER);
-    return data ? JSON.parse(data) : INITIAL_PRINTER_SETTINGS;
+    return upgradeMoney(data ? JSON.parse(data) : INITIAL_PRINTER_SETTINGS);
   }
 
   static setPrinterSettings(settings: PrinterSettings) {
-    localStorage.setItem(STORAGE_KEYS.PRINTER, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEYS.PRINTER, JSON.stringify(upgradeMoney(settings)));
   }
 
   static getInventoryLogs(): InventoryLog[] {
     const data = localStorage.getItem(STORAGE_KEYS.LOGS);
-    return data ? JSON.parse(data) : [];
+    return upgradeMoney(data ? JSON.parse(data) : []);
   }
 
   static setInventoryLogs(logs: InventoryLog[]) {
@@ -125,11 +145,11 @@ export class PosStorage {
 
   static getOfflineQueue(): Order[] {
     const data = localStorage.getItem(STORAGE_KEYS.OFFLINE_QUEUE);
-    return data ? JSON.parse(data) : [];
+    return upgradeMoney(data ? JSON.parse(data) : []);
   }
 
   static setOfflineQueue(queue: Order[]) {
-    localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(queue));
+    localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify(upgradeMoney(queue)));
   }
 
   static addToOfflineQueue(order: Order) {

@@ -47,8 +47,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Maltiva Bita Deal 1',
     categoryId: 'cat-deals',
     categoryName: 'Cheezious Deals',
-    price: 990,      // Selling Price: Rs. 990
-    costPrice: 550,  // Raw Cost: Rs. 550 -> Profit: Rs. 440
+    pricePaisa: 99000,      // Selling Price: Rs. 990
+    costPricePaisa: 55000,  // Raw Cost: Rs. 550 -> Profit: Rs. 440
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80',
@@ -56,9 +56,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     isAvailable: true,
     isDeal: true,
     bundledProducts: [
-      { productName: 'Regular Stuffed Pizza', quantity: 1, unitPrice: 750, rawCost: 420 },
-      { productName: 'Gourmet Garlic Ranch Dip', quantity: 1, unitPrice: 120, rawCost: 50 },
-      { productName: 'Chilled Soft Drink 345ml', quantity: 1, unitPrice: 120, rawCost: 80 },
+      { productName: 'Regular Stuffed Pizza', quantity: 1, unitPricePaisa: 75000, rawCostPaisa: 42000 },
+      { productName: 'Gourmet Garlic Ranch Dip', quantity: 1, unitPricePaisa: 12000, rawCostPaisa: 5000 },
+      { productName: 'Chilled Soft Drink 345ml', quantity: 1, unitPricePaisa: 12000, rawCostPaisa: 8000 },
     ],
     variations: [],
     createdAt: new Date().toISOString(),
@@ -69,8 +69,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Crown Crust Feast Deal',
     categoryId: 'cat-deals',
     categoryName: 'Cheezious Deals',
-    price: 1890,     // Selling Price: Rs. 1,890
-    costPrice: 1050, // Raw Cost: Rs. 1,050 -> Profit: Rs. 840
+    pricePaisa: 189000,     // Selling Price: Rs. 1,890
+    costPricePaisa: 105000, // Raw Cost: Rs. 1,050 -> Profit: Rs. 840
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&auto=format&fit=crop&q=80',
@@ -78,9 +78,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     isAvailable: true,
     isDeal: true,
     bundledProducts: [
-      { productName: 'Large Crown Crust Pizza', quantity: 1, unitPrice: 1450, rawCost: 780 },
-      { productName: 'Loaded Cheesy Fries', quantity: 1, unitPrice: 450, rawCost: 180 },
-      { productName: '1.5L Cold Beverage', quantity: 1, unitPrice: 220, rawCost: 90 },
+      { productName: 'Large Crown Crust Pizza', quantity: 1, unitPricePaisa: 145000, rawCostPaisa: 78000 },
+      { productName: 'Loaded Cheesy Fries', quantity: 1, unitPricePaisa: 45000, rawCostPaisa: 18000 },
+      { productName: '1.5L Cold Beverage', quantity: 1, unitPricePaisa: 22000, rawCostPaisa: 9000 },
     ],
     variations: [],
     createdAt: new Date().toISOString(),
@@ -91,8 +91,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Cheesy Sandwich Box',
     categoryId: 'cat-deals',
     categoryName: 'Cheezious Deals',
-    price: 650,      // Selling Price: Rs. 650
-    costPrice: 360,  // Raw Cost: Rs. 360 -> Profit: Rs. 290
+    pricePaisa: 65000,      // Selling Price: Rs. 650
+    costPricePaisa: 36000,  // Raw Cost: Rs. 360 -> Profit: Rs. 290
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&auto=format&fit=crop&q=80',
@@ -100,21 +100,21 @@ export const INITIAL_PRODUCTS: Product[] = [
     isAvailable: true,
     isDeal: true,
     bundledProducts: [
-      { productName: 'Grilled Chicken Club Sandwich', quantity: 1, unitPrice: 420, rawCost: 220 },
-      { productName: 'Masala Fries Cup', quantity: 1, unitPrice: 150, rawCost: 60 },
-      { productName: '345ml Soft Drink', quantity: 1, unitPrice: 80, rawCost: 80 },
+      { productName: 'Grilled Chicken Club Sandwich', quantity: 1, unitPricePaisa: 42000, rawCostPaisa: 22000 },
+      { productName: 'Masala Fries Cup', quantity: 1, unitPricePaisa: 15000, rawCostPaisa: 6000 },
+      { productName: '345ml Soft Drink', quantity: 1, unitPricePaisa: 8000, rawCostPaisa: 8000 },
     ],
     variations: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'deal-sample-profit',
+    id: 'deal-sample-profitPaisa',
     name: 'Quick Snack Value Pack',
     categoryId: 'cat-deals',
     categoryName: 'Cheezious Deals',
-    price: 60,       // Customer Selling Price: Rs. 60
-    costPrice: 50,   // Raw Material Cost: Rs. 50 -> Net Profit: Rs. 10
+    pricePaisa: 6000,       // Customer Selling Price: Rs. 60
+    costPricePaisa: 5000,   // Raw Material Cost: Rs. 50 -> Net Profit: Rs. 10
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=300&auto=format&fit=crop&q=80',
@@ -122,8 +122,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     isAvailable: true,
     isDeal: true,
     bundledProducts: [
-      { productName: 'Mini Crispy Roll', quantity: 1, unitPrice: 40, rawCost: 35 },
-      { productName: 'Garlic Mayo Cup', quantity: 1, unitPrice: 20, rawCost: 15 },
+      { productName: 'Mini Crispy Roll', quantity: 1, unitPricePaisa: 4000, rawCostPaisa: 3500 },
+      { productName: 'Garlic Mayo Cup', quantity: 1, unitPricePaisa: 2000, rawCostPaisa: 1500 },
     ],
     variations: [],
     createdAt: new Date().toISOString(),
@@ -136,8 +136,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Chicken Fajita Stuffed Crust',
     categoryId: 'cat-pizza',
     categoryName: 'Pizza Crust',
-    price: 850,      // Rs. 850
-    costPrice: 460,  // Raw Cost: Rs. 460 -> Profit: Rs. 390
+    pricePaisa: 85000,      // Rs. 850
+    costPricePaisa: 46000,  // Raw Cost: Rs. 460 -> Profit: Rs. 390
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80',
@@ -152,9 +152,9 @@ export const INITIAL_PRODUCTS: Product[] = [
         required: true,
         multiSelect: false,
         options: [
-          { id: 'opt-reg', name: 'Regular (8")', priceDelta: 0, costDelta: 0 },
-          { id: 'opt-med', name: 'Medium (10")', priceDelta: 400, costDelta: 200 },
-          { id: 'opt-lrg', name: 'Large (13")', priceDelta: 850, costDelta: 420 },
+          { id: 'opt-reg', name: 'Regular (8")', priceDeltaPaisa: 0, costDeltaPaisa: 0 },
+          { id: 'opt-med', name: 'Medium (10")', priceDeltaPaisa: 40000, costDeltaPaisa: 20000 },
+          { id: 'opt-lrg', name: 'Large (13")', priceDeltaPaisa: 85000, costDeltaPaisa: 42000 },
         ],
       },
     ],
@@ -166,8 +166,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Maltiva Supreme Tikka',
     categoryId: 'cat-pizza',
     categoryName: 'Pizza Crust',
-    price: 890,      // Rs. 890
-    costPrice: 480,  // Raw Cost: Rs. 480 -> Profit: Rs. 410
+    pricePaisa: 89000,      // Rs. 890
+    costPricePaisa: 48000,  // Raw Cost: Rs. 480 -> Profit: Rs. 410
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&auto=format&fit=crop&q=80',
@@ -186,8 +186,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Grilled Cheesy Club Sandwich',
     categoryId: 'cat-sandwiches',
     categoryName: 'Sandwiches',
-    price: 490,      // Rs. 490
-    costPrice: 240,  // Raw Cost: Rs. 240 -> Profit: Rs. 250
+    pricePaisa: 49000,      // Rs. 490
+    costPricePaisa: 24000,  // Raw Cost: Rs. 240 -> Profit: Rs. 250
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=300&auto=format&fit=crop&q=80',
@@ -204,8 +204,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Smoked Roast Beef Sandwich',
     categoryId: 'cat-sandwiches',
     categoryName: 'Sandwiches',
-    price: 590,      // Rs. 590
-    costPrice: 310,  // Raw Cost: Rs. 310 -> Profit: Rs. 280
+    pricePaisa: 59000,      // Rs. 590
+    costPricePaisa: 31000,  // Raw Cost: Rs. 310 -> Profit: Rs. 280
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=300&auto=format&fit=crop&q=80',
@@ -224,8 +224,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Maltiva Cheesy Loaded Fries',
     categoryId: 'cat-fries',
     categoryName: 'Fries & Loaded🍟',
-    price: 480,      // Rs. 480
-    costPrice: 190,  // Raw Cost: Rs. 190 -> Profit: Rs. 290
+    pricePaisa: 48000,      // Rs. 480
+    costPricePaisa: 19000,  // Raw Cost: Rs. 190 -> Profit: Rs. 290
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=300&auto=format&fit=crop&q=80',
@@ -242,8 +242,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Classic Crisp Salted Fries',
     categoryId: 'cat-fries',
     categoryName: 'Fries & Loaded🍟',
-    price: 250,      // Rs. 250
-    costPrice: 80,   // Raw Cost: Rs. 80 -> Profit: Rs. 170
+    pricePaisa: 25000,      // Rs. 250
+    costPricePaisa: 8000,   // Raw Cost: Rs. 80 -> Profit: Rs. 170
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=300&auto=format&fit=crop&q=80',
@@ -262,8 +262,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Chilled Soft Drink 345ml',
     categoryId: 'cat-drinks',
     categoryName: 'Drinks & Shakes',
-    price: 120,      // Rs. 120
-    costPrice: 80,   // Raw Cost: Rs. 80 -> Profit: Rs. 40
+    pricePaisa: 12000,      // Rs. 120
+    costPricePaisa: 8000,   // Raw Cost: Rs. 80 -> Profit: Rs. 40
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80',
@@ -280,8 +280,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Fresh Mint Margarita',
     categoryId: 'cat-drinks',
     categoryName: 'Drinks & Shakes',
-    price: 220,      // Rs. 220
-    costPrice: 70,   // Raw Cost: Rs. 70 -> Profit: Rs. 150
+    pricePaisa: 22000,      // Rs. 220
+    costPricePaisa: 7000,   // Raw Cost: Rs. 70 -> Profit: Rs. 150
     stockQuantity: 999,
     minStockThreshold: 0,
     image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300&auto=format&fit=crop&q=80',
@@ -305,12 +305,12 @@ export const INITIAL_ORDERS: Order[] = [
     orderType: 'take_away',
     status: 'in_kitchen',
     paymentMethod: 'cash',
-    subtotal: 990,
-    tax: 0,
-    discount: 0,
-    total: 990,
-    totalCost: 550,
-    profit: 440,
+    subtotalPaisa: 99000,
+    taxPaisa: 0,
+    discountPaisa: 0,
+    totalPaisa: 99000,
+    totalCostPaisa: 55000,
+    profitPaisa: 44000,
     profitMarginPercent: 44.4,
     items: [
       {
@@ -318,11 +318,11 @@ export const INITIAL_ORDERS: Order[] = [
         productId: INITIAL_PRODUCTS[0].id,
         productName: INITIAL_PRODUCTS[0].name,
         categoryName: INITIAL_PRODUCTS[0].categoryName,
-        unitPrice: 990,
-        unitCost: 550,
+        unitPricePaisa: 99000,
+        unitCostPaisa: 55000,
         quantity: 1,
-        totalPrice: 990,
-        totalCost: 550,
+        totalPricePaisa: 99000,
+        totalCostPaisa: 55000,
         selectedVariations: [],
         bundledProducts: [],
       },
@@ -342,12 +342,12 @@ export const INITIAL_ORDERS: Order[] = [
     orderType: 'take_away',
     status: 'ready',
     paymentMethod: 'card',
-    subtotal: 1340,
-    tax: 0,
-    discount: 0,
-    total: 1340,
-    totalCost: 700,
-    profit: 640,
+    subtotalPaisa: 134000,
+    taxPaisa: 0,
+    discountPaisa: 0,
+    totalPaisa: 134000,
+    totalCostPaisa: 70000,
+    profitPaisa: 64000,
     profitMarginPercent: 47.8,
     items: [
       {
@@ -355,11 +355,11 @@ export const INITIAL_ORDERS: Order[] = [
         productId: INITIAL_PRODUCTS[4].id,
         productName: INITIAL_PRODUCTS[4].name,
         categoryName: INITIAL_PRODUCTS[4].categoryName,
-        unitPrice: 850,
-        unitCost: 460,
+        unitPricePaisa: 85000,
+        unitCostPaisa: 46000,
         quantity: 1,
-        totalPrice: 850,
-        totalCost: 460,
+        totalPricePaisa: 85000,
+        totalCostPaisa: 46000,
         selectedVariations: [],
         bundledProducts: [],
       },
@@ -368,11 +368,11 @@ export const INITIAL_ORDERS: Order[] = [
         productId: INITIAL_PRODUCTS[6].id,
         productName: INITIAL_PRODUCTS[6].name,
         categoryName: INITIAL_PRODUCTS[6].categoryName,
-        unitPrice: 490,
-        unitCost: 240,
+        unitPricePaisa: 49000,
+        unitCostPaisa: 24000,
         quantity: 1,
-        totalPrice: 490,
-        totalCost: 240,
+        totalPricePaisa: 49000,
+        totalCostPaisa: 24000,
         selectedVariations: [],
         bundledProducts: [],
       },
@@ -387,7 +387,7 @@ export const INITIAL_ORDERS: Order[] = [
 
 export const INITIAL_PRINTER_SETTINGS: PrinterSettings = {
   printerName: 'POS-80C Thermal Printer',
-  paperWidth: '80mm',
+  paperWidth: '58mm',
   autoPrintDualSlips: true,
   printCustomerSlip: true,
   printKitchenSlip: true,
@@ -403,7 +403,7 @@ export const INITIAL_PRINTER_SETTINGS: PrinterSettings = {
   taxRegistrationNumber: 'NTN-92047960-1',
   headerMessage: 'Maltiva Crust - Phase 3 DHA Lahore',
   footerMessage: 'Thank you for dining with us! WhatsApp: 03444757082',
-  taxRatePercent: 0,
+  taxBp: 0,
   enableCustomerDisplay: true,
   dualScreenCustomerDisplay: true,
   customerDisplayGreeting: 'Welcome to Maltiva Crust! Fast Food That Hits Different🔥',

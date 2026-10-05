@@ -1,8 +1,131 @@
 import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings } from '../types/pos';
 import { PosStorage } from './storage';
+import { PendingOutbox } from './pendingOutbox';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from '../utils/normalizeProduct';
 
+export type SaleResult = { success: boolean; state: 'saved' | 'pending' | 'rejected'; order: Order; error?: string };
+
+function mergeOrders(serverOrders: Order[], pending: Order[], rejected: Order[] = []): Order[] {
+  const merged = new Map<string, Order>();
+  for (const order of [...rejected, ...serverOrders, ...pending]) merged.set(order.idempotencyKey || order.id, order);
+  return [...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+function mergeRecovery(serverOrders: Order[], pending: Order[], rejected: Order[], durableSaved: Order[] = []): Order[] {
+  // Read the cache after the asynchronous recovery snapshots: a 201 may have arrived meanwhile.
+  const cached = PosStorage.getOrders();
+  const acknowledged = [...cached.filter(order => order.persistenceState === 'saved'), ...durableSaved];
+  const acknowledgedKeys = new Set(acknowledged.map(order => order.idempotencyKey || order.id));
+  return mergeOrders([...acknowledged, ...serverOrders],
+    pending.filter(order => !acknowledgedKeys.has(order.idempotencyKey || order.id)),
+    [...cached.filter(order => order.persistenceState === 'rejected'), ...rejected]);
+}
+
+function cacheOrder(order: Order) {
+  PosStorage.setOrders(mergeOrders([order], [], PosStorage.getOrders()));
+}
+
+function optionalCache(write: () => void) {
+  try { write(); } catch { /* Cache capacity must not block durable sale recovery. */ }
+}
+
+function pendingResult(order: Order): SaleResult {
+  optionalCache(() => cacheOrder(order));
+  return { success: false, state: 'pending', order };
+}
+
+async function saved(order: Order): Promise<Order> {
+  const canonical: Order = { ...order, idempotencyKey: order.idempotencyKey || order.id, persistenceState: 'saved', synced: true };
+  try { cacheOrder(canonical); } catch {
+    await PendingOutbox.acknowledge(canonical);
+    return canonical;
+  }
+  await PendingOutbox.remove(canonical.idempotencyKey!);
+  return canonical;
+}
+
+const stockAdjustmentKeys = new Map<string, string>();
+
+const submissions = new Map<string, Promise<SaleResult>>();
+
+async function submitSale(order: Order): Promise<SaleResult> {
+  const key = order.idempotencyKey!;
+  const existing = submissions.get(key);
+  if (existing) return existing;
+  const request = sendSale(order);
+  submissions.set(key, request);
+  try { return await request; } finally { submissions.delete(key); }
+}
+
+async function sendSale(order: Order): Promise<SaleResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  let response: Response;
+  let body: any;
+  try {
+    response = await fetch('/api/orders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey! },
+      body: JSON.stringify(order), signal: controller.signal,
+    });
+    try { body = await response.json(); } catch (error) {
+      // A 201 may already have committed, even if its body cannot be decoded.
+      if (response.status === 201) return pendingResult(order);
+      body = {};
+    }
+  } catch (error) {
+    if (error instanceof TypeError || (error as any)?.name === 'AbortError') {
+      return pendingResult(order);
+    }
+    throw error;
+  } finally { clearTimeout(timeout); }
+  if (response.status === 201) {
+    if (body?.order?.id && Array.isArray(body.order.items) &&
+        (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
+      return { success: true, state: 'saved', order: await saved(body.order) };
+    }
+    return pendingResult(order);
+  }
+  const error = typeof body?.error === 'string' ? body.error : body?.error?.message ||
+    `Server rejected the sale (HTTP ${response.status}). Retry or review this cart.`;
+  const rejected = await PendingOutbox.reject(order, error);
+  return { success: false, state: 'rejected', order: rejected, error };
+}
+
+let replay: Promise<{ syncedCount: number; rejectedCount: number; pendingCount: number; reachable: boolean }> | null = null;
+
+async function persistProduct(url: string, method: string, product: Product): Promise<Product> {
+  let response: Response;
+  try {
+    response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(product), signal: AbortSignal.timeout(5000) });
+  } catch { throw new Error('Menu changes need the local server. Keep this form and retry when it is available.'); }
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Menu changes could not be saved. Keep this form and retry.');
+  if (body.id !== product.id || body.moneySchemaVersion !== 2) throw new Error('Could not confirm the saved menu. Keep this form and retry.');
+  return normalizeProduct(body);
+}
+
 export const PosApi = {
+  async saveMoneySettings(settings: PrinterSettings): Promise<void> {
+    const response = await fetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error('Tax settings could not be saved on the server. Retry when it is available.');
+  },
+  async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string }> {
+    try {
+      const response = await fetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
+      const body = await response.json();
+      if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.' };
+      if (body.moneySchemaVersion !== 2 || typeof body.pricingFingerprint !== 'string' || !Array.isArray(body.items)) {
+        return { error: 'Invalid pricing response. Keep this cart and retry.' };
+      }
+      return { quote: body };
+    } catch (error) {
+      if (error instanceof TypeError || (error as any)?.name === 'TimeoutError' || (error as any)?.name === 'AbortError') return { unreachable: true };
+      return { error: 'Could not read pricing. Keep this cart and retry.' };
+    }
+  },
   // Sync all data from backend or return local cache
   async fetchInitialData(): Promise<{
     categories: Category[];
@@ -14,39 +137,48 @@ export const PosApi = {
     inventoryLogs: InventoryLog[];
     isOnline: boolean;
   }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
       const res = await fetch('/api/data', { signal: controller.signal });
-      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
         // Update local cache
-        PosStorage.setCategories(data.categories);
+        optionalCache(() => PosStorage.setCategories(data.categories));
         const fetchedProducts: Product[] = Array.isArray(data.products) ? data.products : [];
         const validProducts = fetchedProducts.filter(
-          product => product.name !== 'Untitled Dish' && Number(product.price) > 0
+          product => product.name !== 'Untitled Dish' && Number(product.pricePaisa) > 0
         );
         const normalizedProducts = validProducts.map(normalizeProduct);
-        PosStorage.setProducts(normalizedProducts);
-        const products = PosStorage.getProducts();
-        PosStorage.setOrders(data.orders);
-        PosStorage.setTables(data.tables);
-        PosStorage.setUsers(data.users);
-        PosStorage.setPrinterSettings(data.printerSettings);
-        PosStorage.setInventoryLogs(data.inventoryLogs || []);
+        optionalCache(() => PosStorage.setProducts(normalizedProducts));
+        const products = normalizedProducts;
+        const serverOrders: Order[] = (data.orders || []).map((order: Order) => ({ ...order, idempotencyKey: order.idempotencyKey || order.id, synced: true, persistenceState: 'saved' }));
+        const pending = await PendingOutbox.list();
+        const rejected = await PendingOutbox.rejected();
+        const acknowledged = await PendingOutbox.acknowledged();
+        const orders = mergeRecovery(serverOrders, pending, rejected, acknowledged);
+        optionalCache(() => PosStorage.setOrders(orders));
+        optionalCache(() => PosStorage.setTables(data.tables || []));
+        optionalCache(() => PosStorage.setUsers(data.users));
+        optionalCache(() => PosStorage.setPrinterSettings(data.printerSettings));
+        optionalCache(() => PosStorage.setInventoryLogs(data.inventoryLogs || []));
 
-        return { ...data, products, isOnline: true };
+        return { ...data, products, orders, tables: data.tables || [], isOnline: true };
       }
     } catch {
       // Network failed or offline: fall back to local storage seamlessly
-    }
+    } finally { clearTimeout(timeoutId); }
 
+    const pending = await PendingOutbox.list();
+    const rejected = await PendingOutbox.rejected();
+    const acknowledged = await PendingOutbox.acknowledged();
+    const orders = mergeRecovery(PosStorage.getOrders().filter(order => order.persistenceState !== 'pending' && order.persistenceState !== 'rejected'), pending, rejected, acknowledged);
+    optionalCache(() => PosStorage.setOrders(orders));
     return {
       categories: PosStorage.getCategories(),
       products: PosStorage.getProducts(),
-      orders: PosStorage.getOrders(),
+      orders,
       tables: PosStorage.getTables(),
       users: PosStorage.getUsers(),
       printerSettings: PosStorage.getPrinterSettings(),
@@ -55,225 +187,106 @@ export const PosApi = {
     };
   },
 
-  // Save new order with offline queueing & deduplication
-  async placeOrder(order: Order, isOnline: boolean): Promise<{ success: boolean; order: Order }> {
-    // 1. Immediately deduct local stock
-    const products = PosStorage.getProducts();
-    const logs = PosStorage.getInventoryLogs();
-
-    order.items.forEach(item => {
-      const p = products.find(prod => prod.id === item.productId);
-      if (p) {
-        const prev = p.stockQuantity;
-        p.stockQuantity = Math.max(0, prev - item.quantity);
-        logs.unshift({
-          id: `log-local-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-          productId: p.id,
-          productName: p.name,
-          previousStock: prev,
-          changeAmount: -item.quantity,
-          newStock: p.stockQuantity,
-          type: 'sale',
-          reason: `Sale ${order.orderNumber} (${item.quantity}x ${item.productName})`,
-          userId: order.cashierId,
-          userName: order.cashierName,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-
-    PosStorage.setProducts(products);
-    PosStorage.setInventoryLogs(logs);
-
-    // 2. Save order locally
-    const currentOrders = PosStorage.getOrders();
-    currentOrders.unshift(order);
-    PosStorage.setOrders(currentOrders);
-
-    // 3. If online, send to server. If fails or offline, enqueue in offline queue
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(order),
-        });
-        if (res.ok) {
-          const result = await res.json();
-          order.synced = true;
-          return { success: true, order: result.order || order };
-        }
-      } catch {
-        // failed network, queue for background sync
-      }
+  // Persist the recovery copy before transport, including when internet connectivity is absent.
+  async placeOrder(order: Order, _isOnline: boolean): Promise<SaleResult> {
+    let staged: Order;
+    try { staged = await PendingOutbox.put(order); }
+    catch {
+      const error = 'Cannot store a recovery copy. The sale was not sent; keep this cart and retry.';
+      return { success: false, state: 'rejected', order: { ...order, persistenceState: 'rejected', rejectionReason: error }, error };
     }
-
-    // Queue for sync
-    order.synced = false;
-    PosStorage.addToOfflineQueue(order);
-    return { success: true, order };
+    return submitSale(staged);
   },
 
-  // Synchronize queued offline orders
-  async syncOfflineQueue(): Promise<{ syncedCount: number }> {
-    const queue = PosStorage.getOfflineQueue();
-    if (queue.length === 0) return { syncedCount: 0 };
-
-    try {
-      const res = await fetch('/api/orders/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ queuedOrders: queue }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        PosStorage.clearOfflineQueue();
-        if (data.products) PosStorage.setProducts(data.products);
-        if (data.orders) PosStorage.setOrders(data.orders);
-        return { syncedCount: data.syncedCount || queue.length };
+  async syncOfflineQueue(): Promise<{ syncedCount: number; rejectedCount: number; pendingCount: number; reachable: boolean }> {
+    if (replay) return replay;
+    replay = (async () => {
+      let syncedCount = 0;
+      let rejectedCount = 0;
+      let reachable = false;
+      const queue = await PendingOutbox.list();
+      // Read server status in bounded batches. Only a POST acknowledgment (201) clears a recovery copy.
+      for (let offset = 0; offset < Math.max(1, queue.length); offset += 100) {
+        const batch = queue.slice(offset, offset + 100);
+        const query = new URLSearchParams();
+        batch.forEach(order => query.append('key', order.idempotencyKey!));
+        try {
+          const response = await fetch(`/api/orders/pending-status?${query}`, { signal: AbortSignal.timeout(5000) });
+          reachable = true;
+          if (response.ok) await response.json();
+        } catch { return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable: false }; }
       }
-    } catch {
-      // Still offline, will retry next turn
-    }
-
-    return { syncedCount: 0 };
+      for (const order of await PendingOutbox.list()) {
+        const result = await submitSale(order);
+        if (result.state === 'saved') syncedCount++;
+        if (result.state === 'rejected') { rejectedCount++; try { cacheOrder(result.order); } catch { /* rejection remains durable in IndexedDB */ } }
+        if (result.state === 'pending') { reachable = false; break; }
+      }
+      return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable };
+    })();
+    try { return await replay; } finally { replay = null; }
   },
 
   // Product CRUD
-  async createProduct(productData: Partial<Product>, isOnline: boolean): Promise<Product> {
+  async createProduct(productData: Partial<Product>, _isOnline: boolean): Promise<Product> {
     const newProd = normalizeProduct({ ...productData, id: productData.id || `prod-${Date.now()}` });
-
-    const localProducts = PosStorage.getProducts();
-    localProducts.unshift(newProd);
-    PosStorage.setProducts(localProducts);
-
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newProd),
-        });
-        if (res.ok) {
-          return normalizeProduct(await res.json());
-        }
-      } catch {
-        // saved locally
-      }
-    }
-
-    return newProd;
+    const savedProduct = await persistProduct('/api/products', 'POST', newProd);
+    optionalCache(() => PosStorage.setProducts([savedProduct, ...PosStorage.getProducts().filter(p => p.id !== savedProduct.id)]));
+    return savedProduct;
   },
 
-  async updateProduct(product: Product, isOnline: boolean): Promise<Product> {
+  async updateProduct(product: Product, _isOnline: boolean): Promise<Product> {
     const normalized = normalizeProduct(product);
-    const localProducts = PosStorage.getProducts();
-    const idx = localProducts.findIndex(p => p.id === normalized.id);
-    if (idx !== -1) {
-      localProducts[idx] = normalized;
-      PosStorage.setProducts(localProducts);
-    }
-
-    if (isOnline) {
-      try {
-        const res = await fetch(`/api/products/${normalized.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(normalized),
-        });
-        if (res.ok) {
-          const updated = await res.json();
-          if (updated && updated.id) {
-            return normalizeProduct(updated);
-          }
-        }
-      } catch {
-        // saved locally
-      }
-    }
-
-    return normalized;
+    const updated = await persistProduct(`/api/products/${normalized.id}`, 'PUT', normalized);
+    optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === updated.id ? updated : p)));
+    return updated;
   },
 
-  async deleteProduct(productId: string, isOnline: boolean): Promise<boolean> {
-    const localProducts = PosStorage.getProducts().filter(p => p.id !== productId);
-    PosStorage.setProducts(localProducts);
-
-    if (isOnline) {
-      try {
-        await fetch(`/api/products/${productId}`, { method: 'DELETE' });
-      } catch {
-        // removed locally
-      }
-    }
+  async deleteProduct(productId: string, _isOnline: boolean): Promise<boolean> {
+    const response = await fetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Product could not be deleted. Retry when the server is available.');
+    optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().filter(p => p.id !== productId)));
     return true;
   },
 
   // Category CRUD
-  async createCategory(name: string, icon: string, isOnline: boolean): Promise<Category> {
-    const newCat: Category = {
-      id: `cat-${Date.now()}`,
-      name: name || 'New Category',
-      icon: icon || '🍽️',
-      itemCount: 0,
-      order: 99,
-    };
-    const cats = PosStorage.getCategories();
-    cats.push(newCat);
-    PosStorage.setCategories(cats);
-
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newCat),
-        });
-        if (res.ok) return await res.json();
-      } catch {
-        // saved locally
-      }
-    }
-    return newCat;
+  async createCategory(name: string, icon: string, _isOnline: boolean): Promise<Category> {
+    const category = { id: `cat-${crypto.randomUUID()}`, name: name.trim(), icon, itemCount: 0, order: 99 };
+    const response = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(category) });
+    if (!response.ok) throw new Error('Category could not be saved on the server. Retry when it is available.');
+    const saved = { ...category, ...await response.json() };
+    if (!saved.id) throw new Error('Server did not confirm the category.');
+    optionalCache(() => PosStorage.setCategories([...PosStorage.getCategories(), saved]));
+    return saved;
   },
 
-  async updateCategory(category: Category, isOnline: boolean): Promise<Category> {
-    const cats = PosStorage.getCategories();
-    const idx = cats.findIndex(c => c.id === category.id);
-    if (idx !== -1) {
-      cats[idx] = category;
-      PosStorage.setCategories(cats);
-    }
-
-    // Also update categoryName in local products
-    const prods = PosStorage.getProducts().map(p =>
-      p.categoryId === category.id ? { ...p, categoryName: category.name } : p
-    );
-    PosStorage.setProducts(prods);
-
-    if (isOnline) {
-      try {
-        const res = await fetch(`/api/categories/${category.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(category),
-        });
-        if (res.ok) {
-          const updated = await res.json();
-          if (updated && updated.id) {
-            return updated;
-          }
-        }
-      } catch {
-        // saved locally
-      }
-    }
-    return category;
+  async updateCategory(category: Category, _isOnline: boolean): Promise<Category> {
+    const response = await fetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(category) });
+    if (!response.ok) throw new Error('Category could not be updated on the server. Retry when it is available.');
+    const saved = { ...category, ...await response.json() };
+    optionalCache(() => {
+      PosStorage.setCategories(PosStorage.getCategories().map(c => c.id === category.id ? saved : c));
+      PosStorage.setProducts(PosStorage.getProducts().map(p => p.categoryId === category.id ? { ...p, categoryName: saved.name } : p));
+    });
+    return saved;
   },
 
-  async deleteCategory(categoryId: string, isOnline: boolean): Promise<boolean> {
+  async deleteCategory(categoryId: string, _isOnline: boolean): Promise<boolean> {
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return false;
+    {
+      const res = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        let message = 'Delete failed';
+        try {
+          const body = await res.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // keep fallback message
+        }
+        throw new Error(message);
+      }
+    }
+
     const cats = PosStorage.getCategories().filter(c => c.id !== categoryId);
     if (!cats.some(category => category.id === DEFAULT_UNCATEGORIZED_CATEGORY.id)) {
       cats.push(DEFAULT_UNCATEGORIZED_CATEGORY);
@@ -291,13 +304,6 @@ export const PosApi = {
     );
     PosStorage.setProducts(products);
 
-    if (isOnline) {
-      try {
-        await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
-      } catch {
-        // saved locally
-      }
-    }
     return true;
   },
 
@@ -310,53 +316,20 @@ export const PosApi = {
     user: User,
     isOnline: boolean
   ): Promise<{ product: Product; log: InventoryLog }> {
-    const products = PosStorage.getProducts();
-    const product = products.find(p => p.id === productId);
-    if (!product) throw new Error('Product not found');
-
-    const prevStock = product.stockQuantity;
-    product.stockQuantity = Math.max(0, prevStock + changeAmount);
-    product.updatedAt = new Date().toISOString();
-    PosStorage.setProducts(products);
-
-    const log: InventoryLog = {
-      id: `log-${Date.now()}`,
-      productId,
-      productName: product.name,
-      previousStock: prevStock,
-      changeAmount,
-      newStock: product.stockQuantity,
-      type,
-      reason,
-      userId: user.id,
-      userName: user.name,
-      timestamp: new Date().toISOString(),
-    };
-
-    const logs = PosStorage.getInventoryLogs();
-    logs.unshift(log);
-    PosStorage.setInventoryLogs(logs);
-
-    if (isOnline) {
-      try {
-        await fetch('/api/inventory/adjust', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productId,
-            changeAmount,
-            reason,
-            type,
-            userId: user.id,
-            userName: user.name,
-          }),
-        });
-      } catch {
-        // logged locally
-      }
-    }
-
-    return { product, log };
+    const signature = JSON.stringify({ productId, changeAmount, reason, type, userId: user.id });
+    const operationId = stockAdjustmentKeys.get(signature) || crypto.randomUUID();
+    stockAdjustmentKeys.set(signature, operationId);
+    const response = await fetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name }) });
+    if (!response.ok) throw new Error('Stock adjustment could not be confirmed. Keep this form open and retry.');
+    const result = await response.json();
+    if (!result.product?.id || !result.log?.id) throw new Error('Server did not confirm the stock adjustment.');
+    stockAdjustmentKeys.delete(signature);
+    optionalCache(() => {
+      PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === productId ? normalizeProduct(result.product) : p));
+      PosStorage.setInventoryLogs([result.log, ...PosStorage.getInventoryLogs().filter(log => log.id !== result.log.id)]);
+    });
+    return result;
   },
 
   // AUTHENTICATION & LOGIN

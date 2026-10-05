@@ -1,8 +1,10 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
+import { randomUUID } from 'node:crypto';
+import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
+import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pricing';
+import { integer } from './src/shared/money';
 import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
@@ -12,11 +14,8 @@ import {
 } from './src/data/initialData';
 import { Order, Product, Category, User, InventoryLog, PrinterSettings } from './src/types/pos';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Initialize the SQLite Database
-initDb();
+
 
 // Utility to handle JSON in SQLite (for arrays/objects)
 const parseJson = <T>(val: string | null): T | [] => (val ? JSON.parse(val) : []);
@@ -42,14 +41,14 @@ function seedDatabase() {
     });
 
     const insertProd = db.prepare(`
-      INSERT INTO products (id, name, categoryId, categoryName, price, costPrice, stockQuantity, minStockThreshold, image, description, isAvailable, isDeal, bundledProducts, variations)
+      INSERT INTO products (id, name, categoryId, categoryName, price_paisa, cost_price_paisa, stockQuantity, minStockThreshold, image, description, isAvailable, isDeal, bundledProducts, variations)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     INITIAL_PRODUCTS
-      .filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0)
+      .filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0)
       .forEach(p => {
       insertProd.run(
-        p.id, p.name, p.categoryId, p.categoryName, p.price, p.costPrice,
+        p.id, p.name, p.categoryId, p.categoryName, p.pricePaisa, p.costPricePaisa,
         p.stockQuantity, p.minStockThreshold, p.image, p.description,
         1, p.isDeal ? 1 : 0, stringifyJson(p.bundledProducts || []), stringifyJson(p.variations || [])
       );
@@ -61,14 +60,47 @@ function seedDatabase() {
     setStmt.run('tagline', INITIAL_PRINTER_SETTINGS.tagline);
     setStmt.run('address', INITIAL_PRINTER_SETTINGS.address);
     setStmt.run('whatsApp', INITIAL_PRINTER_SETTINGS.whatsApp);
-    setStmt.run('taxRatePercent', INITIAL_PRINTER_SETTINGS.taxRatePercent.toString());
+    setStmt.run('taxBp', INITIAL_PRINTER_SETTINGS.taxBp.toString());
+    setStmt.run('taxInclusive', 'false');
     setStmt.run('paperWidth', INITIAL_PRINTER_SETTINGS.paperWidth);
     setStmt.run('autoPrintDualSlips', INITIAL_PRINTER_SETTINGS.autoPrintDualSlips ? 'true' : 'false');
     setStmt.run('customerDisplayGreeting', INITIAL_PRINTER_SETTINGS.customerDisplayGreeting);
   }
 }
 
-seedDatabase();
+
+
+function loadOrder(id: string): Order | undefined {
+  const row = fromMoneyRow('orders', db.prepare('SELECT * FROM orders WHERE id=?').get(id));
+  if (!row) return;
+  const items = db.prepare('SELECT * FROM order_items WHERE orderId=? ORDER BY rowid').all(id).map((raw: any) => {
+    const item = fromMoneyRow('order_items', raw);
+    return { ...item, selectedVariations: parseJson(item.selectedVariations), bundledProducts: parseJson(item.bundledProducts) };
+  });
+  const cash = db.prepare("SELECT tendered_paisa FROM payments WHERE order_id=? AND method='cash'").get(id) as any;
+  return { ...row, idempotencyKey: row.idempotency_key, items, cashTenderedPaisa: cash?.tendered_paisa,
+    taxInclusive: Boolean(row.taxInclusive), profitIncomplete: Boolean(row.profitIncomplete), synced: true, persistenceState: 'saved' };
+}
+function mappedValues(table: string, input: any) {
+  const columns = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as any[]).map(c => c.name));
+  return Object.fromEntries(Object.entries(toMoneyRow(table, input)).filter(([k,v]) => columns.has(k) && v !== undefined).map(([k,v]) => [k, typeof v === 'boolean' ? Number(v) : v]));
+}
+function insertMapped(table: string, input: any) {
+  const row = mappedValues(table, input); const columns = Object.keys(row);
+  db.prepare(`INSERT INTO ${table} (${columns.map(c => `"${c}"`).join(',')}) VALUES (${columns.map(() => '?').join(',')})`).run(...Object.values(row));
+}
+function validateProduct(data: any) {
+  if (data.moneySchemaVersion !== 2) problem('Reload the menu before saving: paisa schema required');
+  integer(data.pricePaisa); integer(data.costPricePaisa);
+  if (!Array.isArray(data.variations) || !Array.isArray(data.bundledProducts)) problem('Invalid menu options');
+  for (const group of data.variations) for (const option of group.options) {
+    integer(option.priceDeltaPaisa, 'Option price', true); integer(option.costDeltaPaisa, 'Option cost', true);
+  }
+  for (const bundle of data.bundledProducts) {
+    if (bundle.unitPricePaisa !== undefined) integer(bundle.unitPricePaisa);
+    if (bundle.rawCostPaisa !== undefined) integer(bundle.rawCostPaisa);
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -90,13 +122,10 @@ async function startServer() {
   // Full Initial Data Sync
   app.get('/api/data', (req: Request, res: Response) => {
     const categories = db.prepare('SELECT * FROM categories').all() as Category[];
-    const fetchedProducts = db.prepare('SELECT *, bundledProducts as bundledProducts_json, variations as variations_json FROM products').all().map((p: any) => ({
-      ...p,
-      bundledProducts: parseJson(p.bundledProducts_json || p.bundledProducts),
-      variations: parseJson(p.variations_json || p.variations || '[]'),
-    })) as Product[];
-    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0);
-    const orders = db.prepare('SELECT * FROM orders').all() as Order[];
+    const fetchedProducts = (db.prepare('SELECT id FROM products').all() as { id: string }[]).map(row => loadProduct(db, row.id)!);
+    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
+    const orders = (db.prepare('SELECT id FROM orders ORDER BY createdAt DESC, rowid DESC').all() as { id: string }[]).map(row => loadOrder(row.id)!);
+    const tables = db.prepare('SELECT * FROM tables').all();
     const users = db.prepare('SELECT * FROM users').all() as User[];
     
     // Get settings from KV table
@@ -109,10 +138,12 @@ async function startServer() {
       tagline: settingsMap.tagline || '',
       address: settingsMap.address || '',
       whatsApp: settingsMap.whatsApp || '',
-      taxRatePercent: parseFloat(settingsMap.taxRatePercent || '0'),
+      ...taxSettings(db), moneySchemaVersion: 2,
       paperWidth: settingsMap.paperWidth || '80mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',
       customerDisplayGreeting: settingsMap.customerDisplayGreeting || 'Welcome!',
+      globalLowStockThreshold: Number(settingsMap.globalLowStockThreshold ?? 5),
+      kitchenPrinterEnabled: settingsMap.kitchenPrinterEnabled === 'true',
     };
 
     const inventoryLogs = db.prepare('SELECT * FROM inventory_logs ORDER BY timestamp DESC').all() as InventoryLog[];
@@ -121,6 +152,7 @@ async function startServer() {
       categories,
       products: validProducts,
       orders,
+      tables,
       users,
       printerSettings,
       inventoryLogs,
@@ -130,59 +162,23 @@ async function startServer() {
 
   // PRODUCTS CRUD
   app.get('/api/products', (req: Request, res: Response) => {
-    const fetchedProducts = db.prepare('SELECT *, bundledProducts as bundledProducts_json, variations as variations_json FROM products').all().map((p: any) => ({
-      ...p,
-      bundledProducts: parseJson(p.bundledProducts_json || p.bundledProducts),
-      variations: parseJson(p.variations_json || p.variations || '[]'),
-    })) as Product[];
-    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.price) > 0);
+    const fetchedProducts = (db.prepare('SELECT id FROM products').all() as { id: string }[]).map(row => loadProduct(db, row.id)!);
+    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
     res.json(validProducts);
   });
 
-  app.post('/api/products', (req: Request, res: Response) => {
-    const data = req.body;
+  app.post('/api/products', (req, res) => {
+    const data = req.body; validateProduct(data);
     const id = data.id || `prod-${Date.now()}`;
-
-    const insert = db.prepare(`
-      INSERT INTO products (id, name, categoryId, categoryName, price, costPrice, stockQuantity, minStockThreshold, image, description, isAvailable, isDeal, bundledProducts, variations)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    insert.run(
-      id, data.name, data.categoryId, data.categoryName, data.price, data.costPrice,
-      data.stockQuantity, data.minStockThreshold, data.image, data.description,
-      data.isAvailable !== false ? 1 : 0, data.isDeal ? 1 : 0,
-      stringifyJson(data.bundledProducts || []), stringifyJson(data.variations || [])
-    );
-
-    res.status(201).json({ ...data, id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    insertMapped('products', { ...data, id, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts) });
+    res.status(201).json(loadProduct(db, id));
   });
-
-  app.put('/api/products/:id', (req: Request, res: Response) => {
-    const { id } = req.params;
-    const data = req.body;
-
-    const update = db.prepare(`
-      UPDATE products SET 
-        name = ?, categoryId = ?, categoryName = ?, price = ?, costPrice = ?,
-        stockQuantity = ?, minStockThreshold = ?, image = ?, description = ?,
-        isAvailable = ?, isDeal = ?, bundledProducts = ?, variations = ?, updatedAt = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-
-    update.run(
-      data.name, data.categoryId, data.categoryName, data.price, data.costPrice,
-      data.stockQuantity, data.minStockThreshold, data.image, data.description,
-      data.isAvailable !== false ? 1 : 0, data.isDeal ? 1 : 0,
-      stringifyJson(data.bundledProducts || []), stringifyJson(data.variations || []), id
-    );
-
-    res.json({
-      ...data,
-      id,
-      updatedAt: new Date().toISOString(),
-      createdAt: data.createdAt || new Date().toISOString(),
-    });
+  app.put('/api/products/:id', (req, res) => {
+    const data = req.body; validateProduct(data);
+    const row = mappedValues('products', { ...data, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString() });
+    delete row.id;
+    db.prepare(`UPDATE products SET ${Object.keys(row).map(k => `"${k}"=?`).join(',')} WHERE id=?`).run(...Object.values(row), req.params.id);
+    res.json(loadProduct(db, req.params.id));
   });
 
   app.delete('/api/products/:id', (req: Request, res: Response) => {
@@ -190,12 +186,39 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  const adjustInventory = db.transaction((data: any) => {
+    const { operationId, productId, changeAmount, reason, type, userId, userName } = data;
+    if (typeof operationId !== 'string' || !operationId || !['restock', 'adjustment', 'waste'].includes(type)) problem('Invalid stock operation');
+    const existing = db.prepare('SELECT * FROM inventory_logs WHERE id=?').get(operationId) as InventoryLog | undefined;
+    if (existing) {
+      if (existing.productId !== productId || existing.changeAmount !== changeAmount || existing.type !== type) problem('Stock operation identity conflicts', 409);
+      return { product: loadProduct(db, productId), log: existing };
+    }
+    integer(changeAmount, 'Stock change', true);
+    if (!changeAmount || (type === 'waste' && changeAmount > 0) || (type === 'restock' && changeAmount < 0)) problem('Review the stock change');
+    const product = loadProduct(db, productId);
+    if (!product) problem('Product not found', 404);
+    const newStock = product.stockQuantity + changeAmount;
+    integer(newStock, 'New stock quantity');
+    const timestamp = new Date().toISOString();
+    const log = { id: operationId, productId, productName: product.name, previousStock: product.stockQuantity, changeAmount, newStock, type, reason: reason || '', userId, userName, timestamp };
+    db.prepare('UPDATE products SET stockQuantity=?, updatedAt=? WHERE id=?').run(newStock, timestamp, productId);
+    db.prepare('INSERT INTO inventory_logs (id,productId,productName,previousStock,changeAmount,newStock,type,reason,userId,userName,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+      .run(operationId, productId, product.name, product.stockQuantity, changeAmount, newStock, type, reason || '', userId, userName, timestamp);
+    db.prepare('INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,?,?,?,?)').run(operationId, productId, changeAmount, type, operationId, userId, timestamp);
+    return { product: loadProduct(db, productId), log };
+  });
+  app.post('/api/inventory/adjust', (req, res) => {
+    try { res.json(adjustInventory(req.body)); }
+    catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
+  });
+
   // CATEGORIES CRUD
   app.post('/api/categories', (req: Request, res: Response) => {
-    const { name, icon } = req.body;
-    const id = `cat-${Date.now()}`;
+    const { name, icon, id: requestedId } = req.body;
+    const id = requestedId || `cat-${Date.now()}`;
     db.prepare('INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)').run(id, name, icon, 0);
-    res.status(201).json({ id, name, icon });
+    res.status(201).json({ id, name, icon, itemCount: 0, order: 0 });
   });
 
   app.put('/api/categories/:id', (req: Request, res: Response) => {
@@ -227,56 +250,66 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // ORDERS PIPELINE
-  app.post('/api/orders', (req: Request, res: Response) => {
-    const order: Order = req.body;
-    
-    // Wrap order and items in a transaction for "Atomic" safety
-    const transaction = db.transaction(() => {
-      // 1. Save Order
-      db.prepare(`
-        INSERT INTO orders (id, orderNumber, tokenNumber, customerName, status, orderType, subtotal, tax, discount, total, totalCost, profit, profitMarginPercent, paymentMethod, cashierId, cashierName, cashierRole, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).run(
-        order.id, order.orderNumber, order.tokenNumber, order.customerName, 
-        order.status, order.orderType, order.subtotal, order.tax, order.discount, 
-        order.total, order.totalCost, order.profit, order.profitMarginPercent, 
-        order.paymentMethod, order.cashierId, order.cashierName, order.cashierRole
-      );
+  // Reconcile keys from this browser's durable outbox. Unsent keys are known only to the browser.
+  app.get('/api/orders/pending-status', (req: Request, res: Response) => {
+    const input = req.query.key;
+    const keys = input === undefined ? [] : Array.isArray(input) ? input : [input];
+    if (keys.length > 100 || keys.some(key => typeof key !== 'string' || key.length > 200)) {
+      res.status(400).json({ error: 'Provide at most 100 valid outbox keys' });
+      return;
+    }
+    const savedOrders: Order[] = [];
+    const pendingKeys: string[] = [];
+    for (const key of keys) {
+      const row = db.prepare('SELECT id FROM orders WHERE idempotency_key = ?').get(key) as { id: string } | undefined;
+      if (row) savedOrders.push(loadOrder(row.id)!);
+      else pendingKeys.push(key as string);
+    }
+    res.json({ savedOrders, pendingKeys, pendingCount: pendingKeys.length });
+  });
 
-      // 2. Save Order Items
-      const itemStmt = db.prepare(`
-        INSERT INTO order_items (id, orderId, productId, productName, categoryName, unitPrice, unitCost, quantity, totalPrice, totalCost, selectedVariations, notes, bundledProducts)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      order.items.forEach(item => {
-        itemStmt.run(
-          item.id, order.id, item.productId, item.productName, item.categoryName,
-          item.unitPrice, item.unitCost, item.quantity, item.totalPrice, 
-          item.totalCost, stringifyJson(item.selectedVariations), item.notes, stringifyJson(item.bundledProducts)
-        );
-
-        // 3. Deduct Stock
-        db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE id = ?').run(item.quantity, item.productId);
-        
-        // 4. Inventory Log
-        const prod = db.prepare('SELECT name, stockQuantity FROM products WHERE id = ?').get() as any;
-        db.prepare(`
-          INSERT INTO inventory_logs (id, productId, productName, previousStock, changeAmount, newStock, type, reason, userId, userName, timestamp)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).run(
-          `log-${Date.now()}-${Math.random()}`, item.productId, prod?.name, prod?.stockQuantity + item.quantity,
-          -item.quantity, prod?.stockQuantity, 'sale', `Order ${order.orderNumber}`, order.cashierId, order.cashierName
-        );
-      });
-    });
-
-    try {
-      transaction();
-      res.status(201).json({ success: true, order });
-    } catch (err) {
-      res.status(500).json({ error: 'Database transaction failed' });
+  app.post('/api/orders/quote', (req, res) => {
+    try { res.json(quoteSale(db, req.body)); }
+    catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
+  });
+  const createOrder = db.transaction((input: any, key: string) => {
+    const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
+    if (existing) return loadOrder(existing.id)!;
+    const quote = quoteSale(db, input);
+    if (input.moneySchemaVersion !== 2 || input.pricingFingerprint !== quote.pricingFingerprint) {
+      problem('Prices need review. Review the current total and retry this sale.', 409);
+    }
+    if (!input.id || !input.orderNumber) problem('Sale identity is required');
+    if (!['cash', 'card', 'scan', 'online'].includes(input.paymentMethod)) problem('Choose one supported payment method');
+    const tenderedPaisa = input.paymentMethod === 'cash' ? integer(input.cashTenderedPaisa, 'Cash tender') : null;
+    if (tenderedPaisa !== null && tenderedPaisa < quote.totalPaisa) problem('Cash tender must cover the server total');
+    if (input.paymentMethod !== 'cash' && input.cashTenderedPaisa != null) problem('Only cash may carry tender');
+    const createdAt = new Date().toISOString();
+    const order = { ...input, ...quote, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
+      changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa };
+    insertMapped('orders', order);
+    for (const item of quote.items) {
+      const prod = db.prepare('SELECT stockQuantity FROM products WHERE id=?').get(item.productId) as any;
+      insertMapped('order_items', { ...item, orderId: input.id, legacyDerived: false,
+        selectedVariations: stringifyJson(item.selectedVariations), bundledProducts: stringifyJson(item.bundledProducts) });
+      db.prepare('UPDATE products SET stockQuantity=stockQuantity-? WHERE id=?').run(item.quantity, item.productId);
+      db.prepare("INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,'sale',?,?,?)")
+        .run(randomUUID(), item.productId, -item.quantity, input.id, input.cashierId, createdAt);
+      db.prepare(`INSERT INTO inventory_logs (id,productId,productName,previousStock,changeAmount,newStock,type,reason,userId,userName,timestamp)
+        VALUES (?,?,?,?,?,?,'sale',?,?,?,?)`).run(randomUUID(), item.productId, item.productName, prod.stockQuantity, -item.quantity,
+          prod.stockQuantity - item.quantity, `Order ${input.orderNumber}`, input.cashierId, input.cashierName, createdAt);
+    }
+    insertMapped('payments', { id: randomUUID(), order_id: input.id, method: input.paymentMethod,
+      amountPaisa: quote.totalPaisa, tenderedPaisa, created_at: createdAt });
+    return loadOrder(input.id)!;
+  });
+  app.post('/api/orders', (req, res) => {
+    const key = req.get('Idempotency-Key') || req.body?.idempotencyKey;
+    if (typeof key !== 'string' || !key.trim() || key.length > 200) { res.status(400).json({error: 'An idempotency key is required'}); return; }
+    try { res.status(201).json({ success: true, order: createOrder(req.body, key) }); }
+    catch (error: any) {
+      const status = error.status || (['SQLITE_CONSTRAINT_UNIQUE', 'SQLITE_CONSTRAINT_PRIMARYKEY'].includes(error.code) ? 409 : error.code ? 500 : 400);
+      res.status(status).json({ error: error.status ? error.message : 'Sale could not be saved. Review this cart before retrying.' });
     }
   });
 
@@ -300,20 +333,29 @@ async function startServer() {
     
     res.json({
       storeName: settingsMap.storeName || 'Maltiva Crust',
-      taxRatePercent: parseFloat(settingsMap.taxRatePercent || '0'),
+      ...taxSettings(db), moneySchemaVersion: 2,
       paperWidth: settingsMap.paperWidth || '80mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',
       customerDisplayGreeting: settingsMap.customerDisplayGreeting || 'Welcome!',
+      globalLowStockThreshold: Number(settingsMap.globalLowStockThreshold ?? 5),
+      kitchenPrinterEnabled: settingsMap.kitchenPrinterEnabled === 'true',
     });
   });
 
   app.put('/api/settings/printer', (req: Request, res: Response) => {
     const data = req.body;
+    if (data.taxInclusive !== undefined && typeof data.taxInclusive !== 'boolean') problem('Tax mode must be a boolean');
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
     
     const settingsToSave = {
       storeName: data.storeName,
-      taxRatePercent: data.taxRatePercent?.toString(),
+      tagline: data.tagline,
+      address: data.address,
+      whatsApp: data.whatsApp,
+      globalLowStockThreshold: data.globalLowStockThreshold === undefined ? undefined : String(integer(data.globalLowStockThreshold, 'Low-stock threshold')),
+      kitchenPrinterEnabled: data.kitchenPrinterEnabled === undefined ? undefined : String(Boolean(data.kitchenPrinterEnabled)),
+      taxBp: data.taxBp === undefined ? undefined : String(integer(data.taxBp, 'Tax basis points')),
+      taxInclusive: data.taxInclusive === undefined ? undefined : data.taxInclusive ? 'true' : 'false',
       paperWidth: data.paperWidth,
       autoPrintDualSlips: data.autoPrintDualSlips ? 'true' : 'false',
       customerDisplayGreeting: data.customerDisplayGreeting,
@@ -326,23 +368,28 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.use((error: any, _req: Request, res: Response, _next: any) => {
+    res.status(error.status || 400).json({ error: error.message || 'Invalid request' });
+  });
   // Vite Middleware
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+    app.use(express.static(path.resolve(process.cwd(), 'dist')));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.resolve(process.cwd(), 'dist', 'index.html'));
     });
   }
 
-  app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`Maltiva Professional POS running on http://0.0.0.0:${PORT}`);
+  const HOST = process.env.HOST || '127.0.0.1';
+  app.listen(Number(PORT), HOST, () => {
+    console.log(`Maltiva Professional POS running on http://${HOST}:${PORT}`);
   });
 }
 
-startServer();
+initDb().then(() => { seedDatabase(); return startServer(); }).catch(error => { console.error(error); process.exitCode = 1; });
