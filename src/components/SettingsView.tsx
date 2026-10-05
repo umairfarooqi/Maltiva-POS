@@ -1,3 +1,4 @@
+import { parseRupees } from '../shared/money';
 import React, { useState } from 'react';
 import {
   Printer,
@@ -23,7 +24,7 @@ import { PosStorage } from '../services/storage';
 
 interface SettingsViewProps {
   settings: PrinterSettings;
-  onSaveSettings: (settings: PrinterSettings) => void;
+  onSaveSettings: (settings: PrinterSettings) => void | Promise<void>;
   currentUser: User;
   onUpdateCashierCredentials?: (username: string, pin: string) => void;
   onOpenTestPrint: () => void;
@@ -40,12 +41,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [cashierUser, setCashierUser] = useState(settings.cashierUsername || 'cashier');
   const [cashierPass, setCashierPass] = useState(settings.cashierPin || '1234');
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [taxError, setTaxError] = useState('');
   const [cashierSaved, setCashierSaved] = useState(false);
   const [isWipeSalesDialogOpen, setIsWipeSalesDialogOpen] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveSettings(formData);
+    if (taxError) { setSaveError(taxError); return; }
+    try { await onSaveSettings(formData); setSaveError(''); }
+    catch (error) { setSaveError((error as Error).message); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -106,6 +111,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <span>{saved ? 'Settings Applied!' : 'Apply All Changes'}</span>
         </button>
       </header>
+      {saveError && <p role="alert" className="text-sm text-rose-700">{saveError}</p>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         
@@ -159,11 +165,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <label className="text-xs font-bold text-slate-600 block mb-1.5">Sales Tax %</label>
               <input
                 type="number"
-                value={formData.taxRatePercent}
-                onChange={e => setFormData({ ...formData, taxRatePercent: parseFloat(e.target.value) || 0 })}
+                value={formData.taxBp / 100}
+                step="0.01" min="0"
+                onChange={e => {
+                  try { setFormData({ ...formData, taxBp: parseRupees(e.target.value || '0') }); setTaxError(''); }
+                  catch { setTaxError('Tax rate must have at most two decimal places.'); }
+                }}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
               />
+              {taxError && <p role="alert" className="text-xs text-rose-700">{taxError}</p>}
             </div>
+            <label className="text-xs text-slate-600 flex items-center gap-2">
+              <input type="checkbox" checked={formData.taxInclusive ?? false} onChange={e => setFormData({ ...formData, taxInclusive: e.target.checked })} />
+              Prices include tax
+            </label>
           </div>
         </section>
 

@@ -77,7 +77,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               </div>
 
               <span className="text-xs font-mono font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-300">
-                {formatPKR(cust.totalSpent)}
+                {formatPKR(cust.totalSpentPaisa)}
               </span>
             </div>
 

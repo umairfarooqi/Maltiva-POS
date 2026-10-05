@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isolatedServer } from './helpers/isolated-server';
-import { saleFixture } from './helpers/sale-fixtures';
+import { saleFixture, reviewSale } from './helpers/sale-fixtures';
 import { PosStorage } from '../src/services/storage';
 import { PendingOutbox } from '../src/services/pendingOutbox';
 import { PosApi } from '../src/services/api';
@@ -13,14 +13,15 @@ beforeEach(async () => {
   localStorage.clear(); PosStorage.setOrders([]);
   await new Promise<void>(resolve => { const request = indexedDB.deleteDatabase('maltiva-pos-pending-sales'); request.onsuccess = () => resolve(); });
   server = await isolatedServer();
-  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => realFetch(`${server.url}${url}`, init));
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => realFetch(url.startsWith('http') ? url : `${server.url}${url}`, init));
 }, 15000);
 afterEach(async () => { vi.unstubAllGlobals(); await server?.cleanup(); });
 
 describe('phase 1 actual server restart', () => {
   it('a stopped server leaves a durable sale that syncs exactly once after restart and client reload', async () => {
+    const reviewed = await reviewSale(server.url, saleFixture('restart'));
     await server.stop();
-    const result = await PosApi.placeOrder(saleFixture('restart'), true);
+    const result = await PosApi.placeOrder(reviewed, true);
     expect(result.state).toBe('pending');
     PosStorage.setOrders([]); PosStorage.clearSession();
     vi.resetModules();
@@ -41,14 +42,15 @@ describe('phase 1 actual server restart', () => {
   }, 15000);
   it.each(['lost response', 'invalid JSON'])('a committed sale with %s survives restart without duplicate stock deduction', async failure => {
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
-      const response = await realFetch(`${server.url}${url}`, init);
+      const response = await realFetch(url.startsWith('http') ? url : `${server.url}${url}`, init);
       if (url === '/api/orders') {
         if (failure === 'invalid JSON') return new Response('{"order":', { status: 201 });
         throw new TypeError('Acknowledgment lost');
       }
       return response;
     });
-    expect((await PosApi.placeOrder(saleFixture('lost-response'), true)).state).toBe('pending');
+    const reviewed = await reviewSale(server.url, saleFixture('lost-response'));
+    expect((await PosApi.placeOrder(reviewed, true)).state).toBe('pending');
     await server.stop(); await server.start();
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => realFetch(`${server.url}${url}`, init));
     expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 1, pendingCount: 0 });

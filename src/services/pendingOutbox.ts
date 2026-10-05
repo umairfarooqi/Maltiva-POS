@@ -1,5 +1,6 @@
 import type { Order } from '../types/pos';
 import { PosStorage } from './storage';
+import { upgradeMoney } from '../shared/moneyUpgrade';
 
 const DB_NAME = 'maltiva-pos-pending-sales';
 const STORE = 'orders';
@@ -19,7 +20,9 @@ async function transaction<T>(mode: IDBTransactionMode, action: (store: IDBObjec
   const db = await database();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, mode);
-    const request = action(tx.objectStore(STORE));
+    let request: IDBRequest<T>;
+    try { request = action(tx.objectStore(STORE)); }
+    catch (error) { tx.abort(); db.close(); reject(error); return; }
     // Wait for commit, not merely the individual request's success.
     tx.oncomplete = () => { db.close(); resolve(request.result); };
     tx.onabort = () => { db.close(); reject(tx.error || request.error || new Error('Recovery write failed')); };
@@ -31,10 +34,21 @@ function notify() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('pos-outbox-changed'));
   try { localStorage.setItem('pos-outbox-update', `${Date.now()}-${Math.random()}`); } catch { /* IndexedDB remains authoritative */ }
 }
+async function snapshots(): Promise<Order[]> {
+  const rows = await transaction('readonly', store => store.getAll()) as Order[];
+  const converted: Order[] = [];
+  for (const row of rows) {
+    const order = upgradeMoney<Order>(row);
+    // Keep the old row until the versioned replacement commits.
+    if (row.moneySchemaVersion !== 2) await transaction('readwrite', store => store.put(order));
+    converted.push(order);
+  }
+  return converted;
+}
 
 export const PendingOutbox = {
   async put(order: Order): Promise<Order> {
-    const pending: Order = { ...order, idempotencyKey: order.idempotencyKey || order.id, synced: false, persistenceState: 'pending' };
+    const pending: Order = { ...upgradeMoney<Order>(order), idempotencyKey: order.idempotencyKey || order.id, synced: false, persistenceState: 'pending' };
     await transaction('readwrite', store => store.put(pending));
     notify();
     return pending;
@@ -48,11 +62,11 @@ export const PendingOutbox = {
       PosStorage.setOfflineQueue(PosStorage.getOfflineQueue().filter(order => !migrated.has(order.id)));
       notify();
     }
-    const orders = await transaction('readonly', store => store.getAll()) as Order[];
+    const orders = await snapshots();
     return orders.filter(order => order.persistenceState !== 'rejected' && order.persistenceState !== 'saved');
   },
   async acknowledged(): Promise<Order[]> {
-    const orders = await transaction('readonly', store => store.getAll()) as Order[];
+    const orders = await snapshots();
     return orders.filter(order => order.persistenceState === 'saved');
   },
   async acknowledge(order: Order): Promise<void> {
@@ -61,7 +75,7 @@ export const PendingOutbox = {
     notify();
   },
   async rejected(): Promise<Order[]> {
-    const orders = await transaction('readonly', store => store.getAll()) as Order[];
+    const orders = await snapshots();
     return orders.filter(order => order.persistenceState === 'rejected');
   },
   async reject(order: Order, reason: string): Promise<Order> {

@@ -1,6 +1,6 @@
 # Phase 1: sale persistence and recovery
 
-Spec: `docs/MALTIVA_POS_SPEC (1).md`, sections 16.5–16.7. The user has authorized implementation of phase 1 only.
+Spec: `docs/MALTIVA_POS_SPEC (1).md`, sections 16.5–16.7. This report records the completed phase-1 scope. Subsequent work is recorded in [Phase 2A: authoritative prices, integer paisa and profit](2026-10-05-authoritative-money-and-profit.md).
 
 ## Scope and decisions
 
@@ -31,7 +31,7 @@ Spec: `docs/MALTIVA_POS_SPEC (1).md`, sections 16.5–16.7. The user has authori
 - IndexedDB write failure: retain cart and do not send a request that cannot be recovered.
 - Concurrent replay, response loss, user logout and cached-history clearing must not lose or duplicate pending sales.
 
-Deferred 16.7 tests: tampered prices, Rs.333 tax agreement, tax-exclusive profit, server-issued number stress test and role authorization (phase 2 or later). Phase 2 requires user confirmation.
+The previously deferred 16.7 tampered-price, Rs.333 tax-agreement and tax-exclusive-profit tests are now covered by the implemented Phase 2A plan. Server-issued number stress tests and role authorization remain later work. The linked plan records implementation and verification evidence.
 
 ## Verification (2026-10-04)
 

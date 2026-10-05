@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { isolatedServer } from './helpers/isolated-server';
-import { saleFixture } from './helpers/sale-fixtures';
+import { saleFixture, reviewSale } from './helpers/sale-fixtures';
 
 describe('phase 1 atomic sale lifecycle', () => {
   let server: Awaited<ReturnType<typeof isolatedServer>>;
@@ -11,6 +11,7 @@ describe('phase 1 atomic sale lifecycle', () => {
   afterAll(async () => { db?.close(); await server?.cleanup(); });
   const count = (table: string, orderId: string) => db.prepare(`SELECT count(*) AS n FROM ${table} WHERE ${table === 'orders' ? 'id' : table === 'order_items' ? 'orderId' : table === 'stock_movements' ? 'ref' : 'order_id'} = ?`).get(orderId).n;
   async function submit(order: ReturnType<typeof saleFixture>) {
+    order = await reviewSale(server.url, order);
     return fetch(`${server.url}/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey }, body: JSON.stringify(order) });
   }
   it('returns 201 and persists order, items, payment, stock movement and complete bootstrap snapshots', async () => {
@@ -21,18 +22,18 @@ describe('phase 1 atomic sale lifecycle', () => {
     expect(count('order_items', order.id)).toBe(1);
     expect(count('payments', order.id)).toBe(1);
     expect(count('stock_movements', order.id)).toBe(1);
-    expect(db.prepare('SELECT amount, tendered FROM payments WHERE order_id = ?').get(order.id)).toEqual({ amount: 990, tendered: 1000 });
+    expect(db.prepare('SELECT amount_paisa, tendered_paisa FROM payments WHERE order_id = ?').get(order.id)).toEqual({ amount_paisa: 99000, tendered_paisa: 100000 });
     expect(db.prepare('SELECT stockQuantity FROM products WHERE id = ?').get(order.items[0].productId).stockQuantity).toBe(998);
     const bootstrap = await (await fetch(`${server.url}/api/data`)).json();
     expect(bootstrap.tables).toEqual([]);
-    expect(bootstrap.orders.find((saved: any) => saved.id === order.id).items[0]).toMatchObject({ notes: 'No onion', quantity: 1, unitPrice: 990 });
+    expect(bootstrap.orders.find((saved: any) => saved.id === order.id).items[0]).toMatchObject({ notes: 'No onion', quantity: 1, unitPricePaisa: 99000 });
   });
   it('replaying one key with another payload returns the original sale without another stock deduction', async () => {
     const order = saleFixture('duplicate');
     expect((await submit(order)).status).toBe(201);
-    const replay = await submit({ ...order, id: 'different-id', total: 1 });
+    const replay = await submit({ ...order, id: 'different-id', totalPaisa: 1 });
     expect(replay.status).toBe(201);
-    expect((await replay.json()).order).toMatchObject({ id: order.id, total: 990 });
+    expect((await replay.json()).order).toMatchObject({ id: order.id, totalPaisa: 99000 });
     expect(count('orders', order.id)).toBe(1);
     expect(count('payments', order.id)).toBe(1);
     expect(count('stock_movements', order.id)).toBe(1);

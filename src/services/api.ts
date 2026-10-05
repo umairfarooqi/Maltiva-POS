@@ -89,9 +89,41 @@ async function sendSale(order: Order): Promise<SaleResult> {
   return { success: false, state: 'rejected', order: rejected, error };
 }
 
-let replay: Promise<{ syncedCount: number; pendingCount: number; reachable: boolean }> | null = null;
+let replay: Promise<{ syncedCount: number; rejectedCount: number; pendingCount: number; reachable: boolean }> | null = null;
+
+async function persistProduct(url: string, method: string, product: Product): Promise<Product> {
+  let response: Response;
+  try {
+    response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(product), signal: AbortSignal.timeout(5000) });
+  } catch { throw new Error('Menu changes need the local server. Keep this form and retry when it is available.'); }
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Menu changes could not be saved. Keep this form and retry.');
+  if (body.id !== product.id || body.moneySchemaVersion !== 2) throw new Error('Could not confirm the saved menu. Keep this form and retry.');
+  return normalizeProduct(body);
+}
 
 export const PosApi = {
+  async saveMoneySettings(settings: PrinterSettings): Promise<void> {
+    const response = await fetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error('Tax settings could not be saved on the server. Retry when it is available.');
+  },
+  async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string }> {
+    try {
+      const response = await fetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
+      const body = await response.json();
+      if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.' };
+      if (body.moneySchemaVersion !== 2 || typeof body.pricingFingerprint !== 'string' || !Array.isArray(body.items)) {
+        return { error: 'Invalid pricing response. Keep this cart and retry.' };
+      }
+      return { quote: body };
+    } catch (error) {
+      if (error instanceof TypeError || (error as any)?.name === 'TimeoutError' || (error as any)?.name === 'AbortError') return { unreachable: true };
+      return { error: 'Could not read pricing. Keep this cart and retry.' };
+    }
+  },
   // Sync all data from backend or return local cache
   async fetchInitialData(): Promise<{
     categories: Category[];
@@ -114,7 +146,7 @@ export const PosApi = {
         optionalCache(() => PosStorage.setCategories(data.categories));
         const fetchedProducts: Product[] = Array.isArray(data.products) ? data.products : [];
         const validProducts = fetchedProducts.filter(
-          product => product.name !== 'Untitled Dish' && Number(product.price) > 0
+          product => product.name !== 'Untitled Dish' && Number(product.pricePaisa) > 0
         );
         const normalizedProducts = validProducts.map(normalizeProduct);
         optionalCache(() => PosStorage.setProducts(normalizedProducts));
@@ -164,10 +196,11 @@ export const PosApi = {
     return submitSale(staged);
   },
 
-  async syncOfflineQueue(): Promise<{ syncedCount: number; pendingCount: number; reachable: boolean }> {
+  async syncOfflineQueue(): Promise<{ syncedCount: number; rejectedCount: number; pendingCount: number; reachable: boolean }> {
     if (replay) return replay;
     replay = (async () => {
       let syncedCount = 0;
+      let rejectedCount = 0;
       let reachable = false;
       const queue = await PendingOutbox.list();
       // Read server status in bounded batches. Only a POST acknowledgment (201) clears a recovery copy.
@@ -179,73 +212,32 @@ export const PosApi = {
           const response = await fetch(`/api/orders/pending-status?${query}`, { signal: AbortSignal.timeout(5000) });
           reachable = true;
           if (response.ok) await response.json();
-        } catch { return { syncedCount, pendingCount: (await PendingOutbox.list()).length, reachable: false }; }
+        } catch { return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable: false }; }
       }
       for (const order of await PendingOutbox.list()) {
         const result = await submitSale(order);
         if (result.state === 'saved') syncedCount++;
-        if (result.state === 'rejected') { try { cacheOrder(result.order); } catch { /* rejection remains durable in IndexedDB */ } }
+        if (result.state === 'rejected') { rejectedCount++; try { cacheOrder(result.order); } catch { /* rejection remains durable in IndexedDB */ } }
         if (result.state === 'pending') { reachable = false; break; }
       }
-      return { syncedCount, pendingCount: (await PendingOutbox.list()).length, reachable };
+      return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable };
     })();
     try { return await replay; } finally { replay = null; }
   },
 
   // Product CRUD
-  async createProduct(productData: Partial<Product>, isOnline: boolean): Promise<Product> {
+  async createProduct(productData: Partial<Product>, _isOnline: boolean): Promise<Product> {
     const newProd = normalizeProduct({ ...productData, id: productData.id || `prod-${Date.now()}` });
-
-    const localProducts = PosStorage.getProducts();
-    localProducts.unshift(newProd);
-    PosStorage.setProducts(localProducts);
-
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newProd),
-        });
-        if (res.ok) {
-          return normalizeProduct(await res.json());
-        }
-      } catch {
-        // saved locally
-      }
-    }
-
-    return newProd;
+    const savedProduct = await persistProduct('/api/products', 'POST', newProd);
+    optionalCache(() => PosStorage.setProducts([savedProduct, ...PosStorage.getProducts().filter(p => p.id !== savedProduct.id)]));
+    return savedProduct;
   },
 
-  async updateProduct(product: Product, isOnline: boolean): Promise<Product> {
+  async updateProduct(product: Product, _isOnline: boolean): Promise<Product> {
     const normalized = normalizeProduct(product);
-    const localProducts = PosStorage.getProducts();
-    const idx = localProducts.findIndex(p => p.id === normalized.id);
-    if (idx !== -1) {
-      localProducts[idx] = normalized;
-      PosStorage.setProducts(localProducts);
-    }
-
-    if (isOnline) {
-      try {
-        const res = await fetch(`/api/products/${normalized.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(normalized),
-        });
-        if (res.ok) {
-          const updated = await res.json();
-          if (updated && updated.id) {
-            return normalizeProduct(updated);
-          }
-        }
-      } catch {
-        // saved locally
-      }
-    }
-
-    return normalized;
+    const updated = await persistProduct(`/api/products/${normalized.id}`, 'PUT', normalized);
+    optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === updated.id ? updated : p)));
+    return updated;
   },
 
   async deleteProduct(productId: string, isOnline: boolean): Promise<boolean> {

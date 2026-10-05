@@ -22,7 +22,8 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
   const isPending = order.persistenceState === 'pending';
   const isDraft = order.persistenceState === 'draft';
-  const persistenceLabel = isPending ? 'PENDING — awaiting server save' : isDraft ? 'DRAFT — unpaid preview' : '';
+  const isRejected = order.persistenceState === 'rejected';
+  const persistenceLabel = isPending ? 'PENDING — awaiting server save' : isDraft ? 'DRAFT — unpaid preview' : isRejected ? 'REJECTED — unpaid' : '';
 
   const formattedDate = new Date(order.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -62,8 +63,8 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
       order.items.forEach(it => {
         const name = it.productName.substring(0, 22).padEnd(22, ' ');
-        const price = `Rs. ${Math.round(it.totalPrice)}`.padStart(8, ' ');
-        lines.push(`${it.quantity}x  ${name} ${price}`);
+        const pricePaisa = formatPKR(it.totalPricePaisa).padStart(8, ' ');
+        lines.push(`${it.quantity}x  ${name} ${pricePaisa}`);
 
         if (it.bundledProducts && it.bundledProducts.length > 0) {
           it.bundledProducts.forEach(b => {
@@ -83,11 +84,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
       });
 
       lines.push(divider);
-      lines.push(`SUBTOTAL:                 Rs. ${Math.round(order.subtotal)}`);
-      if (order.tax > 0) {
-        lines.push(`TAX:                      Rs. ${Math.round(order.tax)}`);
+      lines.push(`SUBTOTAL:                 ${formatPKR(order.subtotalPaisa)}`);
+      if (order.taxPaisa > 0) {
+        lines.push(`TAX:                      ${formatPKR(order.taxPaisa)}`);
       }
-      lines.push(`TOTAL PAYABLE:            Rs. ${Math.round(order.total)}`);
+      lines.push(`TOTAL PAYABLE:            ${formatPKR(order.totalPaisa)}`);
       lines.push(`PAYMENT MODE:             ${order.paymentMethod.toUpperCase()}`);
       lines.push(divider);
       lines.push('       THANK YOU FOR YOUR ORDER!          ');
@@ -285,7 +286,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                       <span className="font-bold flex-1">
                         {it.quantity}x {it.productName}
                       </span>
-                      <span className="font-bold shrink-0">{formatPKR(it.totalPrice)}</span>
+                      <span className="font-bold shrink-0">{formatPKR(it.totalPricePaisa)}</span>
                     </div>
 
                     {/* Deal inclusions */}
@@ -310,17 +311,17 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               <div className="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-xs">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal</span>
-                  <span>{formatPKR(order.subtotal)}</span>
+                  <span>{formatPKR(order.subtotalPaisa)}</span>
                 </div>
-                {order.tax > 0 && (
+                {order.taxPaisa > 0 && (
                   <div className="flex justify-between text-slate-600">
                     <span>Tax</span>
-                    <span>{formatPKR(order.tax)}</span>
+                    <span>{formatPKR(order.taxPaisa)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-black text-slate-900 pt-1 border-t border-slate-200">
                   <span>{isPending ? 'TOTAL' : isDraft ? 'TOTAL (UNPAID)' : 'TOTAL PAID'}</span>
-                  <span>{formatPKR(order.total)}</span>
+                  <span>{formatPKR(order.totalPaisa)}</span>
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-500 pt-0.5">
                   <span>Payment Mode</span>

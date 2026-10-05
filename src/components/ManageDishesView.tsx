@@ -1,3 +1,4 @@
+import { parseRupees, rupeeText } from '../shared/money';
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
@@ -38,8 +39,8 @@ interface ManageDishesViewProps {
 interface DynamicVariationOption {
   id: string;
   name: string;
-  priceDelta: number;
-  costDelta: number;
+  priceDeltaPaisa: number;
+  costDeltaPaisa: number;
 }
 
 const FAST_FOOD_CATEGORY_EMOJIS = [
@@ -66,6 +67,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   onDeleteCategory,
   onAdjustStock,
 }) => {
+  const [moneyError, setMoneyError] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('cat-all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -172,8 +175,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setEditingProduct(product);
     setFormName(product.name || '');
     setFormCategoryId(product.categoryId || categories[0]?.id || 'cat-pizza');
-    setFormPrice(product.price != null && !isNaN(product.price) ? product.price.toString() : '');
-    setFormCostPrice(product.costPrice != null && !isNaN(product.costPrice) ? product.costPrice.toString() : '');
+    setFormPrice(product.pricePaisa != null && !isNaN(product.pricePaisa) ? rupeeText(product.pricePaisa) : '');
+    setFormCostPrice(product.costPricePaisa != null && !isNaN(product.costPricePaisa) ? rupeeText(product.costPricePaisa) : '');
     setFormStock(product.stockQuantity != null ? product.stockQuantity.toString() : '0');
     setFormMinThreshold(product.minStockThreshold != null ? product.minStockThreshold.toString() : '5');
     setFormImage(product.image || '');
@@ -186,8 +189,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
           flattened.push({
             id: opt.id,
             name: `${g.name ? g.name + ': ' : ''}${opt.name}`,
-            priceDelta: opt.priceDelta || 0,
-            costDelta: opt.costDelta || 0,
+            priceDeltaPaisa: opt.priceDeltaPaisa || 0,
+            costDeltaPaisa: opt.costDeltaPaisa || 0,
           });
         });
       });
@@ -216,8 +219,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setEditingDeal(dealProduct);
     setDealName(dealProduct.name || '');
     setDealCategoryId(dealProduct.categoryId || 'cat-deals');
-    setDealPrice(dealProduct.price != null && !isNaN(dealProduct.price) ? dealProduct.price.toString() : '');
-    setDealCostPrice(dealProduct.costPrice != null && !isNaN(dealProduct.costPrice) ? dealProduct.costPrice.toString() : '');
+    setDealPrice(dealProduct.pricePaisa != null && !isNaN(dealProduct.pricePaisa) ? rupeeText(dealProduct.pricePaisa) : '');
+    setDealCostPrice(dealProduct.costPricePaisa != null && !isNaN(dealProduct.costPricePaisa) ? rupeeText(dealProduct.costPricePaisa) : '');
     setDealStock(dealProduct.stockQuantity != null ? dealProduct.stockQuantity.toString() : '0');
     setDealMinThreshold(dealProduct.minStockThreshold != null ? dealProduct.minStockThreshold.toString() : '5');
     setDealImage(dealProduct.image || '');
@@ -245,6 +248,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
   const handleSaveDish = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError('');
+    if (moneyError) return;
     const category = categories.find(c => c.id === formCategoryId);
     const packagedVariations: VariationGroup[] =
       formVariations.length > 0
@@ -257,69 +262,72 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               options: formVariations.map(opt => ({
                 id: opt.id || `opt-${Math.random()}`,
                 name: opt.name || 'Standard Option',
-                priceDelta: Number(opt.priceDelta) || 0,
-                costDelta: Number(opt.costDelta) || 0,
+                priceDeltaPaisa: Number(opt.priceDeltaPaisa) || 0,
+                costDeltaPaisa: Number(opt.costDeltaPaisa) || 0,
               })),
             },
           ]
         : [];
 
-    const parsedPrice = parseFloat(formPrice);
-    const parsedCost = parseFloat(formCostPrice);
+    let parsedPrice: number, parsedCost: number;
+    try { parsedPrice = parseRupees(formPrice); parsedCost = parseRupees(formCostPrice); setMoneyError(''); }
+    catch (error) { setMoneyError((error as Error).message); return; }
     const parsedStock = parseInt(formStock, 10);
     const parsedMinThreshold = parseInt(formMinThreshold, 10);
 
-    const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingProduct?.price ?? 0);
-    const finalCost = !isNaN(parsedCost) ? parsedCost : (editingProduct?.costPrice ?? 0);
+    const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingProduct?.pricePaisa ?? 0);
+    const finalCost = !isNaN(parsedCost) ? parsedCost : (editingProduct?.costPricePaisa ?? 0);
     const finalImage =
       formImage.trim() ||
       editingProduct?.image ||
       'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop&q=80';
 
-    setIsDishModalOpen(false);
-    await onSaveProduct({
+    try { await onSaveProduct({
       id: editingProduct?.id,
       name: formName.trim() || editingProduct?.name || 'Maltiva Special Dish',
       categoryId: formCategoryId || editingProduct?.categoryId || 'cat-special',
       categoryName: category?.name || editingProduct?.categoryName || 'Special Dishes',
-      price: finalPrice,
-      costPrice: finalCost,
+      pricePaisa: finalPrice,
+      costPricePaisa: finalCost,
       stockQuantity: !isNaN(parsedStock) ? parsedStock : (editingProduct?.stockQuantity ?? 25),
       minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingProduct?.minStockThreshold ?? 5),
       image: finalImage,
       description: formDescription,
       isDeal: false,
       variations: packagedVariations,
-    });
+    }); setIsDishModalOpen(false); }
+    catch (error) { setSaveError((error as Error).message); }
   };
 
   const handleSaveDeal = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError('');
+    if (moneyError) return;
     const category = categories.find(c => c.id === dealCategoryId) || {
       name: 'Deals & Combos',
       id: 'cat-deals',
     };
 
-    const parsedPrice = parseFloat(dealPrice);
-    const parsedCost = parseFloat(dealCostPrice);
+    let parsedPrice: number, parsedCost: number;
+    try { parsedPrice = parseRupees(dealPrice); parsedCost = parseRupees(dealCostPrice); setMoneyError(''); }
+    catch (error) { setMoneyError((error as Error).message); return; }
     const parsedStock = parseInt(dealStock, 10);
     const parsedMinThreshold = parseInt(dealMinThreshold, 10);
 
-    const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingDeal?.price ?? 0);
-    const finalCost = !isNaN(parsedCost) ? parsedCost : (editingDeal?.costPrice ?? 0);
+    const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingDeal?.pricePaisa ?? 0);
+    const finalCost = !isNaN(parsedCost) ? parsedCost : (editingDeal?.costPricePaisa ?? 0);
     const finalImage =
       dealImage.trim() ||
       editingDeal?.image ||
       'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80';
 
-    setIsDealModalOpen(false);
-    await onSaveProduct({
+    try { await onSaveProduct({
       id: editingDeal?.id,
       name: dealName.trim() || editingDeal?.name || 'Maltiva Mega Combo Deal',
       categoryId: dealCategoryId || editingDeal?.categoryId || 'cat-deals',
       categoryName: category.name,
-      price: finalPrice,
-      costPrice: finalCost,
+      pricePaisa: finalPrice,
+      costPricePaisa: finalCost,
       stockQuantity: !isNaN(parsedStock) ? parsedStock : (editingDeal?.stockQuantity ?? 30),
       minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingDeal?.minStockThreshold ?? 5),
       image: finalImage,
@@ -327,7 +335,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       isDeal: true,
       bundledProducts: dealBundledItems,
       variations: [],
-    });
+    }); setIsDealModalOpen(false); }
+    catch (error) { setSaveError((error as Error).message); }
   };
 
   const handleSaveCategorySubmit = async (e: React.FormEvent) => {
@@ -381,7 +390,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   const addDynamicVariation = () => {
     setFormVariations(prev => [
       ...prev,
-      { id: `opt-${Date.now()}`, name: '', priceDelta: 0, costDelta: 0 },
+      { id: `opt-${Date.now()}`, name: '', priceDeltaPaisa: 0, costDeltaPaisa: 0 },
     ]);
   };
 
@@ -401,7 +410,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     } else {
       setDealBundledItems(prev => [
         ...prev,
-        { productId: prod.id, productName: prod.name, quantity: 1, unitPrice: prod.price },
+        { productId: prod.id, productName: prod.name, quantity: 1, unitPricePaisa: prod.pricePaisa },
       ]);
     }
     setSelectedProductToAdd('');
@@ -411,7 +420,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     if (!customItemInput.trim()) return;
     setDealBundledItems(prev => [
       ...prev,
-      { productName: customItemInput.trim(), quantity: 1, unitPrice: 0 },
+      { productName: customItemInput.trim(), quantity: 1, unitPricePaisa: 0 },
     ]);
     setCustomItemInput('');
   };
@@ -582,8 +591,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
               {categoryProducts.map(rawProduct => {
                 const product = normalizeProduct(rawProduct);
-                const safePrice = Number(product.price) || 0;
-                const safeCost = Number(product.costPrice) || 0;
+                const safePrice = Number(product.pricePaisa) || 0;
+                const safeCost = Number(product.costPricePaisa) || 0;
                 const margin =
                   safePrice > 0 ? ((safePrice - safeCost) / safePrice) * 100 : 0;
 
@@ -709,7 +718,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             <div className="space-y-3">
               {categoryProducts.map(rawProduct => {
                 const product = normalizeProduct(rawProduct);
-                const safePrice = Number(product.price) || 0;
+                const safePrice = Number(product.pricePaisa) || 0;
                 return (
                   <div
                     key={product.id}
@@ -806,7 +815,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <input
                       type="number"
                       value={formPrice}
-                      onChange={e => setFormPrice(e.target.value)}
+                      onChange={e => { setFormPrice(e.target.value); setMoneyError(''); } }
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                       required
                     />
@@ -820,7 +829,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <input
                       type="number"
                       value={formCostPrice}
-                      onChange={e => setFormCostPrice(e.target.value)}
+                      onChange={e => { setFormCostPrice(e.target.value); setMoneyError(''); } }
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                     />
                   </div>
@@ -867,7 +876,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <span className="text-sm font-bold">Estimated Profit</span>
                   </div>
                   <div className="text-3xl font-black text-emerald-600">
-                    {formatPKR((parseFloat(formPrice) || 0) - (parseFloat(formCostPrice) || 0))}
+                    {formatPKR((parseRupees(formPrice) || 0) - (parseRupees(formCostPrice) || 0))}
                   </div>
                 </div>
 
@@ -905,10 +914,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         <input
                           type="number"
                           placeholder="+Price"
-                          value={v.priceDelta}
+                          value={v.priceDeltaPaisa}
                           onChange={e => {
                             const updated = [...formVariations];
-                            updated[idx].priceDelta = parseFloat(e.target.value) || 0;
+                            try { updated[idx].priceDeltaPaisa = parseRupees(e.target.value || '0', true); setMoneyError(''); }
+                            catch (error) { setMoneyError((error as Error).message); return; }
                             setFormVariations(updated);
                           }}
                           className="w-20 px-2 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
@@ -946,6 +956,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         </div>
       )}
 
+      {(moneyError || saveError) && <p role="alert" className="fixed bottom-4 left-4 z-[60] rounded bg-rose-50 p-3 text-sm text-rose-700">{moneyError || saveError}</p>}
       {/* DEAL MODAL */}
       {isDealModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
@@ -984,7 +995,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <input
                       type="number"
                       value={dealPrice}
-                      onChange={e => setDealPrice(e.target.value)}
+                      onChange={e => { setDealPrice(e.target.value); setMoneyError(''); } }
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                       required
                     />
@@ -996,7 +1007,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <input
                       type="number"
                       value={dealCostPrice}
-                      onChange={e => setDealCostPrice(e.target.value)}
+                      onChange={e => { setDealCostPrice(e.target.value); setMoneyError(''); } }
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-md text-sm font-mono focus-visible:border-[#008f77]"
                     />
                   </div>
@@ -1055,7 +1066,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         .filter(p => !p.isDeal)
                         .map(p => (
                           <option key={p.id} value={p.id}>
-                            {p.name} ({formatPKR(p.price)})
+                            {p.name} ({formatPKR(p.pricePaisa)})
                           </option>
                         ))}
                     </select>
