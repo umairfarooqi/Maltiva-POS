@@ -1,28 +1,35 @@
 import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
-import { Product, SelectedVariationItem, VariationGroup } from '../types/pos';
+import { CartItem, Product, SelectedVariationItem, VariationGroup } from '../types/pos';
+import { Dialog } from './ui/Dialog';
 import { formatPKR } from '../utils/formatCurrency';
 
 interface VariationModalProps {
-  product: Product | null;
+  product: Product;
+  error?: string;
+  maximumQuantity?: number;
+  initialItem?: CartItem;
   onClose: () => void;
   onAddToCart: (
     product: Product,
     selectedVariations: SelectedVariationItem[],
     quantity: number,
     notes: string
-  ) => void;
+  ) => boolean | void;
 }
 
 export const VariationModal: React.FC<VariationModalProps> = ({
   product,
+  initialItem,
+  error,
+  maximumQuantity = Infinity,
   onClose,
   onAddToCart,
 }) => {
-  if (!product) return null;
 
   // Initialize selected variations with defaults for required groups
   const [selectedVariations, setSelectedVariations] = useState<SelectedVariationItem[]>(() => {
+    if (initialItem) return initialItem.selectedVariations;
     const initial: SelectedVariationItem[] = [];
     product.variations.forEach(group => {
       if (group.required && group.options.length > 0 && !group.multiSelect) {
@@ -33,21 +40,23 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           groupName: group.name,
           optionId: opt.id,
           optionName: opt.name,
-          priceDelta: opt.priceDelta,
-          costDelta: opt.costDelta,
+          priceDeltaPaisa: opt.priceDeltaPaisa,
+          costDeltaPaisa: opt.costDeltaPaisa,
         });
       }
     });
     return initial;
   });
 
-  const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState('');
+  const [quantity, setQuantity] = useState(initialItem?.quantity || 1);
+  const [notes, setNotes] = useState(initialItem?.notes || '');
 
-  // Calculate live item price
-  const variationPriceSum = selectedVariations.reduce((sum, v) => sum + v.priceDelta, 0);
-  const unitPrice = product.price + variationPriceSum;
-  const totalPrice = unitPrice * quantity;
+  const [missingGroup, setMissingGroup] = useState<string | null>(null);
+
+  // Calculate live item pricePaisa
+  const variationPriceSum = selectedVariations.reduce((sum, v) => sum + v.priceDeltaPaisa, 0);
+  const unitPricePaisa = product.pricePaisa + variationPriceSum;
+  const totalPricePaisa = unitPricePaisa * quantity;
 
   const handleSelectOption = (group: VariationGroup, optionId: string) => {
     const option = group.options.find(o => o.id === optionId);
@@ -69,8 +78,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
             groupName: group.name,
             optionId: option.id,
             optionName: option.name,
-            priceDelta: option.priceDelta,
-            costDelta: option.costDelta,
+            priceDeltaPaisa: option.priceDeltaPaisa,
+            costDeltaPaisa: option.costDeltaPaisa,
           },
         ]);
       }
@@ -83,8 +92,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           groupName: group.name,
           optionId: option.id,
           optionName: option.name,
-          priceDelta: option.priceDelta,
-          costDelta: option.costDelta,
+          priceDeltaPaisa: option.priceDeltaPaisa,
+          costDeltaPaisa: option.costDeltaPaisa,
         },
       ]);
     }
@@ -96,43 +105,44 @@ export const VariationModal: React.FC<VariationModalProps> = ({
       if (group.required) {
         const hasChoice = selectedVariations.some(v => v.groupId === group.id);
         if (!hasChoice) {
-          alert(`Please select an option for "${group.name}".`);
+          setMissingGroup(group.id);
+          document.getElementById(`option-group-${group.id}`)?.focus();
           return;
         }
       }
     }
 
-    onAddToCart(product, selectedVariations, quantity, notes);
-    onClose();
+    if (onAddToCart(product, selectedVariations, quantity, notes) !== false) onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+    <Dialog label={initialItem ? `Edit ${product.name}` : `Customize ${product.name}`} onClose={onClose} className="bg-pos-surface rounded-lg max-w-md w-full overflow-hidden border border-pos-border flex flex-col max-h-[90vh]">
+        {error && <p role="alert" className="p-4 text-sm text-pos-danger-text">{error}</p>}
         {/* Header */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-5 border-b border-pos-divider flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src={product.image}
               alt={product.name}
               referrerPolicy="no-referrer"
-              className="w-12 h-12 rounded-2xl object-cover border border-slate-100"
+              className="w-12 h-12 rounded-md object-cover border border-pos-border"
             />
             <div>
-              <span className="text-[11px] font-semibold text-[#00A389] uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-pos-accent uppercase tracking-wider">
                 {product.categoryName}
               </span>
-              <h3 className="text-base font-bold text-slate-800 leading-tight">
+              <h3 className="text-base font-bold text-pos-text leading-tight">
                 {product.name}
               </h3>
-              <p className="text-xs text-slate-400">
-                Base price: {formatPKR(product.price)}
+              <p className="text-xs text-pos-muted">
+                Base price: {formatPKR(product.pricePaisa)}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"
+            aria-label="Close item options"
+            className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary hover:bg-pos-raised flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -141,17 +151,18 @@ export const VariationModal: React.FC<VariationModalProps> = ({
         {/* Variations List (Scrollable) */}
         <div className="p-5 overflow-y-auto space-y-5 flex-1">
           {product.variations.length === 0 ? (
-            <p className="text-sm text-slate-500 py-2">
+            <p className="text-sm text-pos-muted py-2">
               No extra variations for this dish. You can add notes or adjust quantity below.
             </p>
           ) : (
             product.variations.map(group => (
-              <div key={group.id} className="space-y-2">
+              <div key={group.id} id={`option-group-${group.id}`} tabIndex={-1} className="space-y-2">
+                {missingGroup === group.id && <p role="alert" className="text-sm text-pos-danger-text">Choose an option for {group.name}.</p>}
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-pos-text uppercase tracking-wider">
                     {group.name}
                   </h4>
-                  <span className="text-[11px] font-medium text-slate-400">
+                  <span className="text-[11px] font-medium text-pos-muted">
                     {group.required ? 'Required' : 'Optional'}
                     {group.multiSelect && ' • Choose multiple'}
                   </span>
@@ -166,30 +177,31 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                       <button
                         key={opt.id}
                         type="button"
-                        onClick={() => handleSelectOption(group, opt.id)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs transition ${
+                        aria-pressed={isSelected}
+                        onClick={() => { handleSelectOption(group, opt.id); setMissingGroup(null); }}
+                        className={`w-full flex items-center justify-between p-3 rounded-md border text-xs transition ${
                           isSelected
-                            ? 'border-[#00A389] bg-[#E6F7F5] text-slate-900 font-semibold'
-                            : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                            ? 'border-pos-accent bg-pos-selected text-pos-text font-semibold'
+                            : 'border-pos-border hover:border-pos-control text-pos-secondary bg-pos-surface'
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
                           <div
                             className={`w-4 h-4 rounded-${group.multiSelect ? 'md' : 'full'} flex items-center justify-center border ${
                               isSelected
-                                ? 'bg-[#00A389] border-[#00A389] text-white'
-                                : 'border-slate-300'
+                                ? 'bg-pos-action border-pos-accent text-white'
+                                : 'border-pos-control'
                             }`}
                           >
                             {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
                           <span>{opt.name}</span>
                         </div>
-                        <span className={`font-mono ${isSelected ? 'text-[#00A389]' : 'text-slate-500'}`}>
-                          {opt.priceDelta > 0
-                            ? `+${formatPKR(opt.priceDelta)}`
-                            : opt.priceDelta < 0
-                            ? `-${formatPKR(Math.abs(opt.priceDelta))}`
+                        <span className={`font-mono ${isSelected ? 'text-pos-accent' : 'text-pos-muted'}`}>
+                          {opt.priceDeltaPaisa > 0
+                            ? `+${formatPKR(opt.priceDeltaPaisa)}`
+                            : opt.priceDeltaPaisa < 0
+                            ? `-${formatPKR(Math.abs(opt.priceDeltaPaisa))}`
                             : 'Rs. 0'}
                         </span>
                       </button>
@@ -202,34 +214,39 @@ export const VariationModal: React.FC<VariationModalProps> = ({
 
           {/* Kitchen Notes */}
           <div className="space-y-1.5 pt-2">
-            <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+            <label htmlFor="item-notes" className="text-xs font-bold text-pos-text uppercase tracking-wider block">
               Special Instructions
             </label>
             <input
+              id="item-notes"
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="e.g. Less salt, dressing on the side..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#00A389]"
+              className="w-full px-3.5 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs text-pos-secondary placeholder:text-pos-muted focus-visible:border-pos-accent"
             />
           </div>
         </div>
 
         {/* Footer: Quantity & Add Button */}
-        <div className="p-5 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+        <div className="p-5 border-t border-pos-divider bg-pos-inset/60 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 bg-pos-surface border border-pos-control rounded-md p-1">
             <button
+              aria-label="Decrease item quantity"
+              disabled={quantity <= 1}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 font-bold transition"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-pos-secondary hover:bg-pos-raised font-bold transition"
             >
               -
             </button>
-            <span className="w-6 text-center font-bold text-slate-800 text-sm font-mono">
+            <span className="w-6 text-center font-bold text-pos-text text-sm font-mono">
               {quantity}
             </span>
             <button
+              disabled={quantity >= maximumQuantity}
+              aria-label="Increase item quantity"
               onClick={() => setQuantity(quantity + 1)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#00A389] hover:bg-[#E6F7F5] font-bold transition"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-pos-accent hover:bg-pos-selected font-bold transition"
             >
               +
             </button>
@@ -237,13 +254,12 @@ export const VariationModal: React.FC<VariationModalProps> = ({
 
           <button
             onClick={handleAdd}
-            className="flex-1 py-3 px-4 bg-[#00A389] hover:bg-[#008f77] text-white rounded-xl text-sm font-bold shadow-md shadow-[#00A389]/25 flex items-center justify-between transition"
+            className="flex-1 py-3 px-4 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-sm font-bold flex items-center justify-between transition"
           >
-            <span>Add to Order</span>
-            <span className="font-mono">{formatPKR(totalPrice)}</span>
+            <span>{initialItem ? 'Update item' : 'Add to Order'}</span>
+            <span className="font-mono">{formatPKR(totalPricePaisa)}</span>
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 };

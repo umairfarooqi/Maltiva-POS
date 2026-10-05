@@ -2,15 +2,22 @@ import React, { useState, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
+  CookingPot,
+  CupSoda,
   Plus,
   Minus,
   Flame,
+  Pizza,
+  Sandwich,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { Product, Category, CartItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { normalizeProduct } from '../utils/normalizeProduct';
+import { ProductStockBadge } from './ProductStockBadge';
 
 interface OrderLineViewProps {
+  isLocked?: boolean;
   products: Product[];
   categories: Category[];
   cart: CartItem[];
@@ -20,8 +27,12 @@ interface OrderLineViewProps {
   onOpenMobileCart?: () => void;
 }
 
+const cleanCategoryLabel = (name: string) =>
+  name.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, '').replace(/\s{2,}/g, ' ').trim();
+
 export const OrderLineView: React.FC<OrderLineViewProps> = ({
   products,
+  isLocked = false,
   categories,
   cart,
   onQuickAddToCart,
@@ -33,7 +44,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   const totalCartQty = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCartPrice = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+  const totalCartPrice = cart.reduce((sum, item) => sum + item.totalPricePaisa, 0);
 
   const filteredProducts = products.filter(product => {
     if (activeCategoryId === 'cat-all') return true;
@@ -61,39 +72,41 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
   const getCategoryMeta = (catId: string) => {
     switch (catId) {
       case 'cat-all':
-        return { icon: '🍲', bg: 'bg-[#F3F4F6] text-slate-600' };
+        return { icon: CookingPot, bg: 'bg-pos-raised text-pos-secondary' };
       case 'cat-deals':
-        return { icon: '🔥', bg: 'bg-rose-50 text-rose-500' };
+        return { icon: Flame, bg: 'bg-pos-danger-bg text-pos-danger-text' };
       case 'cat-pizza':
-        return { icon: '🍕', bg: 'bg-orange-50 text-orange-600' };
+        return { icon: Pizza, bg: 'bg-pos-raised text-pos-secondary' };
       case 'cat-sandwiches':
-        return { icon: '🥪', bg: 'bg-purple-50 text-purple-600' };
+        return { icon: Sandwich, bg: 'bg-pos-raised text-pos-secondary' };
       case 'cat-fries':
-        return { icon: '🍟', bg: 'bg-yellow-50 text-yellow-600' };
+        return { icon: UtensilsCrossed, bg: 'bg-pos-raised text-pos-secondary' };
       case 'cat-drinks':
-        return { icon: '🥤', bg: 'bg-teal-50 text-teal-600' };
+        return { icon: CupSoda, bg: 'bg-pos-raised text-pos-secondary' };
       default:
-        return { icon: '🍽️', bg: 'bg-slate-50 text-slate-600' };
+        return { icon: UtensilsCrossed, bg: 'bg-pos-raised text-pos-secondary' };
     }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 lg:p-10 space-y-8 select-none bg-[#F8FAFA] font-sans">
+    <div className="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 xl:pb-6 space-y-6 select-none bg-pos-canvas font-sans">
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-pos-text tracking-tight">
             Food Menu
           </h1>
           <div className="flex items-center gap-2">
             <button
               onClick={() => scrollCategories('left')}
-              className="w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer shadow-sm"
+              aria-label="Previous menu categories"
+              className="w-9 h-9 rounded-md border border-pos-control bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-inset transition cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={() => scrollCategories('right')}
-              className="w-9 h-9 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer shadow-sm"
+              aria-label="Next menu categories"
+              className="w-9 h-9 rounded-md border border-pos-control bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-inset transition cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -102,7 +115,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
 
         <div
           ref={categoryScrollRef}
-          className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-none"
+          className="flex items-center gap-3 overflow-x-auto pb-3 scrollbar-none"
         >
           {categories.map(cat => {
             const isSelected = activeCategoryId === cat.id;
@@ -113,68 +126,61 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 ? products.filter(p => p.isDeal === true || p.categoryId === 'cat-deals').length
                 : products.filter(p => p.categoryId === cat.id).length;
 
-            const { icon, bg } = getCategoryMeta(cat.id);
+            const { icon: Icon, bg } = getCategoryMeta(cat.id);
 
             return (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
-                className={`min-w-[160px] p-4 rounded-2xl transition-all duration-200 flex items-center gap-3 shrink-0 cursor-pointer text-left border-2 ${
+                aria-pressed={isSelected}
+                className={`min-w-[148px] p-3 rounded-lg transition-colors duration-200 flex items-center gap-3 shrink-0 cursor-pointer text-left border ${
                   isSelected
-                    ? 'border-[#00A389] bg-white shadow-md shadow-[#00A389]/10'
-                    : 'border-transparent bg-white/60 hover:bg-white hover:shadow-sm'
+                    ? 'border-pos-accent bg-pos-surface'
+                    : 'border-pos-border bg-pos-surface hover:border-pos-control'
                 }`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-transform ${isSelected ? 'scale-110' : ''} ${bg}`}>
-                  {cat.id === 'cat-deals' ? (
-                    <Flame className="w-6 h-6 fill-rose-500 text-rose-500" />
-                  ) : (
-                    icon
-                  )}
+                <div className={`w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${bg}`}>
+                  <Icon className="w-4 h-4" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className={`text-sm font-bold truncate transition-colors ${isSelected ? 'text-[#00A389]' : 'text-slate-700'}`}>
-                    {cat.name}
+                  <h3 className={`text-sm font-bold truncate transition-colors ${isSelected ? 'text-pos-accent' : 'text-pos-secondary'}`}>
+                    {cleanCategoryLabel(cat.name)}
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">{actualCount} items</p>
+                  <p className="text-xs text-pos-muted font-medium">{actualCount} items</p>
                 </div>
               </button>
             );
           })}
         </div>
-        <div className="border-b border-slate-200 my-6" />
+        <div className="border-b border-pos-border my-4" />
       </div>
 
       {filteredProducts.length === 0 ? (
-        <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-          <p className="text-sm font-semibold text-slate-600">No dishes available</p>
-          <p className="text-xs text-slate-400 mt-1">Try another category above.</p>
+        <div className="py-16 text-center bg-pos-surface rounded-lg border border-dashed border-pos-control">
+          <p className="text-sm font-semibold text-pos-secondary">No dishes available</p>
+          <p className="text-xs text-pos-muted mt-1">Try another category above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-4">
           {filteredProducts.map(rawProduct => {
             const product = normalizeProduct(rawProduct);
             const qtyInCart = getProductCartQty(product.id);
+            const cannotAdd = isLocked || !product.isAvailable || qtyInCart >= product.stockQuantity;
+            const addItem = () => { if (!cannotAdd) { if (product.variations?.length) onOpenVariationModal(product); else onQuickAddToCart(product); } };
+            const plainQty = cart.filter(item => item.product.id === product.id && item.selectedVariations.length === 0 && !item.notes?.trim()).reduce((sum, item) => sum + item.quantity, 0);
             const hasVariations = product.variations && product.variations.length > 0;
 
             return (
               <div
                 key={product.id}
-                onClick={() => {
-                  if (hasVariations) {
-                    onOpenVariationModal(product);
-                  } else {
-                    onQuickAddToCart(product);
-                  }
-                }}
-                className={`group bg-white rounded-3xl p-5 border transition-all duration-300 flex flex-col cursor-pointer relative ${
+                className={`group h-full bg-pos-surface rounded-lg p-3 border transition-colors duration-200 flex flex-col cursor-pointer relative ${
                   qtyInCart > 0
-                    ? 'border-2 border-[#00A389] shadow-lg shadow-[#00A389]/10'
-                    : 'border-slate-100 hover:border-slate-300 hover:shadow-md'
+                    ? 'border-pos-accent'
+                    : 'border-pos-border hover:border-pos-control'
                 }`}
               >
-                <div className="relative mb-5 flex items-center justify-center">
-                  <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-50 border-4 border-white shadow-sm">
+                <button type="button" disabled={cannotAdd} aria-label={`Add ${product.name}`} onClick={addItem} className="relative mb-2 text-left disabled:opacity-60">
+                  <div className="aspect-[4/3] overflow-hidden rounded-md bg-pos-raised border border-pos-border">
                     <img
                       src={product.image}
                       alt={product.name}
@@ -183,57 +189,60 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                           event.currentTarget.src = '/placeholder-dish.svg';
                         }
                       }}
-                      className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-200"
                     />
                   </div>
                   {product.isDeal ? (
-                    <span className="absolute top-0 right-0 px-2 py-1 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
+                    <span className="absolute top-2 left-2 z-10 rounded border border-pos-warning-border bg-pos-warning-bg px-2 py-0.5 text-[10px] font-black uppercase text-pos-warning-text">
                       DEAL
                     </span>
                   ) : null}
-                </div>
+                </button>
 
-                <div className="flex-1 mb-4">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    {product.categoryName}
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight line-clamp-1">
-                    {product.name}
+                <div className="mb-2">
+                  {!product.isDeal && (
+                  <span className="mb-1 inline-flex max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded bg-pos-selected px-2 py-0.5 text-[10px] font-bold uppercase text-pos-accent ring-1 ring-pos-success-border">
+                      {cleanCategoryLabel(product.categoryName)}
+                    </span>
+                  )}
+                  <h3 className="line-clamp-2 text-sm font-bold leading-5 text-pos-text">
+                    <button type="button" disabled={cannotAdd} onClick={addItem} className="text-left disabled:opacity-60">{product.name}</button>
                   </h3>
+                  <div className="mt-1"><ProductStockBadge product={product} /></div>
+                  {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && <p className="text-xs text-pos-warning-text mt-1">All available stock is in this order.</p>}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                  <span className="text-lg font-black text-slate-900">
-                    {formatPKR(product.price)}
+                <div className="mt-auto flex items-center justify-between pt-2 border-t border-pos-divider">
+                  <span className="text-lg font-black text-pos-text">
+                    {formatPKR(product.pricePaisa)}
                   </span>
 
                   {qtyInCart === 0 ? (
-                    <div className="w-9 h-9 rounded-full bg-[#00A389] text-white flex items-center justify-center shadow-md shadow-[#00A389]/30 group-hover:scale-110 transition cursor-pointer">
+                  <button type="button" disabled={cannotAdd} aria-label={`Add one ${product.name}`} onClick={addItem} className="w-9 h-9 rounded-md bg-pos-action text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40">
                       <Plus className="w-5 h-5" />
-                    </div>
+                    </button>
                   ) : (
                     <div
                       onClick={e => e.stopPropagation()}
-                      className="flex items-center gap-2 bg-slate-100 rounded-full p-1 border border-slate-200"
+                      className="flex items-center gap-2 bg-pos-raised rounded-md p-1 border border-pos-border"
                     >
                       <button
+                        disabled={isLocked || plainQty === 0}
+                        title={plainQty === 0 ? "Use the cart to edit customized items" : undefined}
                         onClick={() => onQuickDecrementFromCart(product)}
-                        className="w-7 h-7 rounded-full bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer shadow-sm"
+                        aria-label={`Remove one ${product.name}`}
+                        className="w-7 h-7 rounded bg-pos-surface text-pos-secondary hover:bg-pos-inset flex items-center justify-center transition cursor-pointer"
                       >
                         <Minus className="w-3 h-3 stroke-[3]" />
                       </button>
-                      <span className="text-xs font-bold text-slate-900 min-w-[16px] text-center">
+                      <span className="text-xs font-bold text-pos-text min-w-[16px] text-center">
                         {qtyInCart}
                       </span>
                       <button
-                        onClick={() => {
-                          if (hasVariations) {
-                            onOpenVariationModal(product);
-                          } else {
-                            onQuickAddToCart(product);
-                          }
-                        }}
-                        className="w-7 h-7 rounded-full bg-[#00A389] text-white flex items-center justify-center transition cursor-pointer shadow-sm"
+                        disabled={cannotAdd}
+                        onClick={addItem}
+                        aria-label={`Add one ${product.name}`}
+                        className="w-7 h-7 rounded bg-pos-action text-white flex items-center justify-center transition cursor-pointer"
                       >
                         <Plus className="w-3 h-3 stroke-[3]" />
                       </button>
@@ -247,18 +256,17 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       )}
 
       {totalCartQty > 0 && onOpenMobileCart && (
-        <div className="xl:hidden fixed bottom-6 left-6 right-6 z-40">
+        <div className="xl:hidden fixed bottom-4 right-4 z-40">
           <button
             onClick={onOpenMobileCart}
-            className="w-full bg-[#00A389] hover:bg-[#008f77] text-white py-4 px-6 rounded-2xl shadow-2xl flex items-center justify-between font-bold text-sm transition active:scale-95 cursor-pointer"
+            aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
+            className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-pos-action hover:bg-pos-action-hover text-white py-2.5 px-3 rounded-lg border border-pos-accent font-bold text-sm shadow-none transition active:scale-[0.98] cursor-pointer"
           >
-            <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded-full bg-white text-[#00A389] flex items-center justify-center text-xs font-black">
-                {totalCartQty}
-              </span>
-              <span className="tracking-tight">Proceed to Checkout</span>
-            </div>
-            <span className="text-lg font-black">{formatPKR(totalCartPrice)}</span>
+            <span className="w-7 h-7 shrink-0 rounded bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-black">
+              {totalCartQty}
+            </span>
+            <span className="whitespace-nowrap">Checkout</span>
+            <span className="text-base font-black whitespace-nowrap">{formatPKR(totalCartPrice)}</span>
           </button>
         </div>
       )}
