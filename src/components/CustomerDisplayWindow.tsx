@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle2, ClipboardList, ShoppingBag } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { CheckCircle2, Clock3, AlertCircle } from 'lucide-react';
+import welcomeImage from '../assets/images/dish_pasta_roast_beef_1790857005118.jpg';
 import { MaltivaLogo } from './MaltivaLogo';
 import { formatPKR } from '../utils/formatCurrency';
 import { CartItem, PrinterSettings } from '../types/pos';
@@ -8,6 +9,7 @@ import { PosStorage } from '../services/storage';
 import { upgradeMoney } from '../shared/moneyUpgrade';
 
 export interface CustomerDisplayState {
+  settings?: PrinterSettings;
   cart: CartItem[];
   orderNumber: string;
   tokenNumber: number;
@@ -22,6 +24,18 @@ export interface CustomerDisplayState {
   } | null;
 }
 
+function validDisplayState(value: CustomerDisplayState): boolean {
+  if (!value || !Array.isArray(value.cart) || typeof value.orderNumber !== 'string' || !Number.isSafeInteger(value.tokenNumber)) return false;
+  if (![value.totalPaisa, value.subtotalPaisa, value.taxPaisa].every(amount => Number.isSafeInteger(amount) && amount >= 0)) return false;
+  if (!value.cart.every(item => item?.product && typeof item.product.name === 'string' && typeof item.cartItemId === 'string' &&
+    Number.isSafeInteger(item.quantity) && item.quantity > 0 && Number.isSafeInteger(item.totalPricePaisa) &&
+    (!item.notes || typeof item.notes === 'string') && Array.isArray(item.selectedVariations) &&
+    item.selectedVariations.every(option => option && typeof option.optionName === 'string') &&
+    (!item.product.bundledProducts || Array.isArray(item.product.bundledProducts) && item.product.bundledProducts.every(bundle => bundle && typeof bundle.productName === 'string')))) return false;
+  const confirmation = value.lastPlacedOrder;
+  return !confirmation || typeof confirmation.orderNumber === 'string' && Number.isSafeInteger(confirmation.tokenNumber) && Number.isSafeInteger(confirmation.totalPaisa);
+}
+
 export const CustomerDisplayWindow: React.FC = () => {
   const [displayState, setDisplayState] = useState<CustomerDisplayState>({
     cart: [],
@@ -33,18 +47,23 @@ export const CustomerDisplayWindow: React.FC = () => {
     lastPlacedOrder: null,
   });
 
-  const [settings] = useState<PrinterSettings>(() => {
-    return PosStorage.getPrinterSettings() || INITIAL_PRINTER_SETTINGS;
+  const [settings, setSettings] = useState<PrinterSettings>(() => {
+    try { return PosStorage.getPrinterSettings() || INITIAL_PRINTER_SETTINGS; } catch { return INITIAL_PRINTER_SETTINGS; }
   });
 
   useEffect(() => {
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pos_customer_display') : null;
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data) {
-        setDisplayState(upgradeMoney(event.data));
-      }
+    const acceptState = (value: unknown) => {
+      try {
+        const next = upgradeMoney(value) as CustomerDisplayState;
+        if (!validDisplayState(next)) return;
+        setDisplayState(next);
+        const liveSettings = next.settings;
+        if (liveSettings && (['storeName', 'address', 'whatsApp', 'tagline'] as const).every(key => liveSettings[key] == null || typeof liveSettings[key] === 'string')) setSettings({ ...INITIAL_PRINTER_SETTINGS, ...liveSettings });
+      } catch { /* Keep the last valid display state. */ }
     };
+    const handleMessage = (event: MessageEvent) => acceptState(event.data);
 
     if (channel) {
       channel.onmessage = handleMessage;
@@ -53,21 +72,20 @@ export const CustomerDisplayWindow: React.FC = () => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'pos_customer_display_state' && e.newValue) {
         try {
-          setDisplayState(upgradeMoney(JSON.parse(e.newValue)));
+          acceptState(JSON.parse(e.newValue));
         } catch {
           // ignore
         }
       }
     };
 
-    if (!channel) {
-      window.addEventListener('storage', handleStorage);
-    }
+    window.addEventListener('storage', handleStorage);
 
-    const saved = localStorage.getItem('pos_customer_display_state');
+    let saved: string | null = null;
+    try { saved = localStorage.getItem('pos_customer_display_state'); } catch { /* Live updates remain available. */ }
     if (saved) {
       try {
-        setDisplayState(upgradeMoney(JSON.parse(saved)));
+        acceptState(JSON.parse(saved));
       } catch {
         // ignore
       }
@@ -75,196 +93,113 @@ export const CustomerDisplayWindow: React.FC = () => {
 
     return () => {
       if (channel) channel.close();
-      if (!channel) window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
-  const hasItems = displayState.cart && displayState.cart.length > 0;
-  const isOrderPlaced = Boolean(displayState.lastPlacedOrder) && !hasItems;
+  const listRef = useRef<HTMLUListElement>(null);
+  const previousCart = useRef<CartItem[]>([]);
+  useEffect(() => {
+    const changed = [...displayState.cart].reverse().find(item => JSON.stringify(previousCart.current.find(old => old.cartItemId === item.cartItemId)) !== JSON.stringify(item));
+    if (changed) Array.from(listRef.current?.children || []).find(element => (element as HTMLElement).dataset.lineId === changed.cartItemId)?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+    previousCart.current = displayState.cart;
+  }, [displayState.cart]);
+
+  const hasItems = displayState.cart.length > 0;
+  const lastOrder = !hasItems ? displayState.lastPlacedOrder : null;
+  const confirmed = lastOrder?.persistenceState === 'saved';
+  const draft = lastOrder?.persistenceState === 'draft';
+  const rejected = lastOrder?.persistenceState === 'rejected';
+  const itemCount = displayState.cart.reduce((sum, item) => sum + item.quantity, 0);
+  const StatusIcon = confirmed ? CheckCircle2 : rejected ? AlertCircle : Clock3;
 
   return (
-    <div className="w-screen h-screen min-h-[600px] bg-slate-50 text-slate-800 font-sans flex flex-col overflow-hidden select-none">
-      <header className="bg-white border-b border-slate-200 px-6 lg:px-8 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <MaltivaLogo size="md" showSubtitle={true} />
-        </div>
-
-        <div className="text-right">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs uppercase tracking-wider">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Counter Takeaway</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Phase 3 DHA Lahore • 03444757082
-          </p>
-        </div>
+    <div className="min-h-dvh lg:h-dvh lg:overflow-hidden bg-pos-canvas text-pos-text font-sans flex flex-col select-none">
+      <header className="bg-pos-chrome border-b border-pos-border px-5 sm:px-8 py-4 flex items-center justify-between gap-4">
+        <MaltivaLogo size="md" showSubtitle />
+        <span className="text-sm sm:text-base text-pos-secondary">Made for your cravings.</span>
       </header>
 
-      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden p-5 lg:p-7 gap-5 lg:gap-6 items-stretch bg-slate-50">
-        <section className="flex-1 min-w-0 bg-white rounded-lg border border-slate-200 p-6 lg:p-7 flex flex-col justify-between relative overflow-hidden">
-          {isOrderPlaced ? (
-            <div className="my-auto text-center space-y-6 animate-in zoom-in-95 duration-200">
-              <div className="w-20 h-20 mx-auto rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-emerald-700 font-bold text-sm tracking-widest uppercase">
-                  {displayState.lastPlacedOrder?.persistenceState === 'pending' ? 'PENDING — waiting for server confirmation'
-                    : displayState.lastPlacedOrder?.persistenceState === 'draft' ? 'DRAFT — unpaid preview' : 'Order Successfully Placed'}
-                </p>
-                <h1 className="text-5xl font-black text-slate-900 mt-2">
-                  TOKEN #{displayState.lastPlacedOrder?.tokenNumber}
-                </h1>
-                <p className="text-lg text-slate-600 font-mono mt-2">
-                  Order {displayState.lastPlacedOrder?.orderNumber} • {formatPKR(displayState.lastPlacedOrder?.totalPaisa || 0)}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 max-w-sm mx-auto">
-                <p className="text-sm font-medium text-slate-600">
-                  Please collect your Customer Slip. Kitchen is freshly preparing your order!
-                </p>
-              </div>
+      <main className="flex-1 min-h-0 lg:overflow-hidden w-full max-w-[1600px] mx-auto p-5 sm:p-8 lg:p-10">
+        {!hasItems && !lastOrder ? (
+          <section aria-label="Welcome" className="grid items-center gap-8 lg:gap-12 lg:grid-cols-2 min-h-[calc(100dvh-12rem)]">
+            <div className="max-w-xl">
+              <p className="text-lg text-pos-accent font-semibold mb-4">Good food. Good to see you.</p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight tracking-tight text-balance">Welcome to {settings.storeName || 'Maltiva'}</h1>
+              <p className="mt-6 text-lg sm:text-xl leading-relaxed text-pos-secondary">Your order will appear here as we take it.</p>
+              <p className="mt-3 text-base text-pos-muted">Take a moment. Find your favourite.</p>
             </div>
-          ) : (
-            <div className="flex flex-col justify-between h-full">
-              <div className="pb-5 border-b border-slate-100">
-                <span className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider">
-                  Counter takeaway
-                </span>
-                <h2 className="text-3xl lg:text-4xl font-black text-slate-900 mt-3 leading-tight tracking-tight">
-                  Your order
-                </h2>
-                <p className="text-slate-500 text-sm mt-2 max-w-md">
-                  Review items and total before payment.
-                </p>
+            <img src={welcomeImage} alt="Freshly prepared food at Maltiva" className="w-full aspect-[4/3] max-h-[520px] rounded-xl object-cover" />
+          </section>
+        ) : hasItems ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] items-start">
+            <section aria-labelledby="customer-order-title" className="min-w-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
+                <h1 id="customer-order-title" className="text-3xl sm:text-4xl font-bold tracking-tight">Your order</h1>
+                <span className="text-base text-pos-secondary">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
               </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 my-6">
-                <div className="p-4 rounded-md bg-slate-50 border border-slate-200 flex items-center gap-4">
-                  <span className="w-12 h-12 rounded-md bg-[#E6F7F5] text-[#007462] flex items-center justify-center shrink-0">
-                    <ClipboardList className="w-6 h-6" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Live order</p>
-                    <h4 className="text-sm font-bold text-slate-800 mt-1">Cashier updates items here</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Each line appears before checkout.</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-md bg-slate-50 border border-slate-200 flex items-center gap-4">
-                  <span className="w-12 h-12 rounded-md bg-[#E6F7F5] text-[#007462] flex items-center justify-center shrink-0">
-                    <ShoppingBag className="w-6 h-6" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Pickup</p>
-                    <h4 className="text-sm font-bold text-slate-800 mt-1">Keep your token ready</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">We will call it when the order is ready.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-xs text-slate-500 flex items-center justify-between border-t border-slate-200 pt-4">
-                <span>Phase 3 DHA Lahore</span>
-                <span className="font-mono text-emerald-700">WhatsApp: 03444757082</span>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="w-full lg:w-[380px] xl:w-[420px] shrink-0 bg-white rounded-lg border border-slate-200 flex flex-col justify-between overflow-hidden">
-          <div className="p-5 lg:p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                Current Order Details
-              </h3>
-              <p className="text-xs text-slate-500 font-mono">
-                {displayState.orderNumber} • Token #{displayState.tokenNumber}
-              </p>
-            </div>
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-bold">
-              {displayState.cart.reduce((sum, it) => sum + it.quantity, 0)}
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 p-5 lg:p-6 overflow-y-auto space-y-4 divide-y divide-slate-100">
-            {!hasItems ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
-                <span className="w-14 h-14 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center mb-3">
-                  <ShoppingBag className="w-7 h-7" aria-hidden="true" />
-                </span>
-                <p className="text-sm font-medium">Ready for your order</p>
-                <p className="text-xs mt-1 text-slate-400">
-                  Items selected by the cashier will appear here in real time.
-                </p>
-              </div>
-            ) : (
-              displayState.cart.map(item => (
-                <div key={item.cartItemId} className="pt-3 first:pt-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 font-mono text-xs flex items-center justify-center shrink-0">
-                          {item.quantity}x
-                        </span>
-                        <h4 className="text-sm font-bold text-slate-800 truncate">
-                          {item.product.name}
-                        </h4>
-                      </div>
-
-                      {/* Cheezious deal contents or variations */}
-                      {item.product.isDeal && item.product.bundledProducts && item.product.bundledProducts.length > 0 && (
-                        <p className="text-[11px] text-amber-700 pl-8 mt-1 leading-snug">
-                          Includes: {item.product.bundledProducts.map(b => `${b.quantity}x ${b.productName}`).join(' • ')}
-                        </p>
-                      )}
-
-                      {item.selectedVariations && item.selectedVariations.length > 0 && (
-                        <p className="text-[11px] text-slate-500 pl-8 mt-1">
-                          {item.selectedVariations.map(v => v.optionName).join(', ')}
-                        </p>
-                      )}
+              <p className="text-base text-pos-secondary mb-5">Everything looking right? Let us know if you need a change.</p>
+              {displayState.cart.length > 4 && <p className="text-sm text-pos-muted mb-3">Latest changes stay in view. Scroll to review all {displayState.cart.length} order lines.</p>}
+              <ul aria-label="Order items" ref={listRef} tabIndex={0} className="divide-y divide-pos-border lg:max-h-[calc(100dvh-22rem)] overflow-y-auto pr-2">
+                {displayState.cart.map(item => (
+                  <li key={item.cartItemId} data-line-id={item.cartItemId} className="py-5 first:pt-0 flex items-start gap-3 sm:gap-5">
+                    <div className="relative shrink-0 w-14 h-14 sm:w-20 sm:h-20">
+                      <img
+                        src={item.product.image || '/placeholder-dish.svg'}
+                        alt={item.product.name}
+                        onError={event => {
+                          if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                            event.currentTarget.src = '/placeholder-dish.svg';
+                          }
+                        }}
+                        className="w-full h-full rounded-lg object-cover bg-pos-raised"
+                      />
+                      <span className="absolute -bottom-1 -right-1 min-w-6 h-6 sm:min-w-8 sm:h-8 px-1 rounded-md border border-pos-control bg-pos-surface text-pos-text flex items-center justify-center text-sm sm:text-base font-semibold" aria-label={`Quantity ${item.quantity}`}>{item.quantity}×</span>
                     </div>
-
-                    <span className="text-sm font-bold text-emerald-700 font-mono shrink-0">
-                      {formatPKR(item.totalPricePaisa)}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-lg sm:text-2xl font-semibold leading-snug [overflow-wrap:anywhere]">{item.product.name}</h2>
+                      {item.product.isDeal && Boolean(item.product.bundledProducts?.length) && (
+                        <p className="mt-2 text-sm sm:text-base leading-relaxed text-pos-secondary">Includes {item.product.bundledProducts!.map(bundle => `${bundle.quantity}× ${bundle.productName}`).join(', ')}</p>
+                      )}
+                      {Boolean(item.selectedVariations?.length) && <p className="mt-2 text-base text-pos-secondary">{item.selectedVariations.map(variation => variation.optionName).join(', ')}</p>}
+                      {item.notes && <p className="mt-2 text-sm text-pos-secondary">Note: {item.notes}</p>}
+                    </div>
+                    <span className="shrink-0 text-base sm:text-xl font-semibold tabular-nums pt-1">{formatPKR(item.totalPricePaisa)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <aside aria-label="Order total" className="bg-pos-surface border border-pos-border rounded-lg p-6 sm:p-8 lg:sticky lg:top-8">
+              <p className="text-base text-pos-secondary">Total to pay</p>
+              <p className="mt-3 text-4xl xl:text-5xl font-bold tracking-tight tabular-nums [overflow-wrap:anywhere]">{formatPKR(displayState.totalPaisa)}</p>
+              <dl className="mt-6 border-t border-pos-border pt-5 space-y-3 text-base">
+                <div className="flex justify-between gap-4"><dt className="text-pos-secondary">Subtotal</dt><dd className="tabular-nums">{formatPKR(displayState.subtotalPaisa)}</dd></div>
+                {displayState.taxPaisa > 0 && <div className="flex justify-between gap-4"><dt className="text-pos-secondary">Tax</dt><dd className="tabular-nums">{formatPKR(displayState.taxPaisa)}</dd></div>}
+              </dl>
+              <p className="mt-6 text-base leading-relaxed text-pos-secondary">Please pay at the counter.</p>
+            </aside>
           </div>
-
-          <div className="p-5 lg:p-6 bg-slate-50 border-t border-slate-200 space-y-2.5">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Subtotal</span>
-              <span className="font-mono text-slate-700">{formatPKR(displayState.subtotalPaisa)}</span>
-            </div>
-
-            {displayState.taxPaisa > 0 && (
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>Tax</span>
-                <span className="font-mono text-slate-700">{formatPKR(displayState.taxPaisa)}</span>
-              </div>
+        ) : lastOrder ? (
+          <section role="status" aria-live="polite" className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center text-center max-w-3xl mx-auto py-10">
+            <StatusIcon className={`w-12 h-12 mb-6 ${confirmed ? 'text-pos-success-text' : rejected ? 'text-pos-danger-text' : 'text-pos-warning-text'}`} aria-hidden="true" />
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">{confirmed ? 'Thank you!' : draft ? 'Review your order' : rejected ? 'Please speak to our cashier' : 'Confirming your order'}</h1>
+            {confirmed ? (
+              <>
+                <p className="mt-6 text-lg text-pos-secondary">Your pickup token</p>
+                <p className="mt-2 text-7xl sm:text-8xl font-bold tracking-tight text-pos-accent">#{lastOrder.tokenNumber}</p>
+                <p className="mt-6 text-lg sm:text-xl text-pos-secondary">Keep your receipt handy. Please collect your order when your token is called.</p>
+              </>
+            ) : (
+              <p className="mt-6 text-lg sm:text-xl text-pos-secondary">{draft ? 'This is a preview. Your order has not been placed yet.' : rejected ? 'Your order could not be confirmed. We’ll help you at the counter.' : 'Please wait while we confirm your order. Our cashier will help you.'}</p>
             )}
-
-            <div className="pt-3 border-t border-slate-200 flex items-baseline justify-between gap-3">
-              <div>
-                <span className="text-xs uppercase font-bold text-slate-600 block tracking-wider">
-                  Total Payable
-                </span>
-                <span className="text-[11px] text-emerald-700 font-medium">PKR Pakistani Rupees</span>
-              </div>
-              <span className="text-2xl lg:text-3xl font-black text-slate-900 font-mono tracking-tight text-emerald-700">
-                {formatPKR(displayState.totalPaisa)}
-              </span>
-            </div>
-          </div>
-        </section>
+            <p className="mt-8 text-base text-pos-muted">{lastOrder.orderNumber} · {formatPKR(lastOrder.totalPaisa)}</p>
+          </section>
+        ) : null}
       </main>
 
-      <footer className="bg-white border-t border-slate-200 px-6 lg:px-8 py-3 flex items-center justify-between gap-4 text-xs text-slate-500 shrink-0">
-        <span className="truncate">Maltiva Crust Takeaway Terminal</span>
-        <span className="shrink-0">Phase 3 DHA Lahore • WhatsApp: 03444757082</span>
+      <footer className="border-t border-pos-border px-5 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-2 text-sm text-pos-muted">
+        <span>{settings.address}</span>
+        {settings.whatsApp && <span>WhatsApp: {settings.whatsApp}</span>}
       </footer>
     </div>
   );

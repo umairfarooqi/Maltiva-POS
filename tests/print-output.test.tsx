@@ -76,6 +76,7 @@ describe('print output', () => {
     const printArea = document.querySelector('#thermal-receipt-print-area');
 
     expect(printArea).toBeInTheDocument();
+    expect(printArea).toHaveClass('theme-paper');
     expect(printArea).toHaveAttribute('data-paper-width', '58mm');
     expect(printArea).toHaveTextContent('#1');
     expect(printArea).toHaveTextContent('Chicken Fajita Pizza');

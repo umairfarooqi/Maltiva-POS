@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Printer, Copy, Check, Scissors } from 'lucide-react';
+import { Dialog } from './ui/Dialog';
 import { Order, PrinterSettings } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 
 interface ThermalReceiptModalProps {
+  autoPrint?: boolean;
+  onAutoPrinted?: () => void;
   order: Order | null;
   settings: PrinterSettings;
   onClose: () => void;
@@ -11,12 +14,22 @@ interface ThermalReceiptModalProps {
 
 export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   order,
+  autoPrint = false,
+  onAutoPrinted,
   settings,
   onClose,
 }) => {
   const [paperWidth, setPaperWidth] = useState<'80mm' | '58mm'>(settings.paperWidth || '58mm');
-  const [activeTab, setActiveTab] = useState<'both' | 'customer' | 'kitchen'>('customer');
+  const [activeTab, setActiveTab] = useState<'both' | 'customer' | 'kitchen'>(settings.kitchenPrinterEnabled ? 'both' : 'customer');
   const [copied, setCopied] = useState(false);
+
+  const afterAutoPrint = useRef(onAutoPrinted); afterAutoPrint.current = onAutoPrinted;
+  const printed = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoPrint || order?.persistenceState !== 'saved' || printed.current === order.id) return;
+    const timer = window.setTimeout(() => { printed.current = order.id; window.print(); afterAutoPrint.current?.(); }, 150);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint, order?.id, order?.persistenceState]);
 
   if (!order) return null;
 
@@ -47,11 +60,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
     if (activeTab === 'both' || activeTab === 'customer') {
       lines.push('==========================================');
       if (persistenceLabel) lines.push(persistenceLabel);
-      lines.push('             MALTIVA CRUST                ');
+      lines.push(settings.storeName || 'Maltiva Crust');
       lines.push('         COUNTER TAKEAWAY                 ');
       lines.push('      Fresh food. Clear pickup.           ');
-      lines.push('        Phase 3 DHA Lahore                ');
-      lines.push('       WhatsApp: 03444757082              ');
+      if (settings.address) lines.push(settings.address);
+      if (settings.whatsApp) lines.push(`WhatsApp: ${settings.whatsApp}`);
       lines.push(divider);
       lines.push(`TOKEN #: ${order.tokenNumber || order.orderNumber.replace('#F', '')}    [TAKEAWAY]`);
       lines.push(`ORDER:   ${order.orderNumber}`);
@@ -93,7 +106,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
       lines.push(divider);
       lines.push('       THANK YOU FOR YOUR ORDER!          ');
       lines.push('     Follow us @MaltivaCrust              ');
-      lines.push('     Delivery / Care: 03444757082         ');
+      if (settings.whatsApp) lines.push(`Order / WhatsApp: ${settings.whatsApp}`);
       lines.push('==========================================');
     }
 
@@ -146,18 +159,17 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white rounded-lg max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[96vh]">
+    <Dialog label="Receipt preview" onClose={onClose} className="bg-pos-surface rounded-lg max-w-2xl w-full overflow-hidden border border-pos-border flex flex-col max-h-[96vh]">
         {/* Modal Top Bar */}
-        <div className="p-4 px-6 border-b border-slate-100 bg-slate-50/80">
+        <div className="p-4 px-6 border-b border-pos-divider bg-pos-inset/80">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Printer className="w-5 h-5 text-[#00A389]" />
+              <Printer className="w-5 h-5 text-pos-accent" />
               <div>
-                <h3 className="text-sm font-bold text-slate-800">
+                <h3 className="text-sm font-bold text-pos-text">
                   Takeaway Thermal Printer
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-pos-muted">
                   Order {order.orderNumber} • Token #{order.tokenNumber}
                 </p>
               </div>
@@ -165,7 +177,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             <button
               onClick={onClose}
               aria-label="Close receipt preview"
-              className="w-8 h-8 shrink-0 rounded-md bg-slate-200/80 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition"
+              className="w-8 h-8 shrink-0 rounded-md bg-pos-raised/80 text-pos-muted hover:bg-pos-control flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -173,11 +185,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             {/* Slip Filter Tabs */}
-            <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-md text-xs font-semibold">
+            <div className="flex items-center gap-1 bg-pos-raised/60 p-1 rounded-md text-xs font-semibold">
               <button
                 onClick={() => setActiveTab('both')}
                 className={`px-3 py-1 rounded-lg transition ${
-                  activeTab === 'both' ? 'bg-white text-slate-800' : 'text-slate-500 hover:text-slate-800'
+                  activeTab === 'both' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
                 }`}
               >
                 Both Slips (2)
@@ -185,7 +197,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               <button
                 onClick={() => setActiveTab('customer')}
                 className={`px-2.5 py-1 rounded-lg transition ${
-                  activeTab === 'customer' ? 'bg-white text-slate-800' : 'text-slate-500 hover:text-slate-800'
+                  activeTab === 'customer' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
                 }`}
               >
                 Customer Slip
@@ -193,7 +205,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               <button
                 onClick={() => setActiveTab('kitchen')}
                 className={`px-2.5 py-1 rounded-lg transition ${
-                  activeTab === 'kitchen' ? 'bg-white text-slate-800' : 'text-slate-500 hover:text-slate-800'
+                  activeTab === 'kitchen' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
                 }`}
               >
                 Kitchen Slip (KOT)
@@ -201,11 +213,11 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             </div>
 
             {/* Paper Width */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 text-xs">
+            <div className="flex items-center gap-1 bg-pos-surface border border-pos-border rounded-lg p-0.5 text-xs">
               <button
                 onClick={() => setPaperWidth('80mm')}
                 className={`px-2 py-1 rounded font-mono font-semibold transition ${
-                  paperWidth === '80mm' ? 'bg-[#00A389] text-white' : 'text-slate-500'
+                  paperWidth === '80mm' ? 'bg-pos-action text-white' : 'text-pos-muted'
                 }`}
               >
                 80mm
@@ -213,7 +225,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               <button
                 onClick={() => setPaperWidth('58mm')}
                 className={`px-2 py-1 rounded font-mono font-semibold transition ${
-                  paperWidth === '58mm' ? 'bg-[#00A389] text-white' : 'text-slate-500'
+                  paperWidth === '58mm' ? 'bg-pos-action text-white' : 'text-pos-muted'
                 }`}
               >
                 58mm
@@ -226,56 +238,56 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         <div
           id="thermal-receipt-print-area"
           data-paper-width={paperWidth}
-          className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 flex flex-col items-center gap-6"
+          className="theme-paper p-4 sm:p-6 overflow-y-auto flex-1 bg-pos-raised flex flex-col items-center gap-6"
         >
           {/* SLIP 1: CUSTOMER RECEIPT */}
           {(activeTab === 'both' || activeTab === 'customer') && (
             <div
-              className={`bg-white p-6 font-mono text-slate-800 text-xs border border-slate-200 rounded-md print:border-none print:shadow-none ${
+              className={`bg-pos-surface p-6 font-mono text-pos-text text-xs border border-pos-border rounded-md print:border-none print:shadow-none ${
                 paperWidth === '80mm' ? 'w-full max-w-[340px]' : 'w-full max-w-[260px]'
               }`}
             >
-              {persistenceLabel && <p className="border-b border-dashed border-slate-500 pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
-              <div className="text-center pb-3 border-b border-dashed border-slate-300">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#00A389] block mb-0.5">
+              {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
+              <div className="text-center pb-3 border-b border-dashed border-pos-control">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-pos-accent block mb-0.5">
                   Customer Receipt
                 </span>
-                <h2 className="text-base font-black tracking-tight text-slate-900">
-                  MALTIVA CRUST
+                <h2 className="text-base font-black tracking-tight text-pos-text">
+                  {settings.storeName || 'Maltiva Crust'}
                 </h2>
-                <p className="text-[11px] font-bold text-slate-700">
+                <p className="text-[11px] font-bold text-pos-secondary">
                   Counter Takeaway
                 </p>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-pos-muted">
                   Fresh food. Clear pickup.
                 </p>
-                <p className="text-[10px] text-slate-500">
-                  Phase 3 DHA Lahore
+                <p className="text-[10px] text-pos-muted">
+                  {settings.address}
                 </p>
-                <p className="text-[10px] text-slate-600 font-bold mt-0.5">
-                  WhatsApp: 03444757082
+                <p className="text-[10px] text-pos-secondary font-bold mt-0.5">
+                  {settings.whatsApp && `WhatsApp: ${settings.whatsApp}`}
                 </p>
               </div>
 
               {/* Token & Order Bar */}
-              <div className="py-2.5 my-1 text-center bg-slate-50 rounded border border-slate-200">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+              <div className="py-2.5 my-1 text-center bg-pos-inset rounded border border-pos-border">
+                <span className="text-[10px] text-pos-muted uppercase tracking-wider block">
                   Takeaway Pickup Token
                 </span>
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
+                <span className="text-2xl font-black text-pos-text tracking-tight">
                   #{order.tokenNumber || order.orderNumber.replace('#F', '')}
                 </span>
-                <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                <p className="text-[10px] text-pos-muted font-mono mt-0.5">
                   Order {order.orderNumber} • {formattedDate} {formattedTime}
                 </p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[10px] text-pos-muted">
                   Cashier: {order.cashierName}
                 </p>
               </div>
 
               {/* Items List */}
-              <div className="py-2 border-b border-dashed border-slate-300 space-y-2">
-                <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+              <div className="py-2 border-b border-dashed border-pos-control space-y-2">
+                <div className="flex justify-between text-[10px] font-bold text-pos-muted uppercase">
                   <span>Item</span>
                   <span>Amount</span>
                 </div>
@@ -291,7 +303,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
                     {/* Deal inclusions */}
                     {it.bundledProducts && it.bundledProducts.length > 0 && (
-                      <div className="pl-3 text-[10px] text-slate-500 space-y-0.5 mt-0.5">
+                      <div className="pl-3 text-[10px] text-pos-muted space-y-0.5 mt-0.5">
                         {it.bundledProducts.map((b, idx) => (
                           <div key={idx}>• {b.quantity}x {b.productName}</div>
                         ))}
@@ -299,7 +311,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                     )}
 
                     {it.selectedVariations && it.selectedVariations.length > 0 && (
-                      <div className="pl-3 text-[10px] text-slate-500">
+                      <div className="pl-3 text-[10px] text-pos-muted">
                         + {it.selectedVariations.map(v => v.optionName).join(', ')}
                       </div>
                     )}
@@ -308,97 +320,97 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               </div>
 
               {/* Totals */}
-              <div className="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-xs">
-                <div className="flex justify-between text-slate-600">
+              <div className="py-2.5 border-b border-dashed border-pos-control space-y-1 text-xs">
+                <div className="flex justify-between text-pos-secondary">
                   <span>Subtotal</span>
                   <span>{formatPKR(order.subtotalPaisa)}</span>
                 </div>
                 {order.taxPaisa > 0 && (
-                  <div className="flex justify-between text-slate-600">
+                  <div className="flex justify-between text-pos-secondary">
                     <span>Tax</span>
                     <span>{formatPKR(order.taxPaisa)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-black text-slate-900 pt-1 border-t border-slate-200">
+                <div className="flex justify-between text-sm font-black text-pos-text pt-1 border-t border-pos-border">
                   <span>{isPending ? 'TOTAL' : isDraft ? 'TOTAL (UNPAID)' : 'TOTAL PAID'}</span>
                   <span>{formatPKR(order.totalPaisa)}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-500 pt-0.5">
+                <div className="flex justify-between text-[11px] text-pos-muted pt-0.5">
                   <span>Payment Mode</span>
                   <span className="uppercase font-bold">{order.paymentMethod}</span>
                 </div>
               </div>
 
               {/* Customer Footer */}
-              <div className="pt-3 text-center text-[10px] text-slate-500 space-y-0.5">
-                <p className="font-bold text-slate-700">Thank you for ordering at Maltiva Crust!</p>
+              <div className="pt-3 text-center text-[10px] text-pos-muted space-y-0.5">
+                <p className="font-bold text-pos-secondary">Thank you for ordering at {settings.storeName || 'Maltiva Crust'}!</p>
                 <p>Fresh food. Clear pickup.</p>
-                <p>Order / WhatsApp: 03444757082</p>
+                {settings.whatsApp && <p>Order / WhatsApp: {settings.whatsApp}</p>}
               </div>
             </div>
           )}
 
           {/* TEAR DIVIDER */}
           {activeTab === 'both' && (
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 w-full max-w-[340px]">
-              <div className="flex-1 border-b-2 border-dashed border-slate-300" />
-              <div className="flex items-center gap-1 text-[11px] bg-white px-2 py-0.5 rounded border border-slate-200">
-                <Scissors className="w-3 h-3 text-slate-500" />
+            <div className="flex items-center gap-2 text-xs font-mono text-pos-muted w-full max-w-[340px]">
+              <div className="flex-1 border-b-2 border-dashed border-pos-control" />
+              <div className="flex items-center gap-1 text-[11px] bg-pos-surface px-2 py-0.5 rounded border border-pos-border">
+                <Scissors className="w-3 h-3 text-pos-muted" />
                 <span>TEAR / SLIP 2</span>
               </div>
-              <div className="flex-1 border-b-2 border-dashed border-slate-300" />
+              <div className="flex-1 border-b-2 border-dashed border-pos-control" />
             </div>
           )}
 
           {/* SLIP 2: KITCHEN ORDER TICKET (KOT) */}
           {(activeTab === 'both' || activeTab === 'kitchen') && (
             <div
-              className={`bg-white p-6 font-mono text-slate-900 text-xs border border-slate-200 rounded-md print:border-none print:shadow-none ${
+              className={`bg-pos-surface p-6 font-mono text-pos-text text-xs border border-pos-border rounded-md print:border-none print:shadow-none ${
                 paperWidth === '80mm' ? 'w-full max-w-[340px]' : 'w-full max-w-[260px]'
               }`}
             >
-              {persistenceLabel && <p className="border-b border-dashed border-slate-500 pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
-              <div className="text-center pb-2 border-b-2 border-slate-900">
-                <span className="text-[11px] font-black uppercase tracking-wider block bg-slate-900 text-white py-0.5 rounded">
+              {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
+              <div className="text-center pb-2 border-b-2 border-pos-control">
+                <span className="text-[11px] font-black uppercase tracking-wider block bg-pos-strong text-white py-0.5 rounded">
                   *** KITCHEN ORDER SLIP ***
                 </span>
-                <p className="text-[10px] font-bold text-slate-600 mt-1 uppercase">
+                <p className="text-[10px] font-bold text-pos-secondary mt-1 uppercase">
                   TAKEAWAY COUNTER
                 </p>
-                <div className="my-2 py-2 bg-slate-100 rounded-md border border-slate-300">
-                  <span className="text-3xl font-black text-slate-900 tracking-tight block">
+                <div className="my-2 py-2 bg-pos-raised rounded-md border border-pos-control">
+                  <span className="text-3xl font-black text-pos-text tracking-tight block">
                     TOKEN #{order.tokenNumber || order.orderNumber.replace('#F', '')}
                   </span>
-                  <p className="text-[11px] font-bold text-slate-700 font-mono mt-0.5">
+                  <p className="text-[11px] font-bold text-pos-secondary font-mono mt-0.5">
                     Order {order.orderNumber} • {formattedTime}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-pos-muted">
                     Cashier: {order.cashierName}
                   </p>
                 </div>
               </div>
 
               {/* Kitchen Food Preparation Checklist */}
-              <div className="py-3 border-b-2 border-slate-900 space-y-3">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              <div className="py-3 border-b-2 border-pos-control space-y-3">
+                <div className="text-[10px] font-bold text-pos-muted uppercase tracking-wider">
                   PREPARATION CHECKLIST:
                 </div>
 
                 {order.items.map(it => (
-                  <div key={it.id} className="border-b border-dashed border-slate-200 pb-2 last:border-none">
+                  <div key={it.id} className="border-b border-dashed border-pos-border pb-2 last:border-none">
                     <div className="flex items-start gap-2">
-                      <span className="w-5 h-5 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <span className="w-5 h-5 rounded bg-pos-strong text-white flex items-center justify-center font-bold text-xs shrink-0">
                         {it.quantity}
                       </span>
                       <div className="flex-1">
-                        <span className="text-sm font-black text-slate-900 leading-tight block">
+                        <span className="text-sm font-black text-pos-text leading-tight block">
                           {it.productName.toUpperCase()}
                         </span>
 
                         {/* Deal items inside */}
                         {it.bundledProducts && it.bundledProducts.length > 0 && (
-                          <div className="mt-1 pl-1 bg-amber-50 p-1.5 rounded border border-amber-200 text-[11px] text-amber-900 space-y-0.5 font-bold">
-                            <span className="text-[10px] text-amber-700 block uppercase">Includes:</span>
+                          <div className="mt-1 pl-1 bg-pos-warning-bg p-1.5 rounded border border-pos-warning-border text-[11px] text-pos-warning-text space-y-0.5 font-bold">
+                            <span className="text-[10px] text-pos-warning-text block uppercase">Includes:</span>
                             {it.bundledProducts.map((b, idx) => (
                               <div key={idx}>&bull; {b.quantity}x {b.productName}</div>
                             ))}
@@ -406,13 +418,13 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                         )}
 
                         {it.selectedVariations && it.selectedVariations.length > 0 && (
-                          <div className="mt-0.5 text-[11px] text-slate-700 font-bold">
+                          <div className="mt-0.5 text-[11px] text-pos-secondary font-bold">
                             + {it.selectedVariations.map(v => v.optionName).join(' + ')}
                           </div>
                         )}
 
                         {it.notes && (
-                          <div className="mt-1 bg-rose-50 text-rose-700 p-1 rounded font-bold text-[10px]">
+                          <div className="mt-1 bg-pos-danger-bg text-pos-danger-text p-1 rounded font-bold text-[10px]">
                             ** NOTE: {it.notes} **
                           </div>
                         )}
@@ -422,7 +434,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 ))}
               </div>
 
-              <div className="pt-2 text-center text-[10px] font-bold text-slate-500">
+              <div className="pt-2 text-center text-[10px] font-bold text-pos-muted">
                 PREPARE FRESH & HAND TO COUNTER
               </div>
             </div>
@@ -430,32 +442,31 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="p-4 px-6 border-t border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 px-6 border-t border-pos-divider bg-pos-surface flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-2 border border-slate-300 hover:bg-slate-50 rounded-md text-xs font-semibold text-slate-700 transition"
+            className="flex items-center gap-1.5 px-4 py-2 border border-pos-control hover:bg-pos-inset rounded-md text-xs font-semibold text-pos-secondary transition"
           >
-            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-4 h-4 text-pos-success-text" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'Copied to Clipboard' : 'Copy Text (ESC/POS)'}</span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-md text-xs font-semibold"
+              className="px-4 py-2 border border-pos-control text-pos-secondary hover:bg-pos-inset rounded-md text-xs font-semibold"
             >
               Done
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
             >
               <Printer className="w-4 h-4" />
               <span>Print {activeTab === 'both' ? 'Both Slips (2)' : activeTab === 'customer' ? 'Customer Slip' : 'Kitchen Slip'}</span>
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 };

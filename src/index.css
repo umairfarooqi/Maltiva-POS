@@ -1,16 +1,115 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-pos-canvas: var(--pos-canvas);
+  --color-pos-chrome: var(--pos-chrome);
+  --color-pos-surface: var(--pos-surface);
+  --color-pos-raised: var(--pos-raised);
+  --color-pos-inset: var(--pos-inset);
+  --color-pos-text: var(--pos-text);
+  --color-pos-secondary: var(--pos-secondary);
+  --color-pos-muted: var(--pos-muted);
+  --color-pos-border: var(--pos-border);
+  --color-pos-control: var(--pos-control);
+  --color-pos-divider: var(--pos-divider);
+  --color-pos-action: var(--pos-action);
+  --color-pos-action-hover: var(--pos-action-hover);
+  --color-pos-accent: var(--pos-accent);
+  --color-pos-selected: var(--pos-selected);
+  --color-pos-strong: var(--pos-strong);
+  --color-pos-success-bg: var(--pos-success-bg);
+  --color-pos-success-text: var(--pos-success-text);
+  --color-pos-success-border: var(--pos-success-border);
+  --color-pos-warning-bg: var(--pos-warning-bg);
+  --color-pos-warning-text: var(--pos-warning-text);
+  --color-pos-warning-border: var(--pos-warning-border);
+  --color-pos-danger-bg: var(--pos-danger-bg);
+  --color-pos-danger-text: var(--pos-danger-text);
+  --color-pos-danger-border: var(--pos-danger-border);
+  --color-pos-danger-action: var(--pos-danger-action);
+  --color-pos-danger-hover: var(--pos-danger-hover);
+  --color-pos-info-bg: var(--pos-info-bg);
+  --color-pos-info-text: var(--pos-info-text);
+  --color-pos-info-border: var(--pos-info-border);
+  --color-pos-reserved-bg: var(--pos-reserved-bg);
+  --color-pos-reserved-text: var(--pos-reserved-text);
+  --color-pos-reserved-border: var(--pos-reserved-border);
+}
+
 :root {
-  --pos-surface: #ffffff;
-  --pos-canvas: #f4f6f5;
-  --pos-border: #d9e0df;
-  --pos-text: #18211f;
-  --pos-muted: #52605c;
-  --pos-action: #008f77;
+  --pos-canvas: #121416;
+  --pos-chrome: #181b1e;
+  --pos-surface: #1d2125;
+  --pos-raised: #2c3238;
+  --pos-inset: #171b1f;
+  --pos-text: #eef1f4;
+  --pos-secondary: #bdc5cd;
+  --pos-muted: #98a3ae;
+  --pos-border: #343c44;
+  --pos-control: #606c78;
+  --pos-divider: #2c333a;
+  --pos-action: #00836e;
   --pos-action-hover: #007462;
-  --pos-focus: #008f77;
+  --pos-accent: #5dd6bf;
+  --pos-selected: #193b35;
+  --pos-strong: #343c44;
+  --pos-success-bg: #18382b;
+  --pos-success-text: #8ce0b1;
+  --pos-success-border: #366448;
+  --pos-warning-bg: #3b2d18;
+  --pos-warning-text: #f1ca80;
+  --pos-warning-border: #70532a;
+  --pos-danger-bg: #3d2229;
+  --pos-danger-text: #f3a6b7;
+  --pos-danger-border: #75414c;
+  --pos-danger-action: #be123c;
+  --pos-danger-hover: #9f1239;
+  --pos-info-bg: #1d3045;
+  --pos-info-text: #9dc9f5;
+  --pos-info-border: #3e5d7c;
+  --pos-reserved-bg: #302641;
+  --pos-reserved-text: #cdb2ef;
+  --pos-reserved-border: #61477b;
+  --pos-focus: var(--pos-accent);
   --pos-radius-control: 0.375rem;
   --pos-radius-panel: 0.5rem;
+}
+
+:root[data-theme="light"], .theme-paper {
+  --pos-canvas: #f4f6f5;
+  --pos-chrome: #f8fafa;
+  --pos-surface: #ffffff;
+  --pos-raised: #f1f5f9;
+  --pos-inset: #f8fafc;
+  --pos-text: #18211f;
+  --pos-secondary: #52605c;
+  --pos-muted: #5f6e82;
+  --pos-border: #d9e0df;
+  --pos-control: #7b8998;
+  --pos-divider: #e2e8f0;
+  --pos-action: #00836e;
+  --pos-action-hover: #007462;
+  --pos-accent: #007462;
+  --pos-selected: #e6f7f5;
+  --pos-strong: #1e293b;
+  --pos-success-bg: #ecfdf5;
+  --pos-success-text: #166534;
+  --pos-success-border: #86efac;
+  --pos-warning-bg: #fffbeb;
+  --pos-warning-text: #92400e;
+  --pos-warning-border: #fcd34d;
+  --pos-danger-bg: #fff1f2;
+  --pos-danger-text: #9f1239;
+  --pos-danger-border: #fda4af;
+  --pos-danger-action: #be123c;
+  --pos-danger-hover: #9f1239;
+  --pos-info-bg: #eff6ff;
+  --pos-info-text: #1d4ed8;
+  --pos-info-border: #93c5fd;
+  --pos-reserved-bg: #faf5ff;
+  --pos-reserved-text: #7e22ce;
+  --pos-reserved-border: #d8b4fe;
+  color-scheme: light;
 }
 
 @layer base {
@@ -25,11 +124,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--pos-canvas);
+    color: var(--pos-text);
   }
 
   :focus-visible {
     outline: 2px solid var(--pos-focus);
     outline-offset: 2px;
+  }
+  input[type='checkbox'], input[type='radio'] {
+    accent-color: var(--pos-action);
   }
 }
 
@@ -42,11 +145,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--pos-control);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--pos-muted);
 }
 
 .pos-card-shadow {
@@ -144,5 +247,58 @@
   @page profit-loss-report {
     size: A4 portrait;
     margin: 0;
+  }
+}
+
+::selection { background: var(--pos-selected); color: var(--pos-accent); }
+.theme-switch-thumb { background-color: #ffffff; }
+
+@media print {
+  :root, #thermal-receipt-print-area, #profit-loss-print-area {
+  --pos-canvas: #f4f6f5;
+  --pos-chrome: #f8fafa;
+  --pos-surface: #ffffff;
+  --pos-raised: #f1f5f9;
+  --pos-inset: #f8fafc;
+  --pos-text: #18211f;
+  --pos-secondary: #52605c;
+  --pos-muted: #5f6e82;
+  --pos-border: #d9e0df;
+  --pos-control: #7b8998;
+  --pos-divider: #e2e8f0;
+  --pos-action: #00836e;
+  --pos-action-hover: #007462;
+  --pos-accent: #007462;
+  --pos-selected: #e6f7f5;
+  --pos-strong: #1e293b;
+  --pos-success-bg: #ecfdf5;
+  --pos-success-text: #166534;
+  --pos-success-border: #86efac;
+  --pos-warning-bg: #fffbeb;
+  --pos-warning-text: #92400e;
+  --pos-warning-border: #fcd34d;
+  --pos-danger-bg: #fff1f2;
+  --pos-danger-text: #9f1239;
+  --pos-danger-border: #fda4af;
+  --pos-danger-action: #be123c;
+  --pos-danger-hover: #9f1239;
+  --pos-info-bg: #eff6ff;
+  --pos-info-text: #1d4ed8;
+  --pos-info-border: #93c5fd;
+  --pos-reserved-bg: #faf5ff;
+  --pos-reserved-text: #7e22ce;
+  --pos-reserved-border: #d8b4fe;
+    color-scheme: light !important;
+  }
+}
+
+/* Portal ancestors must not clip the print-only receipt. */
+@media print {
+  body > div:has(#thermal-receipt-print-area),
+  [data-pos-dialog]:has(#thermal-receipt-print-area),
+  [data-pos-dialog] *:has(#thermal-receipt-print-area) {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }

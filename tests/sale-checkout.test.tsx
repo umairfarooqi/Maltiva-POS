@@ -53,6 +53,36 @@ async function checkout() {
 }
 
 describe('phase 1 cashier decisions', () => {
+  it('keeps noted copies separate, preserves the edited line ID and sends kitchen notes', async () => {
+    const user = userEvent.setup(); render(<App />);
+    await screen.findByText(INITIAL_PRODUCTS[0].name);
+    await user.click(screen.getByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    const firstId = PosStorage.getDraft()!.cart[0].cartItemId;
+    await user.click(screen.getByRole('button', { name: `Edit ${INITIAL_PRODUCTS[0].name}` }));
+    await user.type(screen.getByLabelText('Special Instructions'), 'No onions');
+    await user.click(screen.getByRole('button', { name: /Update item/ }));
+    await user.click(screen.getByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    expect(PosStorage.getDraft()!.cart).toHaveLength(2);
+    expect(PosStorage.getDraft()!.cart[0]).toMatchObject({ cartItemId: firstId, notes: 'No onions', quantity: 1 });
+    await user.click(screen.getAllByRole('button', { name: `Remove ${INITIAL_PRODUCTS[0].name}` })[1]);
+    await user.click(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].items[0].notes).toBe('No onions');
+  });
+
+  it('keeps live confirmation after closing a receipt and opening an independent test slip', async () => {
+    const user = await checkout();
+    await screen.findByRole('button', { name: 'Close receipt preview' }, { timeout: 4000 });
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('pos_customer_display_state')!).lastPlacedOrder?.persistenceState).toBe('saved'));
+    const confirmation = JSON.parse(localStorage.getItem('pos_customer_display_state')!).lastPlacedOrder;
+    await user.click(screen.getByRole('button', { name: 'Close receipt preview' }));
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(screen.getByRole('button', { name: 'Print Test Slip' }));
+    expect(screen.getByRole('dialog', { name: 'Receipt preview' })).toHaveTextContent('TEST SLIP - NOT A SALE');
+    expect(screen.getByRole('dialog', { name: 'Receipt preview' })).toHaveTextContent('Sample item - TEST ONLY');
+    expect(JSON.parse(localStorage.getItem('pos_customer_display_state')!).lastPlacedOrder).toEqual(confirmation);
+    expect(requests).toHaveLength(1); expect(PosStorage.getDraft()!.cart).toHaveLength(0);
+  }, 15000);
   it('a pending sale rejected during replay exposes review and retains its recovery key', async () => {
     outcome = 'pending'; const user = await checkout();
     await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Pending'));
@@ -89,6 +119,8 @@ describe('phase 1 cashier decisions', () => {
     await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'), { timeout: 5000 });
     expect(screen.getByText('Cart is empty')).toBeVisible();
     expect(PosStorage.getOrders()[0]).toMatchObject({ persistenceState: 'saved' });
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument();
   });
   it('a full order cache does not strand an acknowledged checkout or its recovered draft', async () => {
     vi.spyOn(PosStorage, 'setOrders').mockImplementation(() => { throw new DOMException('Cache full', 'QuotaExceededError'); });
@@ -123,7 +155,7 @@ describe('phase 1 cashier decisions', () => {
     deletion.mockRestore();
     await user.click(screen.getByRole('button', { name: 'Retry sync' }));
     await waitFor(() => expect(screen.getByText('Cart is empty')).toBeVisible());
-    await waitFor(() => expect(screen.getByRole('status', { name: 'Pending sales' })).toHaveTextContent('0 orders'));
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument());
     expect(new Set(requests.map(order => order.idempotencyKey)).size).toBe(1);
   });
   it('HTTP rejection keeps the cart and the same key for an explicit retry, with no receipt', async () => {
@@ -215,8 +247,8 @@ describe('phase 1 cashier decisions', () => {
     render(<SettingsView settings={INITIAL_PRINTER_SETTINGS} currentUser={INITIAL_USERS[0]}
       onSaveSettings={() => {}} onOpenTestPrint={() => {}} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Wipe Sales' }));
-    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Wipe Sales' }));
+    await user.click(screen.getByRole('button', { name: 'Clear cached sales' }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Clear cached sales' }));
     expect(PosStorage.getOrders()).toEqual([]);
     expect(legacyClear).not.toHaveBeenCalled();
     expect(PosStorage.getOfflineQueue()).toHaveLength(1);
