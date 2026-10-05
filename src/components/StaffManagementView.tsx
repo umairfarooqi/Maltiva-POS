@@ -58,20 +58,20 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#F4F6F5]">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-lg border border-slate-200">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-pos-canvas">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+          <h1 className="text-xl font-bold text-pos-text tracking-tight">
             Staff & Role-Based Access Control
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-pos-muted mt-0.5">
             Strict permission gating: Cashiers (Order Line only), Managers (Menu & Daily Sales), Admins (Full Control)
           </p>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-xs font-bold transition"
+          className="flex items-center gap-1.5 px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span>Add Staff Member</span>
@@ -80,51 +80,51 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* Role Permissions Matrix Explainer Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
+        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            <span className="w-2.5 h-2.5 rounded-full bg-pos-success-text" />
+            <h3 className="text-xs font-bold text-pos-text uppercase tracking-wider">
               Cashier Role
             </h3>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-pos-muted">
             Dedicated front-desk operator. Can view Order Line, take orders, customize items, and issue receipts.
           </p>
-          <div className="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-100">
+          <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Order Line / POS checkout</p>
             <p>✓ Thermal printer receipt</p>
-            <p className="text-rose-500">✕ No inventory edit or P&L access</p>
+            <p className="text-pos-danger-text">✕ No inventory edit or P&L access</p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
+        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            <span className="w-2.5 h-2.5 rounded-full bg-pos-info-text" />
+            <h3 className="text-xs font-bold text-pos-text uppercase tracking-wider">
               Manager Role
             </h3>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-pos-muted">
             Store supervisor. Manages dishes, dynamic variations, stock updates, tables, and views daily & yesterday sales only.
           </p>
-          <div className="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-100">
+          <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Add & update menu dishes</p>
             <p>✓ Today & yesterday sales summary</p>
-            <p className="text-rose-500">✕ Confidential full P&L hidden</p>
+            <p className="text-pos-danger-text">✕ Confidential full P&L hidden</p>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
+        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            <span className="w-2.5 h-2.5 rounded-full bg-pos-reserved-text" />
+            <h3 className="text-xs font-bold text-pos-text uppercase tracking-wider">
               Admin Role
             </h3>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-pos-muted">
             Full enterprise administrative privileges including financial reports, raw ingredient cost audits, and staff management.
           </p>
-          <div className="text-[11px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-100">
+          <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Complete P&L and raw cost data</p>
             <p>✓ Export reports & audit logs</p>
             <p>✓ Staff credentials & roles</p>
@@ -133,9 +133,9 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       </div>
 
       {/* Staff Members List */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      <div className="bg-pos-surface rounded-lg border border-pos-border overflow-hidden">
         <table className="w-full text-xs text-left">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px]">
+          <thead className="bg-pos-inset border-b border-pos-border text-pos-muted font-semibold uppercase text-[10px]">
             <tr>
               <th className="p-4">Staff Member</th>
               <th className="p-4">Assigned Role</th>
@@ -145,20 +145,20 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               <th className="p-4 text-center">Toggle Access</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-pos-divider">
             {users.map(u => (
-              <tr key={u.id} className="hover:bg-slate-50">
+              <tr key={u.id} className="hover:bg-pos-inset">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
                     <img
                       src={u.avatar}
                       alt={u.name}
                       referrerPolicy="no-referrer"
-                      className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                      className="w-9 h-9 rounded-full object-cover border border-pos-border"
                     />
                     <div>
-                      <p className="font-bold text-slate-800">{u.name}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">
+                      <p className="font-bold text-pos-text">{u.name}</p>
+                      <p className="text-[11px] text-pos-muted font-mono">
                         @{u.username || u.name.toLowerCase().replace(/\s+/g, '')} • {u.email}
                       </p>
                     </div>
@@ -168,28 +168,28 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   <span
                     className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
                       u.role === 'admin'
-                        ? 'bg-purple-100 text-purple-700'
+                        ? 'bg-pos-reserved-bg text-pos-reserved-text'
                         : u.role === 'manager'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-emerald-100 text-emerald-700'
+                        ? 'bg-pos-info-bg text-pos-info-text'
+                        : 'bg-pos-success-bg text-pos-success-text'
                     }`}
                   >
                     {u.role}
                   </span>
                 </td>
-                <td className="p-4 text-slate-600 font-medium">
+                <td className="p-4 text-pos-secondary font-medium">
                   {u.branch || 'Branch #01'}
                 </td>
-                <td className="p-4 font-mono text-slate-500">
+                <td className="p-4 font-mono text-pos-muted">
                   •••• ({u.pin})
                 </td>
                 <td className="p-4">
                   <span
                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold ${
-                      u.active ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400 bg-slate-100'
+                      u.active ? 'text-pos-success-text bg-pos-success-bg' : 'text-pos-muted bg-pos-raised'
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${u.active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${u.active ? 'bg-pos-success-text' : 'bg-pos-control'}`} />
                     {u.active ? 'Active' : 'Suspended'}
                   </span>
                 </td>
@@ -198,8 +198,8 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     onClick={() => onToggleUserActive(u.id, !u.active)}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
                       u.active
-                        ? 'text-rose-600 hover:bg-rose-50'
-                        : 'text-emerald-700 hover:bg-emerald-50'
+                        ? 'text-pos-danger-text hover:bg-pos-danger-bg'
+                        : 'text-pos-success-text hover:bg-pos-success-bg'
                     }`}
                   >
                     {u.active ? 'Suspend' : 'Activate'}
@@ -213,28 +213,28 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* MODAL: Add New Staff */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 border border-slate-200">
+        <div className="fixed inset-0 bg-black/65 flex items-center justify-center p-4 z-50">
+          <div className="bg-pos-surface rounded-lg max-w-md w-full p-6 border border-pos-border">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-800">Add Staff Member</h3>
+              <h3 className="text-base font-bold text-pos-text">Add Staff Member</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close staff editor"
-                className="w-8 h-8 rounded-md bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center"
+                className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {usernameError && (
-              <div className="mb-3 p-2.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+              <div className="mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
                 {usernameError}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-pos-secondary block mb-1">
                   Full Name *
                 </label>
                 <input
@@ -248,16 +248,16 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     }
                   }}
                   placeholder="e.g. Jordan Smith"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
+                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-pos-secondary block mb-1">
                   Unique Username * (Used for Sign In)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-mono">@</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pos-muted text-xs font-mono">@</span>
                   <input
                     type="text"
                     required
@@ -267,16 +267,16 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       setUsernameError('');
                     }}
                     placeholder="e.g. jordansmith or cashier2"
-                    className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-md text-xs font-mono focus-visible:border-[#008f77]"
+                    className="w-full pl-7 pr-3 py-2 border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[10px] text-pos-muted mt-0.5">
                   Staff will use this unique username to sign in to their terminal role.
                 </p>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-pos-secondary block mb-1">
                   Email Address
                 </label>
                 <input
@@ -284,19 +284,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="jordan@maltivacrust.com"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs focus-visible:border-[#008f77]"
+                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-pos-secondary block mb-1">
                     System Role *
                   </label>
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value as UserRole)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs bg-white focus-visible:border-[#008f77]"
+                    className="w-full px-3 py-2 border border-pos-control rounded-md text-xs bg-pos-surface focus-visible:border-pos-accent"
                   >
                     <option value="cashier">Cashier (Order Line only)</option>
                     <option value="manager">Manager (Dishes + Daily Sales)</option>
@@ -305,7 +305,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                  <label className="text-xs font-bold text-pos-secondary block mb-1">
                     POS PIN / Password
                   </label>
                   <input
@@ -317,7 +317,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       setPassword(e.target.value);
                     }}
                     placeholder="4-digit PIN"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono text-center focus-visible:border-[#008f77]"
+                    className="w-full px-3 py-2 border border-pos-control rounded-md text-xs font-mono text-center focus-visible:border-pos-accent"
                   />
                 </div>
               </div>
@@ -326,13 +326,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-500"
+                  className="px-4 py-2 text-xs font-semibold text-pos-muted"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#008f77] text-white rounded-md text-xs font-bold hover:bg-[#007462] transition"
+                  className="px-5 py-2.5 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition"
                 >
                   Create Staff Account
                 </button>

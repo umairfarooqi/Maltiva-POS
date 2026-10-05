@@ -44,6 +44,8 @@ async function saved(order: Order): Promise<Order> {
   return canonical;
 }
 
+const stockAdjustmentKeys = new Map<string, string>();
+
 const submissions = new Map<string, Promise<SaleResult>>();
 
 async function submitSale(order: Order): Promise<SaleResult> {
@@ -240,88 +242,38 @@ export const PosApi = {
     return updated;
   },
 
-  async deleteProduct(productId: string, isOnline: boolean): Promise<boolean> {
-    const localProducts = PosStorage.getProducts().filter(p => p.id !== productId);
-    PosStorage.setProducts(localProducts);
-
-    if (isOnline) {
-      try {
-        await fetch(`/api/products/${productId}`, { method: 'DELETE' });
-      } catch {
-        // removed locally
-      }
-    }
+  async deleteProduct(productId: string, _isOnline: boolean): Promise<boolean> {
+    const response = await fetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Product could not be deleted. Retry when the server is available.');
+    optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().filter(p => p.id !== productId)));
     return true;
   },
 
   // Category CRUD
-  async createCategory(name: string, icon: string, isOnline: boolean): Promise<Category> {
-    const newCat: Category = {
-      id: `cat-${Date.now()}`,
-      name: name || 'New Category',
-      icon: icon || '🍽️',
-      itemCount: 0,
-      order: 99,
-    };
-    const cats = PosStorage.getCategories();
-    cats.push(newCat);
-    PosStorage.setCategories(cats);
-
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newCat),
-        });
-        if (res.ok) {
-          const saved = await res.json();
-          return { ...newCat, ...saved, id: newCat.id };
-        }
-      } catch {
-        // saved locally
-      }
-    }
-    return newCat;
+  async createCategory(name: string, icon: string, _isOnline: boolean): Promise<Category> {
+    const category = { id: `cat-${crypto.randomUUID()}`, name: name.trim(), icon, itemCount: 0, order: 99 };
+    const response = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(category) });
+    if (!response.ok) throw new Error('Category could not be saved on the server. Retry when it is available.');
+    const saved = { ...category, ...await response.json() };
+    if (!saved.id) throw new Error('Server did not confirm the category.');
+    optionalCache(() => PosStorage.setCategories([...PosStorage.getCategories(), saved]));
+    return saved;
   },
 
-  async updateCategory(category: Category, isOnline: boolean): Promise<Category> {
-    const cats = PosStorage.getCategories();
-    const idx = cats.findIndex(c => c.id === category.id);
-    if (idx !== -1) {
-      cats[idx] = category;
-      PosStorage.setCategories(cats);
-    }
-
-    // Also update categoryName in local products
-    const prods = PosStorage.getProducts().map(p =>
-      p.categoryId === category.id ? { ...p, categoryName: category.name } : p
-    );
-    PosStorage.setProducts(prods);
-
-    if (isOnline) {
-      try {
-        const res = await fetch(`/api/categories/${category.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(category),
-        });
-        if (res.ok) {
-          const updated = await res.json();
-          if (updated && updated.id) {
-            return updated;
-          }
-        }
-      } catch {
-        // saved locally
-      }
-    }
-    return category;
+  async updateCategory(category: Category, _isOnline: boolean): Promise<Category> {
+    const response = await fetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(category) });
+    if (!response.ok) throw new Error('Category could not be updated on the server. Retry when it is available.');
+    const saved = { ...category, ...await response.json() };
+    optionalCache(() => {
+      PosStorage.setCategories(PosStorage.getCategories().map(c => c.id === category.id ? saved : c));
+      PosStorage.setProducts(PosStorage.getProducts().map(p => p.categoryId === category.id ? { ...p, categoryName: saved.name } : p));
+    });
+    return saved;
   },
 
-  async deleteCategory(categoryId: string, isOnline: boolean): Promise<boolean> {
+  async deleteCategory(categoryId: string, _isOnline: boolean): Promise<boolean> {
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return false;
-    if (isOnline) {
+    {
       const res = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
       if (!res.ok) {
         let message = 'Delete failed';
@@ -364,53 +316,20 @@ export const PosApi = {
     user: User,
     isOnline: boolean
   ): Promise<{ product: Product; log: InventoryLog }> {
-    const products = PosStorage.getProducts();
-    const product = products.find(p => p.id === productId);
-    if (!product) throw new Error('Product not found');
-
-    const prevStock = product.stockQuantity;
-    product.stockQuantity = Math.max(0, prevStock + changeAmount);
-    product.updatedAt = new Date().toISOString();
-    PosStorage.setProducts(products);
-
-    const log: InventoryLog = {
-      id: `log-${Date.now()}`,
-      productId,
-      productName: product.name,
-      previousStock: prevStock,
-      changeAmount,
-      newStock: product.stockQuantity,
-      type,
-      reason,
-      userId: user.id,
-      userName: user.name,
-      timestamp: new Date().toISOString(),
-    };
-
-    const logs = PosStorage.getInventoryLogs();
-    logs.unshift(log);
-    PosStorage.setInventoryLogs(logs);
-
-    if (isOnline) {
-      try {
-        await fetch('/api/inventory/adjust', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productId,
-            changeAmount,
-            reason,
-            type,
-            userId: user.id,
-            userName: user.name,
-          }),
-        });
-      } catch {
-        // logged locally
-      }
-    }
-
-    return { product, log };
+    const signature = JSON.stringify({ productId, changeAmount, reason, type, userId: user.id });
+    const operationId = stockAdjustmentKeys.get(signature) || crypto.randomUUID();
+    stockAdjustmentKeys.set(signature, operationId);
+    const response = await fetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name }) });
+    if (!response.ok) throw new Error('Stock adjustment could not be confirmed. Keep this form open and retry.');
+    const result = await response.json();
+    if (!result.product?.id || !result.log?.id) throw new Error('Server did not confirm the stock adjustment.');
+    stockAdjustmentKeys.delete(signature);
+    optionalCache(() => {
+      PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === productId ? normalizeProduct(result.product) : p));
+      PosStorage.setInventoryLogs([result.log, ...PosStorage.getInventoryLogs().filter(log => log.id !== result.log.id)]);
+    });
+    return result;
   },
 
   // AUTHENTICATION & LOGIN

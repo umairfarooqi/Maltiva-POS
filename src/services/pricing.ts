@@ -49,6 +49,14 @@ export function quoteSale(db: InstanceType<typeof Database>, input: any) {
       totalCostPaisa: safe(BigInt(unitCostPaisa) * BigInt(line.quantity)), selectedVariations: selections,
       notes: typeof line.notes === 'string' ? line.notes : undefined, bundledProducts: product.bundledProducts };
   });
+  // Aggregate customized lines before checking stock. This also runs inside the
+  // sale transaction, so concurrent commits cannot oversell a reviewed quote.
+  const requested = new Map<string, number>();
+  for (const item of items) requested.set(item.productId, (requested.get(item.productId) || 0) + item.quantity);
+  for (const [productId, quantity] of requested) {
+    const product = loadProduct(db, productId)!;
+    if (quantity > product.stockQuantity) problem(`Insufficient stock for ${product.name}. Available: ${product.stockQuantity}. Review this order.`, 409);
+  }
   const settings = taxSettings(db);
   const totals = computeTotals(items, settings);
   const pricingFingerprint = createHash('sha256').update(JSON.stringify({ settings, items: items.map(i => ({

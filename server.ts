@@ -142,6 +142,8 @@ async function startServer() {
       paperWidth: settingsMap.paperWidth || '80mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',
       customerDisplayGreeting: settingsMap.customerDisplayGreeting || 'Welcome!',
+      globalLowStockThreshold: Number(settingsMap.globalLowStockThreshold ?? 5),
+      kitchenPrinterEnabled: settingsMap.kitchenPrinterEnabled === 'true',
     };
 
     const inventoryLogs = db.prepare('SELECT * FROM inventory_logs ORDER BY timestamp DESC').all() as InventoryLog[];
@@ -182,6 +184,33 @@ async function startServer() {
   app.delete('/api/products/:id', (req: Request, res: Response) => {
     db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
     res.json({ success: true });
+  });
+
+  const adjustInventory = db.transaction((data: any) => {
+    const { operationId, productId, changeAmount, reason, type, userId, userName } = data;
+    if (typeof operationId !== 'string' || !operationId || !['restock', 'adjustment', 'waste'].includes(type)) problem('Invalid stock operation');
+    const existing = db.prepare('SELECT * FROM inventory_logs WHERE id=?').get(operationId) as InventoryLog | undefined;
+    if (existing) {
+      if (existing.productId !== productId || existing.changeAmount !== changeAmount || existing.type !== type) problem('Stock operation identity conflicts', 409);
+      return { product: loadProduct(db, productId), log: existing };
+    }
+    integer(changeAmount, 'Stock change', true);
+    if (!changeAmount || (type === 'waste' && changeAmount > 0) || (type === 'restock' && changeAmount < 0)) problem('Review the stock change');
+    const product = loadProduct(db, productId);
+    if (!product) problem('Product not found', 404);
+    const newStock = product.stockQuantity + changeAmount;
+    integer(newStock, 'New stock quantity');
+    const timestamp = new Date().toISOString();
+    const log = { id: operationId, productId, productName: product.name, previousStock: product.stockQuantity, changeAmount, newStock, type, reason: reason || '', userId, userName, timestamp };
+    db.prepare('UPDATE products SET stockQuantity=?, updatedAt=? WHERE id=?').run(newStock, timestamp, productId);
+    db.prepare('INSERT INTO inventory_logs (id,productId,productName,previousStock,changeAmount,newStock,type,reason,userId,userName,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+      .run(operationId, productId, product.name, product.stockQuantity, changeAmount, newStock, type, reason || '', userId, userName, timestamp);
+    db.prepare('INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,?,?,?,?)').run(operationId, productId, changeAmount, type, operationId, userId, timestamp);
+    return { product: loadProduct(db, productId), log };
+  });
+  app.post('/api/inventory/adjust', (req, res) => {
+    try { res.json(adjustInventory(req.body)); }
+    catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
   });
 
   // CATEGORIES CRUD
@@ -308,6 +337,8 @@ async function startServer() {
       paperWidth: settingsMap.paperWidth || '80mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',
       customerDisplayGreeting: settingsMap.customerDisplayGreeting || 'Welcome!',
+      globalLowStockThreshold: Number(settingsMap.globalLowStockThreshold ?? 5),
+      kitchenPrinterEnabled: settingsMap.kitchenPrinterEnabled === 'true',
     });
   });
 
@@ -318,6 +349,11 @@ async function startServer() {
     
     const settingsToSave = {
       storeName: data.storeName,
+      tagline: data.tagline,
+      address: data.address,
+      whatsApp: data.whatsApp,
+      globalLowStockThreshold: data.globalLowStockThreshold === undefined ? undefined : String(integer(data.globalLowStockThreshold, 'Low-stock threshold')),
+      kitchenPrinterEnabled: data.kitchenPrinterEnabled === undefined ? undefined : String(Boolean(data.kitchenPrinterEnabled)),
       taxBp: data.taxBp === undefined ? undefined : String(integer(data.taxBp, 'Tax basis points')),
       taxInclusive: data.taxInclusive === undefined ? undefined : data.taxInclusive ? 'true' : 'false',
       paperWidth: data.paperWidth,

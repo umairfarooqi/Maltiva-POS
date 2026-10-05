@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { OrderLineView } from './components/OrderLineView';
+import { Dialog } from './components/ui/Dialog';
 import { CartDrawer } from './components/CartDrawer';
 import { ManageDishesView } from './components/ManageDishesView';
 import { DashboardView } from './components/DashboardView';
@@ -82,7 +83,16 @@ export default function App() {
   const [isProcessingOrder, setIsProcessingOrder] = useState<boolean>(checkoutRecoveryPending.current);
 
   // Modals & Drawers
+  const [cartError, setCartError] = useState('');
+  const [editingCartItem, setEditingCartItem] = useState<CartItem | undefined>();
   const [variationModalProduct, setVariationModalProduct] = useState<Product | null>(null);
+  const [customerConfirmation, setCustomerConfirmation] = useState<Order | null>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('pos_customer_confirmation') || 'null');
+      return stored?.id && ['saved', 'pending', 'rejected'].includes(stored.persistenceState) ? stored : null;
+    } catch { return null; }
+  });
+  const [autoPrintOrderId, setAutoPrintOrderId] = useState<string | null>(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
@@ -102,6 +112,7 @@ export default function App() {
       setCart([]);
       setPaymentMethod('cash');
       setOrderSequence(previous => previous + 1);
+      setCustomerConfirmation(recovered);
       setSaleFeedback({ success: recovered.persistenceState === 'saved', state: recovered.persistenceState, order: recovered });
     } else if (recovered?.persistenceState === 'rejected') {
       checkoutAttempt.current = recovered;
@@ -127,18 +138,19 @@ export default function App() {
     const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
 
     const displayPayload = {
+      settings: printerSettings,
       cart,
       orderNumber: `#F00${orderSequence}`,
       tokenNumber: orderSequence % 100 || orderSequence,
       subtotalPaisa,
       taxPaisa,
       totalPaisa,
-      lastPlacedOrder: receiptModalOrder
+      lastPlacedOrder: customerConfirmation
         ? {
-            orderNumber: receiptModalOrder.orderNumber,
-            tokenNumber: receiptModalOrder.tokenNumber,
-            totalPaisa: receiptModalOrder.totalPaisa,
-            persistenceState: receiptModalOrder.persistenceState,
+            orderNumber: customerConfirmation.orderNumber,
+            tokenNumber: customerConfirmation.tokenNumber,
+            totalPaisa: customerConfirmation.totalPaisa,
+            persistenceState: customerConfirmation.persistenceState,
           }
         : null,
     };
@@ -146,11 +158,18 @@ export default function App() {
     try {
       const serializedPayload = JSON.stringify(displayPayload);
       localStorage.setItem('pos_customer_display_state', serializedPayload);
-      customerDisplayChannel.current?.postMessage(displayPayload);
-    } catch {
-      // ignore
-    }
-  }, [cart, orderSequence, receiptModalOrder, printerSettings]);
+    } catch { /* Broadcast remains available when browser storage is blocked. */ }
+    try { customerDisplayChannel.current?.postMessage(displayPayload); } catch { /* Storage is the fallback channel. */ }
+  }, [cart, orderSequence, customerConfirmation, printerSettings]);
+
+  useEffect(() => { if (cart.length > 0) setCustomerConfirmation(null); }, [cart]);
+
+  useEffect(() => {
+    try {
+      if (customerConfirmation) localStorage.setItem('pos_customer_confirmation', JSON.stringify(customerConfirmation));
+      else localStorage.removeItem('pos_customer_confirmation');
+    } catch { /* Confirmation remains available in this window. */ }
+  }, [customerConfirmation]);
 
   // Draft recovery is separate from the durable sale outbox.
   useEffect(() => {
@@ -212,6 +231,7 @@ export default function App() {
         const data = await PosApi.fetchInitialData();
         setProducts(data.products.map(normalizeProduct));
         setOrders(data.orders);
+        setCustomerConfirmation(previous => previous ? data.orders.find(order => order.id === previous.id) || previous : null);
         setReceiptModalOrder(previous => {
           const recovered = previous && data.orders.find(order => order.id === previous.id);
           return recovered?.persistenceState === 'rejected' ? null : recovered || previous;
@@ -250,19 +270,31 @@ export default function App() {
     setCart([]);
     checkoutAttempt.current = undefined;
     PosStorage.clearDraft();
+    setCustomerConfirmation(null);
     setSaleFeedback(null);
     setIsMobileSidebarOpen(false);
     setIsMobileCartOpen(false);
   };
 
+  const canAddQuantity = (product: Product, quantity: number, exceptLine?: string) => {
+    const current = products.find(p => p.id === product.id) || product;
+    const alreadyOrdered = cart.filter(item => item.product.id === product.id && item.cartItemId !== exceptLine).reduce((sum, item) => sum + item.quantity, 0);
+    if (!current.isAvailable || alreadyOrdered + quantity > current.stockQuantity) {
+      setCartError(!current.isAvailable ? `${current.name} is unavailable.` : `Insufficient stock for ${current.name}. Available: ${current.stockQuantity}.`);
+      return false;
+    }
+    setCartError('');
+    return true;
+  };
+
   // Cart operations
   const handleQuickAddToCart = (product: Product) => {
-    if (orderInFlight.current) return;
+    if (orderInFlight.current || !canAddQuantity(product, 1)) return;
     const unitPricePaisa = product.pricePaisa;
     const unitCostPaisa = product.costPricePaisa || 0;
     setCart(prev => {
       const existingIdx = prev.findIndex(
-        item => item.product.id === product.id && item.selectedVariations.length === 0
+        item => item.product.id === product.id && item.selectedVariations.length === 0 && !item.notes?.trim()
       );
 
       if (existingIdx !== -1) {
@@ -296,7 +328,7 @@ export default function App() {
     if (orderInFlight.current) return;
     setCart(prev => {
       const existingIdx = prev.findIndex(
-        item => item.product.id === product.id && item.selectedVariations.length === 0
+        item => item.product.id === product.id && item.selectedVariations.length === 0 && !item.notes?.trim()
       );
       if (existingIdx === -1) return prev;
 
@@ -320,9 +352,11 @@ export default function App() {
   const handleAddVariationToCart = (
     product: Product,
     selectedVariations: SelectedVariationItem[],
-    quantity: number
+    quantity: number,
+    notes: string
   ) => {
     if (orderInFlight.current) return;
+    if (!canAddQuantity(product, quantity, editingCartItem?.cartItemId)) return false;
     const deltaPrice = selectedVariations.reduce((sum, v) => sum + v.priceDeltaPaisa, 0);
     const deltaCost = selectedVariations.reduce((sum, v) => sum + v.costDeltaPaisa, 0);
 
@@ -330,22 +364,26 @@ export default function App() {
     const unitCostPaisa = (product.costPricePaisa || 0) + deltaCost;
 
     const newItem: CartItem = {
-      cartItemId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      cartItemId: editingCartItem?.cartItemId || `cart-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       product,
       quantity,
       selectedVariations,
+      notes: notes.trim(),
       unitPricePaisa,
       unitCostPaisa,
       totalPricePaisa: unitPricePaisa * quantity,
       totalCostPaisa: unitCostPaisa * quantity,
     };
 
-    setCart(prev => [...prev, newItem]);
+    setCart(prev => editingCartItem ? prev.map(item => item.cartItemId === editingCartItem.cartItemId ? newItem : item) : [...prev, newItem]);
+    setEditingCartItem(undefined);
     setVariationModalProduct(null);
   };
 
   const handleUpdateCartQuantity = (cartItemId: string, delta: number) => {
     if (orderInFlight.current) return;
+    const line = cart.find(item => item.cartItemId === cartItemId);
+    if (delta > 0 && line && !canAddQuantity(line.product, line.quantity + delta, cartItemId)) return;
     setCart(prev =>
       prev
         .map(item => {
@@ -378,6 +416,7 @@ export default function App() {
   // Place Takeaway Order & Generate 2 Slips
   const handlePlaceOrder = async (cashTenderedPaisa: number, selectedPaymentMethod: PaymentMethod) => {
     if (cart.length === 0 || orderInFlight.current || !currentUser) return;
+    if (cart.some(item => !canAddQuantity(item.product, 0))) return;
 
     const totals = computeTotals(cart, printerSettings);
     const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
@@ -490,7 +529,9 @@ export default function App() {
       setPaymentMethod('cash');
       setOrderSequence(prev => prev + 1);
       setIsMobileCartOpen(false);
+      setAutoPrintOrderId(printerSettings.autoPrintDualSlips ? result.order.id : null);
       setReceiptModalOrder(result.order);
+      setCustomerConfirmation(result.order);
       if (result.state === 'saved') {
         // Refresh stock from the transaction that was acknowledged, without resubmitting it.
         const data = await PosApi.fetchInitialData();
@@ -527,22 +568,24 @@ export default function App() {
   };
 
   // Open Preview Modal for existing or current cart
-  const handleOpenPrintCurrentCart = () => {
-    if (cart.length === 0 || !currentUser) return;
-    const totals = computeTotals(cart, printerSettings);
+  const handleOpenPrintCurrentCart = (sample = false) => {
+    if ((!sample && cart.length === 0) || !currentUser) return;
+    const sampleProduct = products[0];
+    const printCart: CartItem[] = sample && sampleProduct ? [{ cartItemId: 'test-slip-item', product: { ...sampleProduct, name: 'Sample item - TEST ONLY', isDeal: false, bundledProducts: [] }, quantity: 1, selectedVariations: [], notes: 'Test slip. Do not prepare.', unitPricePaisa: 10000, unitCostPaisa: 0, totalPricePaisa: 10000, totalCostPaisa: 0 }] : sample ? [] : cart;
+    const totals = computeTotals(printCart, printerSettings);
     const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
     const { totalCostPaisa, profitPaisa } = totals;
 
     const tempOrder: Order = {
       moneySchemaVersion: 2, netRevenuePaisa: totals.netRevenuePaisa,
-      id: 'preview-cart',
+      id: sample ? 'test-slip' : 'preview-cart',
       persistenceState: 'draft',
-      orderNumber: `#F00${orderSequence}`,
+      orderNumber: sample ? 'TEST SLIP - NOT A SALE' : `#F00${orderSequence}`,
       tokenNumber: orderSequence % 100 || orderSequence,
       customerName: currentUser?.name || 'Walk-in Customer',
       status: 'in_kitchen',
       orderType: 'take_away',
-      items: cart.map(it => ({
+      items: printCart.map(it => ({
         id: it.cartItemId,
         productId: it.product.id,
         productName: it.product.name,
@@ -553,6 +596,7 @@ export default function App() {
         totalPricePaisa: it.totalPricePaisa,
         totalCostPaisa: it.totalCostPaisa,
         selectedVariations: it.selectedVariations,
+        notes: it.notes,
         bundledProducts: it.product.bundledProducts,
       })),
       subtotalPaisa,
@@ -570,6 +614,7 @@ export default function App() {
       synced: true,
     };
 
+    setAutoPrintOrderId(null);
     setReceiptModalOrder(tempOrder);
   };
 
@@ -590,8 +635,8 @@ export default function App() {
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
     await PosApi.deleteProduct(productId, isOnline);
+    setProducts(prev => prev.filter(p => p.id !== productId));
   };
 
   const handleSaveCategory = async (name: string, icon: string) => {
@@ -664,12 +709,14 @@ export default function App() {
     PosStorage.setSession(newAdmin);
   };
 
-  const pendingBadge = (
-    <div role="status" aria-label="Pending sales" className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2 text-sm shrink-0">
-      <span>{pendingOfflineCount} {pendingOfflineCount === 1 ? 'order' : 'orders'} waiting to sync</span>
-      <button type="button" onClick={() => void handleManualSync()} className="font-semibold text-emerald-700">Retry sync</button>
+  const pendingBadge = (pendingOfflineCount > 0 || recoveryError) ? (
+    <div role="status" aria-label="Pending sales" className="flex items-center justify-between gap-3 border-b border-pos-border bg-pos-surface px-4 py-2 text-sm shrink-0">
+      <span>{pendingOfflineCount > 0
+        ? `${pendingOfflineCount} ${pendingOfflineCount === 1 ? 'order' : 'orders'} waiting to sync`
+        : 'Recovery needs attention'}</span>
+      <button type="button" onClick={() => void handleManualSync()} className="font-semibold text-pos-success-text">Retry sync</button>
     </div>
-  );
+  ) : null;
 
   // IF NOT LOGGED IN: DISPLAY AUTHENTICATION GATEWAY
   if (!currentUser) {
@@ -687,7 +734,7 @@ export default function App() {
   }
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-[#F8FAFA] font-sans antialiased text-slate-800">
+    <div className="w-screen h-screen overflow-hidden bg-pos-chrome font-sans antialiased text-pos-text">
       <div className="flex h-full w-full overflow-hidden">
       {/* Sidebar: Role-gated */}
       <Sidebar
@@ -706,7 +753,7 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFA]">
+      <div className="flex-1 flex flex-col overflow-hidden bg-pos-chrome">
         {/* Top Header - Clean, No Search Bar, No Bell, No Next Token */}
         <Header
           currentUser={currentUser}
@@ -716,20 +763,20 @@ export default function App() {
         />
 
         {pendingBadge}
-        {recoveryError && <div role="alert" className="bg-amber-50 px-4 py-2 text-sm">{recoveryError}</div>}
+        {recoveryError && <div role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">{recoveryError}</div>}
         {saleFeedback && (
-          <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-slate-50 px-4 py-2 text-sm shrink-0">
+          <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-pos-inset px-4 py-2 text-sm shrink-0">
             {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
               ? 'Pending — recovery copy stored; waiting for the server.' : `Rejected — ${saleFeedback.error}`}
             {saleFeedback.state === 'rejected' && (cart.length
-              ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-emerald-700">Retry sale</button>
-              : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-emerald-700">Review rejected sale</button>)}
+              ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-pos-success-text">Retry sale</button>
+              : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-pos-success-text">Review rejected sale</button>)}
           </div>
         )}
         {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
-          <div key={order.id} role="alert" className="bg-amber-50 px-4 py-2 text-sm">
+          <div key={order.id} role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">
             Rejected {order.orderNumber}: {order.rejectionReason}
-            <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-emerald-700">Review rejected order {order.orderNumber}</button>
+            <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-pos-success-text">Review rejected order {order.orderNumber}</button>
             {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
           </div>
         ))}
@@ -739,20 +786,23 @@ export default function App() {
           {activeTab === 'order_line' && (
             <>
               <OrderLineView
+                isLocked={isProcessingOrder}
                 products={products}
                 categories={categories}
                 cart={cart}
                 onQuickAddToCart={handleQuickAddToCart}
                 onQuickDecrementFromCart={handleQuickDecrementFromCart}
-                onOpenVariationModal={setVariationModalProduct}
+                onOpenVariationModal={product => { if (!orderInFlight.current && canAddQuantity(product, 1)) { setEditingCartItem(undefined); setVariationModalProduct(product); } }}
                 onOpenMobileCart={() => setIsMobileCartOpen(true)}
               />
               <CartDrawer
+                error={cartError}
                 cart={cart}
                 orderNumber={`#F00${orderSequence}`}
                 tokenNumber={orderSequence % 100 || orderSequence}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onRemoveItem={handleRemoveCartItem}
+                onEditItem={item => { if (!orderInFlight.current) { setEditingCartItem(item); setVariationModalProduct(item.product); } }}
                 onClearCart={handleClearCart}
                 taxBp={printerSettings.taxBp}
                 taxInclusive={printerSettings.taxInclusive}
@@ -772,6 +822,7 @@ export default function App() {
               products={products}
               categories={categories}
               currentUser={currentUser}
+              defaultLowStockThreshold={printerSettings.globalLowStockThreshold ?? 5}
               onSaveProduct={handleSaveProduct}
               onDeleteProduct={handleDeleteProduct}
               onSaveCategory={handleSaveCategory}
@@ -787,7 +838,7 @@ export default function App() {
               products={products}
               currentUser={currentUser}
               onNavigateToTab={setActiveTab}
-              onSelectOrderPreview={setReceiptModalOrder}
+              onSelectOrderPreview={order => { setAutoPrintOrderId(null); setReceiptModalOrder(order); }}
             />
           )}
 
@@ -806,18 +857,24 @@ export default function App() {
               onSaveSettings={handleSaveSettings}
               currentUser={currentUser}
               onUpdateCashierCredentials={handleUpdateCashierCredentials}
-              onOpenTestPrint={handleOpenPrintCurrentCart}
+              onResetCustomerDisplay={() => setCustomerConfirmation(null)}
+              onOpenTestPrint={() => handleOpenPrintCurrentCart(true)}
             />
           )}
         </div>
       </div>
       </div>
 
+      {cartError && !variationModalProduct && !isMobileCartOpen && <div role="alert" className="fixed top-20 left-1/2 -translate-x-1/2 z-50 rounded-md border border-pos-danger-border bg-pos-danger-bg text-pos-danger-text p-3 text-sm flex items-center gap-3 max-w-[calc(100vw-2rem)]">{cartError}<button type="button" aria-label="Dismiss stock message" onClick={() => setCartError('')}>Dismiss</button></div>}
       {/* Variation Customizer Modal */}
       {variationModalProduct && (
         <VariationModal
+          key={editingCartItem?.cartItemId || variationModalProduct.id}
+          error={cartError}
+          maximumQuantity={Math.max(0, (products.find(p => p.id === variationModalProduct.id)?.stockQuantity ?? variationModalProduct.stockQuantity) - cart.filter(item => item.product.id === variationModalProduct.id && item.cartItemId !== editingCartItem?.cartItemId).reduce((sum, item) => sum + item.quantity, 0))}
+          initialItem={editingCartItem}
           product={variationModalProduct}
-          onClose={() => setVariationModalProduct(null)}
+          onClose={() => { setVariationModalProduct(null); setEditingCartItem(undefined); setCartError(''); }}
           onAddToCart={handleAddVariationToCart}
         />
       )}
@@ -825,45 +882,39 @@ export default function App() {
       {/* Dual Slip Thermal Receipt Print Modal (Customer Slip + Kitchen Slip) */}
       {receiptModalOrder && (
         <ThermalReceiptModal
+          onAutoPrinted={() => setAutoPrintOrderId(null)}
+          autoPrint={receiptModalOrder.id === autoPrintOrderId && printerSettings.autoPrintDualSlips}
           order={receiptModalOrder}
           settings={printerSettings}
-          onClose={() => setReceiptModalOrder(null)}
+          onClose={() => { setReceiptModalOrder(null); setAutoPrintOrderId(null); }}
         />
       )}
 
       {isLogoutConfirmOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="logout-confirm-title"
-            aria-describedby="logout-confirm-description"
-            className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6"
-          >
-            <h2 id="logout-confirm-title" className="mb-2 text-lg font-bold text-slate-900">
+        <Dialog role="alertdialog" label="Log out?" onClose={() => setIsLogoutConfirmOpen(false)} className="w-full max-w-sm rounded-lg border border-pos-border bg-pos-surface p-6">
+            <h2 id="logout-confirm-title" className="mb-2 text-lg font-bold text-pos-text">
               Log out?
             </h2>
-            <p id="logout-confirm-description" className="mb-6 text-sm text-slate-600">
+            <p id="logout-confirm-description" className="mb-6 text-sm text-pos-secondary">
               Are you sure you want to log out of this terminal?
             </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsLogoutConfirmOpen(false)}
-                className="rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                className="rounded-md px-4 py-2 text-sm font-semibold text-pos-secondary hover:bg-pos-raised"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmLogout}
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+                className="rounded-md bg-pos-danger-hover px-4 py-2 text-sm font-semibold text-white hover:bg-pos-danger-hover"
               >
                 Log out
               </button>
             </div>
-          </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

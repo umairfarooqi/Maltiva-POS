@@ -135,9 +135,9 @@ describe('layout controls', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: 'Wipe Sales' }));
+    await user.click(screen.getByRole('button', { name: 'Clear cached sales' }));
 
-    expect(screen.getByRole('alertdialog', { name: 'Wipe all sales?' })).toBeVisible();
+    expect(screen.getByRole('alertdialog', { name: 'Clear cached sales?' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
