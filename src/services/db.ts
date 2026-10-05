@@ -1,13 +1,14 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { migrateMoney } from './moneyMigration';
 
 const DB_DIR = process.env.MALTIVA_POS_DB_DIR || process.cwd();
 const DB_PATH = path.join(DB_DIR, 'maltiva_pos.db');
 fs.mkdirSync(DB_DIR, { recursive: true });
 const db = new Database(DB_PATH);
 
-export function initDb() {
+export async function initDb() {
   console.log('Initializing Professional SQLite Database...');
 
   // Enable WAL mode for better performance and crash resistance
@@ -71,7 +72,6 @@ export function initDb() {
     db.prepare('ALTER TABLE products ADD COLUMN variations TEXT').run();
   }
 
-  db.prepare("DELETE FROM products WHERE name = 'Untitled Dish' OR price = 0").run();
 
   // 4. Orders Table
   db.prepare(`
@@ -105,7 +105,7 @@ export function initDb() {
   if (!orderColumns.some(column => column.name === 'idempotency_key')) {
     db.prepare('ALTER TABLE orders ADD COLUMN idempotency_key TEXT').run();
   }
-  if (!orderColumns.some(column => column.name === 'changeDue')) {
+  if (!orderColumns.some(column => column.name === 'changeDue' || column.name === 'change_due_paisa')) {
     db.prepare('ALTER TABLE orders ADD COLUMN changeDue REAL DEFAULT 0').run();
   }
   // Old order IDs remain usable when recovering the legacy browser queue.
@@ -182,6 +182,7 @@ export function initDb() {
     )
   `).run();
 
+  await migrateMoney(db);
   console.log('Database Vault Ready.');
 }
 

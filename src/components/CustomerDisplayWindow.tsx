@@ -5,18 +5,19 @@ import { formatPKR } from '../utils/formatCurrency';
 import { CartItem, PrinterSettings } from '../types/pos';
 import { INITIAL_PRINTER_SETTINGS } from '../data/initialData';
 import { PosStorage } from '../services/storage';
+import { upgradeMoney } from '../shared/moneyUpgrade';
 
 export interface CustomerDisplayState {
   cart: CartItem[];
   orderNumber: string;
   tokenNumber: number;
-  subtotal: number;
-  tax: number;
-  total: number;
+  subtotalPaisa: number;
+  taxPaisa: number;
+  totalPaisa: number;
   lastPlacedOrder?: {
     orderNumber: string;
     tokenNumber: number;
-    total: number;
+    totalPaisa: number;
     persistenceState?: 'saved' | 'pending' | 'rejected' | 'draft';
   } | null;
 }
@@ -26,9 +27,9 @@ export const CustomerDisplayWindow: React.FC = () => {
     cart: [],
     orderNumber: '#F0001',
     tokenNumber: 1,
-    subtotal: 0,
-    tax: 0,
-    total: 0,
+    subtotalPaisa: 0,
+    taxPaisa: 0,
+    totalPaisa: 0,
     lastPlacedOrder: null,
   });
 
@@ -41,7 +42,7 @@ export const CustomerDisplayWindow: React.FC = () => {
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data) {
-        setDisplayState(event.data);
+        setDisplayState(upgradeMoney(event.data));
       }
     };
 
@@ -52,7 +53,7 @@ export const CustomerDisplayWindow: React.FC = () => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'pos_customer_display_state' && e.newValue) {
         try {
-          setDisplayState(JSON.parse(e.newValue));
+          setDisplayState(upgradeMoney(JSON.parse(e.newValue)));
         } catch {
           // ignore
         }
@@ -66,7 +67,7 @@ export const CustomerDisplayWindow: React.FC = () => {
     const saved = localStorage.getItem('pos_customer_display_state');
     if (saved) {
       try {
-        setDisplayState(JSON.parse(saved));
+        setDisplayState(upgradeMoney(JSON.parse(saved)));
       } catch {
         // ignore
       }
@@ -115,7 +116,7 @@ export const CustomerDisplayWindow: React.FC = () => {
                   TOKEN #{displayState.lastPlacedOrder?.tokenNumber}
                 </h1>
                 <p className="text-lg text-slate-600 font-mono mt-2">
-                  Order {displayState.lastPlacedOrder?.orderNumber} • {formatPKR(displayState.lastPlacedOrder?.total || 0)}
+                  Order {displayState.lastPlacedOrder?.orderNumber} • {formatPKR(displayState.lastPlacedOrder?.totalPaisa || 0)}
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 max-w-sm mx-auto">
@@ -225,7 +226,7 @@ export const CustomerDisplayWindow: React.FC = () => {
                     </div>
 
                     <span className="text-sm font-bold text-emerald-700 font-mono shrink-0">
-                      {formatPKR(item.totalPrice)}
+                      {formatPKR(item.totalPricePaisa)}
                     </span>
                   </div>
                 </div>
@@ -236,13 +237,13 @@ export const CustomerDisplayWindow: React.FC = () => {
           <div className="p-5 lg:p-6 bg-slate-50 border-t border-slate-200 space-y-2.5">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Subtotal</span>
-              <span className="font-mono text-slate-700">{formatPKR(displayState.subtotal)}</span>
+              <span className="font-mono text-slate-700">{formatPKR(displayState.subtotalPaisa)}</span>
             </div>
 
-            {displayState.tax > 0 && (
+            {displayState.taxPaisa > 0 && (
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Tax</span>
-                <span className="font-mono text-slate-700">{formatPKR(displayState.tax)}</span>
+                <span className="font-mono text-slate-700">{formatPKR(displayState.taxPaisa)}</span>
               </div>
             )}
 
@@ -254,7 +255,7 @@ export const CustomerDisplayWindow: React.FC = () => {
                 <span className="text-[11px] text-emerald-700 font-medium">PKR Pakistani Rupees</span>
               </div>
               <span className="text-2xl lg:text-3xl font-black text-slate-900 font-mono tracking-tight text-emerald-700">
-                {formatPKR(displayState.total)}
+                {formatPKR(displayState.totalPaisa)}
               </span>
             </div>
           </div>

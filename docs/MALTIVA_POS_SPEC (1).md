@@ -709,7 +709,7 @@ These decisions override anything earlier in this document that conflicts with t
 
 ### 16.6 Implementation order (one commit per phase, each with lifecycle tests)
 1. Sale persistence and recovery (fix the stock log query, transaction, pending outbox, merge bootstrap).
-2. Authoritative money, payments and permissions (computeTotals in integer paisa, server-derived prices and identity, hashed credentials, sessions, route guards, no secrets in bootstrap).
+2. Authoritative money, payments and permissions, delivered in scoped steps. **Implemented: 2A, prices and totals, integer paisa storage, and tax-exclusive profit** (section 16.8). **Next: 2B**, full payment rules, server-derived identity, hashed credentials, sessions and route guards; server-issued numbering also remains outstanding. Completing 2A does not complete phase 2.
 3. Shifts and cash reconciliation, Z-report.
 4. Kitchen to pickup flow, void and refund with manager approval.
 5. Printing queue and durable settings (phone, address, footer, tax).
@@ -724,3 +724,25 @@ These decisions override anything earlier in this document that conflicts with t
 - Order and token numbers never repeat across 1000 sequential and 50 concurrent requests.
 - A cashier token gets 403 on every admin and cost or profit route.
 - Server stopped mid-session: the order lands in the pending outbox and syncs once, with no duplicate, after restart.
+
+### 16.8 Implemented scope: prices, money storage and profit (2026-10-05)
+
+The user selected these three areas first and authorized implementation. Phase 2A is implemented on top of the completed sale-recovery baseline. Plan and acceptance evidence: [Phase 2A: authoritative prices, integer paisa and profit](plans/2026-10-05-authoritative-money-and-profit.md). The live database migration is deferred until the next app/server startup; implementation validation used isolated databases.
+
+| Area | Before 2A | Implemented behavior in 2A |
+| --- | --- | --- |
+| Prices and totals | Browser supplies prices, variation deltas, tax, cost and totals; server persists them. CartDrawer rounds tax to whole rupees while App uses two decimal places. | Server reads products, selected option IDs and tax settings, then computes and snapshots every financial value. One shared calculation supplies consistent previews. |
+| Money storage | Products, orders, items and payments use REAL rupee columns; nested variation/bundle snapshots and browser caches also carry rupee values. | Active financial fields use INTEGER paisa with explicit unit/version markers at API and recovery boundaries. Convert existing data exactly once, transactionally. |
+| Profit | Checkout includes tax in profit; P&L can replace a saved zero cost with the current product cost. | Profit is net revenue excluding tax minus snapshotted cost. Zero cost is valid; later product edits never change historical profit. |
+
+Rules and boundaries:
+
+- Follow section 5: deterministic minor-unit rounding; inclusive/exclusive tax; proportional discount allocation; snapshot price, cost, tax mode/rate and net revenue. Existing stores remain tax-exclusive unless explicitly configured otherwise.
+- Server-created quotes describe the amount the cashier reviewed. Recompute inside the sale transaction; a changed quote requires explicit review before a first commit. Client-derived financial fields do not control saved values.
+- Preserve all original order IDs, recovery keys, receipts' charged totals and payment history during migration. Retain an audit record of converted legacy values and any derived profit correction; never reconstruct old costs from today's catalog.
+- Look up a committed recovery key before repricing. Replays return the original saved snapshot even if menu prices or tax settings changed. Uncommitted legacy outbox entries are retained and require pricing review when they lack a valid quote.
+- Keep the current single-payment flow. Its applied amount is the authoritative total; cash tender and change use paisa and underpayment is rejected. Split-payment UX, payment gateways and the broader payment phase are deferred. Nonzero checkout discounts remain unavailable until discount authorization is implemented.
+- Update cart, customer display, receipts, existing dashboard/P&L sums and CSV formatting so accepted totals agree. Only saved sales enter confirmed financial aggregates; pending, rejected and draft values remain provisional. Full reporting APIs and backup/restore features remain later work.
+- Authentication, roles, cashier identity, order/token counters, shifts, refunds, print queue and repository database-file cleanup are separate outstanding work. This scope does not make the POS production-ready.
+
+Acceptance covers isolated migration tests, tampered-price/total tests, matching cart/server/receipt amounts, tax-exclusive profit tests, historical snapshot stability, changed-quote review, and phase-1 recovery regressions. Completed steps, numerical examples and verification commands are in the linked plan. Menu and tax-setting saves now require server acknowledgment; failed saves retain the form for retry.

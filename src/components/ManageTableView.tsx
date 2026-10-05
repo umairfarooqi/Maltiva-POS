@@ -97,7 +97,7 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
                         Order {activeOrder.orderNumber}
                       </p>
                       <p className="text-[11px] text-slate-500 font-mono">
-                        {formatPKR(activeOrder.total)} • {activeOrder.items.length} items
+                        {formatPKR(activeOrder.totalPaisa)} • {activeOrder.items.length} items
                       </p>
                     </div>
                   ) : (

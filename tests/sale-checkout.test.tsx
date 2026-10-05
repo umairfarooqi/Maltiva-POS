@@ -10,6 +10,7 @@ import { INITIAL_PRODUCTS, INITIAL_USERS, INITIAL_PRINTER_SETTINGS, INITIAL_CATE
 import { ThermalReceiptModal } from '../src/components/ThermalReceiptModal';
 import { SettingsView } from '../src/components/SettingsView';
 import { saleFixture } from './helpers/sale-fixtures';
+import { computeTotals } from '../src/shared/money';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 let outcome: 'saved' | 'pending' | 'rejected';
@@ -21,6 +22,11 @@ beforeEach(async () => {
   outcome = 'saved'; requests = []; committed = [];
   PosStorage.setSession(INITIAL_USERS[0]); PosStorage.setOrders([]); PosStorage.setProducts(structuredClone(INITIAL_PRODUCTS));
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+    if (url === '/api/orders/quote') {
+      if (outcome === 'pending') throw new TypeError('Server stopped');
+      const order = JSON.parse(init!.body as string);
+      return json({ ...order, moneySchemaVersion: 2, pricingFingerprint: 'reviewed-quote' });
+    }
     if (url === '/api/data') return json({ categories: INITIAL_CATEGORIES, products: INITIAL_PRODUCTS, orders: committed, tables: [], users: INITIAL_USERS, printerSettings: INITIAL_PRINTER_SETTINGS, inventoryLogs: [] });
     if (url.startsWith('/api/orders/pending-status')) {
       if (outcome === 'pending') throw new TypeError('Server stopped');
@@ -41,14 +47,46 @@ async function checkout() {
   const user = userEvent.setup(); render(<App />);
   await screen.findByText(INITIAL_PRODUCTS[0].name);
   await user.click(screen.getByText(INITIAL_PRODUCTS[0].name));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Complete Order (Cash)' })).toBeEnabled());
   await user.click(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
   return user;
 }
 
 describe('phase 1 cashier decisions', () => {
+  it('a pending sale rejected during replay exposes review and retains its recovery key', async () => {
+    outcome = 'pending'; const user = await checkout();
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Pending'));
+    const key = requests[0].idempotencyKey;
+    outcome = 'rejected';
+    await user.click(screen.getByRole('button', { name: 'Retry sync' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Please review this sale'));
+    expect(screen.queryByRole('button', { name: 'Close receipt preview' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Review rejected sale' }));
+    outcome = 'saved';
+    await user.click(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
+    expect(requests.at(-1).idempotencyKey).toBe(key);
+  }, 15000);
+  it('requires explicit review of a changed quote before submitting any sale', async () => {
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url !== '/api/orders/quote') return originalFetch(url, init);
+      const order = JSON.parse(init!.body as string);
+      const items = order.items.map((item: any) => ({ ...item, unitPricePaisa: 100000, totalPricePaisa: 100000 }));
+      return json({ ...order, ...computeTotals(items, { taxBp: 0 }), items, moneySchemaVersion: 2, pricingFingerprint: 'changed-quote' });
+    });
+    const user = await checkout();
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Current total: Rs. 1,000'));
+    expect(requests).toHaveLength(0);
+    const key = (await PendingOutbox.rejected())[0].idempotencyKey;
+    await user.click(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ idempotencyKey: key, totalPaisa: 100000, cashTenderedPaisa: 100000 });
+  });
   it('shows saved and clears the cart after the server acknowledges the sale', async () => {
     await checkout();
-    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'), { timeout: 5000 });
     expect(screen.getByText('Cart is empty')).toBeVisible();
     expect(PosStorage.getOrders()[0]).toMatchObject({ persistenceState: 'saved' });
   });
@@ -63,7 +101,7 @@ describe('phase 1 cashier decisions', () => {
     const product = INITIAL_PRODUCTS[0];
     PosStorage.setDraft({ paymentMethod: 'cash', attempt: requests[0], cart: [{
       cartItemId: 'crash-quota', product, quantity: 1, selectedVariations: [],
-      unitPrice: product.price, unitCost: product.costPrice || 0, totalPrice: product.price, totalCost: product.costPrice || 0,
+      unitPricePaisa: product.pricePaisa, unitCostPaisa: product.costPricePaisa || 0, totalPricePaisa: product.pricePaisa, totalCostPaisa: product.costPricePaisa || 0,
     }] });
     outcome = 'pending';
     const originalFetch = globalThis.fetch;
@@ -121,7 +159,7 @@ describe('phase 1 cashier decisions', () => {
     await user.click(screen.getByRole('button', { name: 'Complete Order (Card)' }));
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1].paymentMethod).toBe('card');
-    expect(requests[1].cashTendered).toBeUndefined();
+    expect(requests[1].cashTenderedPaisa).toBeUndefined();
     await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
   });
   it.each(['pending', 'saved'])('reconciles a %s crash draft before another checkout can include its sold items', async state => {
@@ -129,7 +167,7 @@ describe('phase 1 cashier decisions', () => {
     const product = INITIAL_PRODUCTS[0];
     PosStorage.setDraft({ paymentMethod: 'cash', attempt: order, cart: [{
       cartItemId: 'crash-cart', product, quantity: 1, selectedVariations: [],
-      unitPrice: product.price, unitCost: product.costPrice || 0, totalPrice: product.price, totalCost: product.costPrice || 0,
+      unitPricePaisa: product.pricePaisa, unitCostPaisa: product.costPricePaisa || 0, totalPricePaisa: product.pricePaisa, totalCostPaisa: product.costPricePaisa || 0,
     }] });
     if (state === 'pending') await PendingOutbox.put(order);
     else await PosApi.placeOrder(order, true);

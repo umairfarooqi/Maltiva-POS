@@ -17,8 +17,8 @@ describe('customer display', () => {
 
 describe('customer display sale persistence', () => {
   it('does not announce success for a pending sale', () => {
-    localStorage.setItem('pos_customer_display_state', JSON.stringify({ cart: [], orderNumber: '#F0031', tokenNumber: 31, subtotal: 990, tax: 0, total: 990,
-      lastPlacedOrder: { orderNumber: '#F0031', tokenNumber: 31, total: 990, persistenceState: 'pending' } }));
+    localStorage.setItem('pos_customer_display_state', JSON.stringify({ cart: [], orderNumber: '#F0031', tokenNumber: 31, subtotalPaisa: 990, taxPaisa: 0, totalPaisa: 990,
+      lastPlacedOrder: { orderNumber: '#F0031', tokenNumber: 31, totalPaisa: 990, persistenceState: 'pending' } }));
     render(<CustomerDisplayWindow />);
     expect(screen.getByText('PENDING — waiting for server confirmation')).toBeVisible();
     expect(screen.queryByText('Order Successfully Placed')).not.toBeInTheDocument();

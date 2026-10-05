@@ -33,8 +33,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           groupName: group.name,
           optionId: opt.id,
           optionName: opt.name,
-          priceDelta: opt.priceDelta,
-          costDelta: opt.costDelta,
+          priceDeltaPaisa: opt.priceDeltaPaisa,
+          costDeltaPaisa: opt.costDeltaPaisa,
         });
       }
     });
@@ -44,10 +44,10 @@ export const VariationModal: React.FC<VariationModalProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
 
-  // Calculate live item price
-  const variationPriceSum = selectedVariations.reduce((sum, v) => sum + v.priceDelta, 0);
-  const unitPrice = product.price + variationPriceSum;
-  const totalPrice = unitPrice * quantity;
+  // Calculate live item pricePaisa
+  const variationPriceSum = selectedVariations.reduce((sum, v) => sum + v.priceDeltaPaisa, 0);
+  const unitPricePaisa = product.pricePaisa + variationPriceSum;
+  const totalPricePaisa = unitPricePaisa * quantity;
 
   const handleSelectOption = (group: VariationGroup, optionId: string) => {
     const option = group.options.find(o => o.id === optionId);
@@ -69,8 +69,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
             groupName: group.name,
             optionId: option.id,
             optionName: option.name,
-            priceDelta: option.priceDelta,
-            costDelta: option.costDelta,
+            priceDeltaPaisa: option.priceDeltaPaisa,
+            costDeltaPaisa: option.costDeltaPaisa,
           },
         ]);
       }
@@ -83,8 +83,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           groupName: group.name,
           optionId: option.id,
           optionName: option.name,
-          priceDelta: option.priceDelta,
-          costDelta: option.costDelta,
+          priceDeltaPaisa: option.priceDeltaPaisa,
+          costDeltaPaisa: option.costDeltaPaisa,
         },
       ]);
     }
@@ -126,7 +126,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                 {product.name}
               </h3>
               <p className="text-xs text-slate-400">
-                Base price: {formatPKR(product.price)}
+                Base price: {formatPKR(product.pricePaisa)}
               </p>
             </div>
           </div>
@@ -187,10 +187,10 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                           <span>{opt.name}</span>
                         </div>
                         <span className={`font-mono ${isSelected ? 'text-[#00A389]' : 'text-slate-500'}`}>
-                          {opt.priceDelta > 0
-                            ? `+${formatPKR(opt.priceDelta)}`
-                            : opt.priceDelta < 0
-                            ? `-${formatPKR(Math.abs(opt.priceDelta))}`
+                          {opt.priceDeltaPaisa > 0
+                            ? `+${formatPKR(opt.priceDeltaPaisa)}`
+                            : opt.priceDeltaPaisa < 0
+                            ? `-${formatPKR(Math.abs(opt.priceDeltaPaisa))}`
                             : 'Rs. 0'}
                         </span>
                       </button>
@@ -241,7 +241,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
             className="flex-1 py-3 px-4 bg-[#008f77] hover:bg-[#007462] text-white rounded-md text-sm font-bold flex items-center justify-between transition"
           >
             <span>Add to Order</span>
-            <span className="font-mono">{formatPKR(totalPrice)}</span>
+            <span className="font-mono">{formatPKR(totalPricePaisa)}</span>
           </button>
         </div>
       </div>

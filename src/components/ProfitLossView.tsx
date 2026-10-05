@@ -1,3 +1,4 @@
+import { rupeeText } from '../shared/money';
 import React, { useState } from 'react';
 import {
   TrendingUp,
@@ -54,7 +55,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
   const filteredOrders = orders.filter(order => {
-    if (order.status === 'cancelled') return false;
+    if (order.status === 'cancelled' || order.persistenceState !== 'saved' || order.profitIncomplete) return false;
     const time = new Date(order.createdAt).getTime();
 
     if (dateFilter === 'today') return time >= startOfToday;
@@ -71,7 +72,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
     categoryName: string;
     quantity: number;
     totalRevenue: number;
-    totalCost: number;
+    totalCostPaisa: number;
     avgSellingPrice: number;
     avgCostPrice: number;
     grossProfit: number;
@@ -83,23 +84,23 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
   filteredOrders.forEach(order => {
     order.items.forEach(it => {
       const prod = products.find(p => p.id === it.productId);
-      const categoryId = prod?.categoryId;
+      const categoryId = it.categoryId;
 
       if (selectedCategoryId !== 'all' && categoryId !== selectedCategoryId) {
         return;
       }
 
-      const rawUnitCost = it.unitCost !== undefined && it.unitCost > 0 ? it.unitCost : (prod?.costPrice || 0);
+      const rawUnitCost = it.unitCostPaisa ?? 0;
 
       if (!itemMap[it.productId]) {
         itemMap[it.productId] = {
           productId: it.productId,
           productName: it.productName,
-          categoryName: it.categoryName || prod?.categoryName || 'General',
+          categoryName: it.categoryName || 'General',
           quantity: 0,
           totalRevenue: 0,
-          totalCost: 0,
-          avgSellingPrice: it.unitPrice,
+          totalCostPaisa: 0,
+          avgSellingPrice: it.unitPricePaisa,
           avgCostPrice: rawUnitCost,
           grossProfit: 0,
           profitMarginPercent: 0,
@@ -107,16 +108,18 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
       }
 
       itemMap[it.productId].quantity += it.quantity;
-      itemMap[it.productId].totalRevenue += it.totalPrice;
-      itemMap[it.productId].totalCost += (it.totalCost || (rawUnitCost * it.quantity));
+      itemMap[it.productId].totalRevenue += it.netRevenuePaisa ?? it.totalPricePaisa;
+      itemMap[it.productId].totalCostPaisa += it.totalCostPaisa ?? 0;
     });
   });
 
   const itemsList: ItemAgg[] = Object.values(itemMap).map(item => {
-    const grossProfit = item.totalRevenue - item.totalCost;
+    const grossProfit = item.totalRevenue - item.totalCostPaisa;
     const profitMarginPercent = item.totalRevenue > 0 ? (grossProfit / item.totalRevenue) * 100 : 0;
     return {
       ...item,
+      avgSellingPrice: Math.round(item.totalRevenue / item.quantity),
+      avgCostPrice: Math.round(item.totalCostPaisa / item.quantity),
       grossProfit,
       profitMarginPercent,
     };
@@ -124,7 +127,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
 
   // Total summary calculations
   const totalRevenue = itemsList.reduce((sum, item) => sum + item.totalRevenue, 0);
-  const totalRawCost = itemsList.reduce((sum, item) => sum + item.totalCost, 0);
+  const totalRawCost = itemsList.reduce((sum, item) => sum + item.totalCostPaisa, 0);
   const totalGrossProfit = totalRevenue - totalRawCost;
   const overallMarginPercent = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
 
@@ -146,12 +149,12 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
       `"${item.productName.replace(/"/g, '""')}"`,
       `"${item.categoryName}"`,
       item.quantity,
-      Math.round(item.avgSellingPrice),
-      Math.round(item.avgCostPrice),
-      Math.round(item.avgSellingPrice - item.avgCostPrice),
-      Math.round(item.totalRevenue),
-      Math.round(item.totalCost),
-      Math.round(item.grossProfit),
+      rupeeText(Math.round(item.avgSellingPrice)),
+      rupeeText(Math.round(item.avgCostPrice)),
+      rupeeText(Math.round(item.avgSellingPrice - item.avgCostPrice)),
+      rupeeText(Math.round(item.totalRevenue)),
+      rupeeText(Math.round(item.totalCostPaisa)),
+      rupeeText(Math.round(item.grossProfit)),
       `${item.profitMarginPercent.toFixed(1)}%`,
     ]);
 
@@ -170,6 +173,8 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 select-none bg-[#F4F6F5]">
+      {orders.some(order => order.persistenceState === 'saved' && order.profitIncomplete) &&
+        <p role="status" className="text-sm text-amber-800">Some historical sales have missing cost snapshots and are excluded from profit calculations.</p>}
       {/* Top Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-lg border border-slate-200">
         <div>
@@ -379,7 +384,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
                         {formatPKR(item.totalRevenue)}
                       </td>
                       <td className="p-4 text-right font-mono text-rose-600">
-                        {formatPKR(item.totalCost)}
+                        {formatPKR(item.totalCostPaisa)}
                       </td>
                       <td className="p-4 text-right font-mono font-black text-[#00A389]">
                         {formatPKR(item.grossProfit)}

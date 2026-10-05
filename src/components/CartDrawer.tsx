@@ -2,6 +2,7 @@ import React from 'react';
 import { Trash2, Printer, Power, X, Banknote, CreditCard, ScanLine } from 'lucide-react';
 import { CartItem, PaymentMethod } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { computeTotals, parseRupees, rupeeText } from '../shared/money';
 
 interface CartDrawerProps {
   cart: CartItem[];
@@ -10,10 +11,11 @@ interface CartDrawerProps {
   onUpdateQuantity: (cartItemId: string, delta: number) => void;
   onRemoveItem: (cartItemId: string) => void;
   onClearCart: () => void;
-  taxRatePercent: number;
+  taxBp: number;
+  taxInclusive?: boolean;
   paymentMethod: PaymentMethod;
   onSelectPaymentMethod: (method: PaymentMethod) => void;
-  onPlaceOrder: (cashTendered: number, paymentMethod: PaymentMethod) => void;
+  onPlaceOrder: (cashTenderedPaisa: number, paymentMethod: PaymentMethod) => void;
   onOpenPrintModal: () => void;
   isProcessing: boolean;
   isMobileOpen?: boolean;
@@ -27,7 +29,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity: _onUpdateQuantity,
   onRemoveItem: _onRemoveItem,
   onClearCart,
-  taxRatePercent,
+  taxBp,
+  taxInclusive = false,
   paymentMethod,
   onSelectPaymentMethod,
   onPlaceOrder,
@@ -36,18 +39,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   isMobileOpen = false,
   onCloseMobile,
 }) => {
-  const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
-  const tax = Number(((subtotal * (taxRatePercent > 0 ? taxRatePercent : 0)) / 100).toFixed(0));
-  const totalPayable = subtotal + tax;
+  const { subtotalPaisa, taxPaisa, totalPaisa: totalPayable } = computeTotals(cart, { taxBp, taxInclusive });
   const totalCount = cart.reduce((s, it) => s + it.quantity, 0);
-  const [cashTendered, setCashTendered] = React.useState(totalPayable);
+  const [cashTenderedPaisa, setCashTendered] = React.useState(totalPayable);
+  const [tenderText, setTenderText] = React.useState(rupeeText(totalPayable));
+  const [invalidTender, setInvalidTender] = React.useState(false);
 
   React.useEffect(() => {
     setCashTendered(totalPayable);
+    setTenderText(rupeeText(totalPayable)); setInvalidTender(false);
   }, [totalPayable]);
 
-  const changeDue = Math.max(0, cashTendered - totalPayable);
-  const cashPaymentValid = paymentMethod !== 'cash' || cashTendered >= totalPayable;
+  const changeDuePaisa = Math.max(0, cashTenderedPaisa - totalPayable);
+  const cashPaymentValid = paymentMethod !== 'cash' || (!invalidTender && cashTenderedPaisa >= totalPayable);
   const paymentMethods = [
     { value: 'cash', label: 'Cash', Icon: Banknote },
     { value: 'card', label: 'Card', Icon: CreditCard },
@@ -128,7 +132,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     )}
                   </div>
                   <span className="text-sm font-bold text-slate-900 shrink-0">
-                    {formatPKR(item.totalPrice)}
+                    {formatPKR(item.totalPricePaisa)}
                   </span>
                 </div>
               ))}
@@ -144,13 +148,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500">Subtotal</span>
-            <span className="font-semibold text-slate-700">{formatPKR(subtotal)}</span>
+            <span className="font-semibold text-slate-700">{formatPKR(subtotalPaisa)}</span>
           </div>
 
-          {taxRatePercent > 0 && (
+          {taxBp > 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Tax ({taxRatePercent}%)</span>
-              <span className="font-semibold text-slate-700">{formatPKR(tax)}</span>
+              <span className="text-slate-500">Tax {taxInclusive ? 'included' : ''} ({taxBp / 100}%)</span>
+              <span className="font-semibold text-slate-700">{formatPKR(taxPaisa)}</span>
             </div>
           )}
 
@@ -168,14 +172,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 id="cash-tendered"
                 type="number"
                 min="0"
-                step="1"
-                value={cashTendered}
-                onChange={event => setCashTendered(Math.max(0, Number(event.target.value) || 0))}
+                step="0.01"
+                value={tenderText}
+                onChange={event => {
+                  setTenderText(event.target.value);
+                  try { setCashTendered(parseRupees(event.target.value)); setInvalidTender(false); }
+                  catch { setInvalidTender(true); }
+                }}
                 className="w-full rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus-visible:border-[#008f77]"
               />
               <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-slate-700">
                 <span>Change Due</span>
-                <span className="font-black text-[#00A389]">{formatPKR(changeDue)}</span>
+                <span className="font-black text-[#00A389]">{formatPKR(changeDuePaisa)}</span>
               </div>
               {!cashPaymentValid && (
                 <p className="text-xs font-semibold text-rose-600">Tender must cover the total amount.</p>
@@ -221,7 +229,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
           <button
             type="button"
-            onClick={() => onPlaceOrder(cashTendered, paymentMethod)}
+            onClick={() => onPlaceOrder(cashTenderedPaisa, paymentMethod)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
             className="flex-1 py-3 rounded-md bg-[#008f77] hover:bg-[#007462] text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
           >

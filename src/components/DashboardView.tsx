@@ -43,7 +43,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Filter Orders
   const filteredOrders = orders.filter(order => {
-    if (order.status === 'cancelled') return false;
+    if (order.status === 'cancelled' || order.persistenceState !== 'saved') return false;
 
     // Payment Filter
     if (paymentFilter !== 'all' && order.paymentMethod !== paymentFilter) {
@@ -74,28 +74,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   // Calculate Metrics
-  const totalSales = filteredOrders.reduce((sum, o) => sum + o.total, 0);
-  const totalRawCost = filteredOrders.reduce((sum, o) => sum + (o.totalCost || 0), 0);
+  const totalSales = filteredOrders.reduce((sum, o) => sum + o.totalPaisa, 0);
+  const totalRawCost = filteredOrders.reduce((sum, o) => sum + (o.totalCostPaisa || 0), 0);
   const totalOrdersCount = filteredOrders.length;
   const averageOrderValue = totalOrdersCount > 0 ? Math.round(totalSales / totalOrdersCount) : 0;
 
   const cashOrders = filteredOrders.filter(o => o.paymentMethod === 'cash');
   const cardOrders = filteredOrders.filter(o => o.paymentMethod === 'card');
 
-  const cashTotal = cashOrders.reduce((sum, o) => sum + o.total, 0);
-  const cardTotal = cardOrders.reduce((sum, o) => sum + o.total, 0);
+  const cashTotal = cashOrders.reduce((sum, o) => sum + o.totalPaisa, 0);
+  const cardTotal = cardOrders.reduce((sum, o) => sum + o.totalPaisa, 0);
 
   // Today vs Yesterday sales for quick growth comparison
   const todayOnlySales = orders
-    .filter(o => new Date(o.createdAt).getTime() >= startOfToday && o.status !== 'cancelled')
-    .reduce((sum, o) => sum + o.total, 0);
+    .filter(o => new Date(o.createdAt).getTime() >= startOfToday && o.status !== 'cancelled' && o.persistenceState === 'saved')
+    .reduce((sum, o) => sum + o.totalPaisa, 0);
 
   const yesterdayOnlySales = orders
     .filter(o => {
       const t = new Date(o.createdAt).getTime();
-      return t >= startOfYesterday && t < startOfToday && o.status !== 'cancelled';
+      return t >= startOfYesterday && t < startOfToday && o.status !== 'cancelled' && o.persistenceState === 'saved';
     })
-    .reduce((sum, o) => sum + o.total, 0);
+    .reduce((sum, o) => sum + o.totalPaisa, 0);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 select-none bg-[#F4F6F5]">
@@ -352,7 +352,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </span>
                     </td>
                     <td className="p-4 text-right font-black font-mono text-slate-900 text-sm">
-                      {formatPKR(order.total)}
+                      {formatPKR(order.totalPaisa)}
                     </td>
                     <td className="p-4 text-center">
                       {onSelectOrderPreview && (

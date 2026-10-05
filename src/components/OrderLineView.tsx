@@ -41,7 +41,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   const totalCartQty = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCartPrice = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+  const totalCartPrice = cart.reduce((sum, item) => sum + item.totalPricePaisa, 0);
 
   const filteredProducts = products.filter(product => {
     if (activeCategoryId === 'cat-all') return true;
@@ -213,7 +213,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                   <span className="text-lg font-black text-slate-900">
-                    {formatPKR(product.price)}
+                    {formatPKR(product.pricePaisa)}
                   </span>
 
                   {qtyInCart === 0 ? (

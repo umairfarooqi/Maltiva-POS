@@ -1,3 +1,5 @@
+import { computeTotals } from './shared/money';
+import { formatPKR } from './utils/formatCurrency';
 import { useState, useEffect, useRef } from 'react';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -121,22 +123,21 @@ export default function App() {
 
   // Sync state with Customer Display on Secondary Screen
   useEffect(() => {
-    const subtotal = cart.reduce((sum, it) => sum + it.totalPrice, 0);
-    const tax = Number(((subtotal * printerSettings.taxRatePercent) / 100).toFixed(2));
-    const total = subtotal + tax;
+    const totals = computeTotals(cart, printerSettings);
+    const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
 
     const displayPayload = {
       cart,
       orderNumber: `#F00${orderSequence}`,
       tokenNumber: orderSequence % 100 || orderSequence,
-      subtotal,
-      tax,
-      total,
+      subtotalPaisa,
+      taxPaisa,
+      totalPaisa,
       lastPlacedOrder: receiptModalOrder
         ? {
             orderNumber: receiptModalOrder.orderNumber,
             tokenNumber: receiptModalOrder.tokenNumber,
-            total: receiptModalOrder.total,
+            totalPaisa: receiptModalOrder.totalPaisa,
             persistenceState: receiptModalOrder.persistenceState,
           }
         : null,
@@ -207,13 +208,21 @@ export default function App() {
       setPendingOfflineCount(res.pendingCount);
       setIsOnline(res.reachable);
       setOrders(PosStorage.getOrders());
-      if (res.syncedCount > 0) {
+      if (res.syncedCount > 0 || res.rejectedCount > 0) {
         const data = await PosApi.fetchInitialData();
         setProducts(data.products.map(normalizeProduct));
         setOrders(data.orders);
-        setReceiptModalOrder(previous => previous ? data.orders.find(order => order.id === previous.id) || previous : null);
-        setSaleFeedback(previous => previous?.state === 'pending' && data.orders.some(order => order.id === previous.order.id && order.persistenceState === 'saved')
-          ? { success: true, state: 'saved', order: data.orders.find(order => order.id === previous.order.id)! } : previous);
+        setReceiptModalOrder(previous => {
+          const recovered = previous && data.orders.find(order => order.id === previous.id);
+          return recovered?.persistenceState === 'rejected' ? null : recovered || previous;
+        });
+        setSaleFeedback(previous => {
+          if (previous?.state !== 'pending') return previous;
+          const recovered = data.orders.find(order => order.id === previous.order.id);
+          if (recovered?.persistenceState === 'saved') return { success: true, state: 'saved', order: recovered };
+          if (recovered?.persistenceState === 'rejected') return { success: false, state: 'rejected', order: recovered, error: recovered.rejectionReason };
+          return previous;
+        });
       }
       setRecoveryError('');
     } catch { setRecoveryError('Sync could not finish. Pending sales are retained; retry sync.'); }
@@ -249,8 +258,8 @@ export default function App() {
   // Cart operations
   const handleQuickAddToCart = (product: Product) => {
     if (orderInFlight.current) return;
-    const unitPrice = product.price;
-    const unitCost = product.costPrice || 0;
+    const unitPricePaisa = product.pricePaisa;
+    const unitCostPaisa = product.costPricePaisa || 0;
     setCart(prev => {
       const existingIdx = prev.findIndex(
         item => item.product.id === product.id && item.selectedVariations.length === 0
@@ -263,8 +272,8 @@ export default function App() {
         updated[existingIdx] = {
           ...existing,
           quantity,
-          totalPrice: quantity * unitPrice,
-          totalCost: quantity * unitCost,
+          totalPricePaisa: quantity * unitPricePaisa,
+          totalCostPaisa: quantity * unitCostPaisa,
         };
         return updated;
       }
@@ -274,10 +283,10 @@ export default function App() {
         product: normalizeProduct(product),
         quantity: 1,
         selectedVariations: [],
-        unitPrice,
-        unitCost,
-        totalPrice: unitPrice,
-        totalCost: unitCost,
+        unitPricePaisa,
+        unitCostPaisa,
+        totalPricePaisa: unitPricePaisa,
+        totalCostPaisa: unitCostPaisa,
       };
       return [...prev, newItem];
     });
@@ -298,8 +307,8 @@ export default function App() {
         updated[existingIdx] = {
           ...existing,
           quantity,
-          totalPrice: quantity * existing.unitPrice,
-          totalCost: quantity * existing.unitCost,
+          totalPricePaisa: quantity * existing.unitPricePaisa,
+          totalCostPaisa: quantity * existing.unitCostPaisa,
         };
       } else {
         updated.splice(existingIdx, 1);
@@ -314,21 +323,21 @@ export default function App() {
     quantity: number
   ) => {
     if (orderInFlight.current) return;
-    const deltaPrice = selectedVariations.reduce((sum, v) => sum + v.priceDelta, 0);
-    const deltaCost = selectedVariations.reduce((sum, v) => sum + v.costDelta, 0);
+    const deltaPrice = selectedVariations.reduce((sum, v) => sum + v.priceDeltaPaisa, 0);
+    const deltaCost = selectedVariations.reduce((sum, v) => sum + v.costDeltaPaisa, 0);
 
-    const unitPrice = product.price + deltaPrice;
-    const unitCost = (product.costPrice || 0) + deltaCost;
+    const unitPricePaisa = product.pricePaisa + deltaPrice;
+    const unitCostPaisa = (product.costPricePaisa || 0) + deltaCost;
 
     const newItem: CartItem = {
       cartItemId: `cart-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       product,
       quantity,
       selectedVariations,
-      unitPrice,
-      unitCost,
-      totalPrice: unitPrice * quantity,
-      totalCost: unitCost * quantity,
+      unitPricePaisa,
+      unitCostPaisa,
+      totalPricePaisa: unitPricePaisa * quantity,
+      totalCostPaisa: unitCostPaisa * quantity,
     };
 
     setCart(prev => [...prev, newItem]);
@@ -346,8 +355,8 @@ export default function App() {
           return {
             ...item,
             quantity,
-            totalPrice: quantity * item.unitPrice,
-            totalCost: quantity * item.unitCost,
+            totalPricePaisa: quantity * item.unitPricePaisa,
+            totalCostPaisa: quantity * item.unitCostPaisa,
           };
         })
         .filter(Boolean) as CartItem[]
@@ -367,29 +376,30 @@ export default function App() {
   };
 
   // Place Takeaway Order & Generate 2 Slips
-  const handlePlaceOrder = async (cashTendered: number, selectedPaymentMethod: PaymentMethod) => {
+  const handlePlaceOrder = async (cashTenderedPaisa: number, selectedPaymentMethod: PaymentMethod) => {
     if (cart.length === 0 || orderInFlight.current || !currentUser) return;
 
-    const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
-    const tax = Number(((subtotal * printerSettings.taxRatePercent) / 100).toFixed(2));
-    const total = subtotal + tax;
-    if (selectedPaymentMethod === 'cash' && cashTendered < total) return;
+    const totals = computeTotals(cart, printerSettings);
+    const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
+    if (selectedPaymentMethod === 'cash' && cashTenderedPaisa < totalPaisa) return;
 
     orderInFlight.current = true;
     setIsProcessingOrder(true);
 
-    const totalCost = cart.reduce((sum, item) => sum + item.totalCost, 0);
-    const profit = total - totalCost; // Raw material cost vs customer price
-    const profitMarginPercent = total > 0 ? (profit / total) * 100 : 0;
+    const { totalCostPaisa, profitPaisa } = totals;
+    const profitMarginPercent = totals.marginBp / 100;
 
     const orderNum = `#F00${orderSequence}`;
     const tokenNum = orderSequence % 100 || orderSequence;
 
     let newOrder: Order = checkoutAttempt.current || {
+      moneySchemaVersion: 2,
+      netRevenuePaisa: totals.netRevenuePaisa,
+      taxBp: printerSettings.taxBp, taxInclusive: printerSettings.taxInclusive,
       id: crypto.randomUUID(),
       idempotencyKey: crypto.randomUUID(),
-      cashTendered: selectedPaymentMethod === 'cash' ? cashTendered : undefined,
-      changeDue: selectedPaymentMethod === 'cash' ? cashTendered - total : 0,
+      cashTenderedPaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa : undefined,
+      changeDuePaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa - totalPaisa : 0,
       orderNumber: orderNum,
       tokenNumber: tokenNum,
       customerName: 'Takeaway Customer',
@@ -400,21 +410,21 @@ export default function App() {
         productId: it.product.id,
         productName: it.product.name,
         categoryName: it.product.categoryName,
-        unitPrice: it.unitPrice,
-        unitCost: it.unitCost,
+        unitPricePaisa: it.unitPricePaisa,
+        unitCostPaisa: it.unitCostPaisa,
         quantity: it.quantity,
-        totalPrice: it.totalPrice,
-        totalCost: it.totalCost,
+        totalPricePaisa: it.totalPricePaisa,
+        totalCostPaisa: it.totalCostPaisa,
         selectedVariations: it.selectedVariations,
         notes: it.notes,
         bundledProducts: it.product.bundledProducts,
       })),
-      subtotal,
-      tax,
-      discount: 0,
-      total,
-      totalCost,
-      profit,
+      subtotalPaisa,
+      taxPaisa,
+      discountPaisa: 0,
+      totalPaisa,
+      totalCostPaisa,
+      profitPaisa,
       profitMarginPercent,
       paymentMethod: selectedPaymentMethod,
       cashierId: currentUser.id,
@@ -425,11 +435,44 @@ export default function App() {
     };
 
     newOrder = { ...newOrder, paymentMethod: selectedPaymentMethod,
-      cashTendered: selectedPaymentMethod === 'cash' ? cashTendered : undefined,
-      changeDue: selectedPaymentMethod === 'cash' ? cashTendered - newOrder.total : 0 };
+      cashTenderedPaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa : undefined,
+      changeDuePaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa - newOrder.totalPaisa : 0 };
     checkoutAttempt.current = newOrder;
     attemptCart.current = JSON.stringify(cart);
     try {
+      PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: newOrder });
+      const pricing = await PosApi.quoteOrder(newOrder);
+      if (pricing.error) {
+        const rejected = await PendingOutbox.reject(newOrder, pricing.error);
+        checkoutAttempt.current = rejected;
+        PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: rejected });
+        setSaleFeedback({ success: false, state: 'rejected', order: rejected, error: pricing.error });
+        return;
+      }
+      if (pricing.quote) {
+        const quote = pricing.quote;
+        const changed = quote.totalPaisa !== newOrder.totalPaisa ||
+          quote.taxPaisa !== newOrder.taxPaisa || Boolean(quote.taxInclusive) !== Boolean(newOrder.taxInclusive) ||
+          quote.items.some((item: any, index: number) => item.unitPricePaisa !== newOrder.items[index]?.unitPricePaisa) ||
+          (newOrder.pricingFingerprint && quote.pricingFingerprint !== newOrder.pricingFingerprint);
+        newOrder = { ...newOrder, ...quote };
+        checkoutAttempt.current = newOrder;
+        if (changed) {
+          const reviewedCart = cart.map((entry, index) => ({ ...entry,
+            ...quote.items[index], cartItemId: entry.cartItemId,
+            product: { ...entry.product, name: quote.items[index].productName,
+              categoryName: quote.items[index].categoryName } }));
+          attemptCart.current = JSON.stringify(reviewedCart);
+          setCart(reviewedCart);
+          setPrinterSettings(previous => ({ ...previous, taxBp: quote.taxBp, taxInclusive: quote.taxInclusive }));
+          const reason = `Prices changed. Current total: ${formatPKR(quote.totalPaisa)}. Review the basket and cash tender, then complete the order.`;
+          const rejected = await PendingOutbox.reject(newOrder, reason);
+          checkoutAttempt.current = rejected;
+          PosStorage.setDraft({ cart: reviewedCart, paymentMethod: selectedPaymentMethod, attempt: rejected });
+          setSaleFeedback({ success: false, state: 'rejected', order: rejected, error: reason });
+          return;
+        }
+      }
       PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: newOrder });
       const result = await PosApi.placeOrder(newOrder, isOnline);
       if (result.state === 'rejected') {
@@ -470,9 +513,10 @@ export default function App() {
       cartItemId: item.id,
       product: normalizeProduct({ ...(products.find(product => product.id === item.productId) || {}),
         id: item.productId, name: item.productName, categoryName: item.categoryName,
-        price: item.unitPrice, costPrice: item.unitCost, bundledProducts: item.bundledProducts }),
+        pricePaisa: item.unitPricePaisa, costPricePaisa: item.unitCostPaisa, bundledProducts: item.bundledProducts }),
       quantity: item.quantity, selectedVariations: item.selectedVariations, notes: item.notes,
-      unitPrice: item.unitPrice, unitCost: item.unitCost, totalPrice: item.totalPrice, totalCost: item.totalCost,
+      unitPricePaisa: item.unitPricePaisa, unitCostPaisa: item.unitCostPaisa ?? products.find(p => p.id === item.productId)?.costPricePaisa ?? 0,
+      totalPricePaisa: item.totalPricePaisa, totalCostPaisa: item.totalCostPaisa ?? 0,
     }));
     attemptCart.current = JSON.stringify(restored);
     checkoutAttempt.current = order;
@@ -485,12 +529,12 @@ export default function App() {
   // Open Preview Modal for existing or current cart
   const handleOpenPrintCurrentCart = () => {
     if (cart.length === 0 || !currentUser) return;
-    const subtotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
-    const tax = Number(((subtotal * printerSettings.taxRatePercent) / 100).toFixed(2));
-    const total = subtotal + tax;
-    const totalCost = cart.reduce((sum, item) => sum + item.totalCost, 0);
+    const totals = computeTotals(cart, printerSettings);
+    const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
+    const { totalCostPaisa, profitPaisa } = totals;
 
     const tempOrder: Order = {
+      moneySchemaVersion: 2, netRevenuePaisa: totals.netRevenuePaisa,
       id: 'preview-cart',
       persistenceState: 'draft',
       orderNumber: `#F00${orderSequence}`,
@@ -503,21 +547,21 @@ export default function App() {
         productId: it.product.id,
         productName: it.product.name,
         categoryName: it.product.categoryName,
-        unitPrice: it.unitPrice,
-        unitCost: it.unitCost,
+        unitPricePaisa: it.unitPricePaisa,
+        unitCostPaisa: it.unitCostPaisa,
         quantity: it.quantity,
-        totalPrice: it.totalPrice,
-        totalCost: it.totalCost,
+        totalPricePaisa: it.totalPricePaisa,
+        totalCostPaisa: it.totalCostPaisa,
         selectedVariations: it.selectedVariations,
         bundledProducts: it.product.bundledProducts,
       })),
-      subtotal,
-      tax,
-      discount: 0,
-      total,
-      totalCost,
-      profit: total - totalCost,
-      profitMarginPercent: total > 0 ? ((total - totalCost) / total) * 100 : 0,
+      subtotalPaisa,
+      taxPaisa,
+      discountPaisa: 0,
+      totalPaisa,
+      totalCostPaisa,
+      profitPaisa,
+      profitMarginPercent: totals.marginBp / 100,
       paymentMethod: 'cash',
       cashierId: currentUser.id,
       cashierName: currentUser.name,
@@ -534,13 +578,11 @@ export default function App() {
     if (productData.id) {
       const existing = products.find(p => p.id === productData.id);
       const merged = normalizeProduct({ ...(existing || {}), ...productData });
-      setProducts(prev => prev.map(product => product.id === merged.id ? merged : product));
       const updated = await PosApi.updateProduct(merged, isOnline);
       const normalizedUpdated = normalizeProduct(updated);
       setProducts(prev => prev.map(product => product.id === normalizedUpdated.id ? normalizedUpdated : product));
     } else {
       const created = normalizeProduct(productData);
-      setProducts(prev => [created, ...prev]);
       const savedProduct = await PosApi.createProduct(created, isOnline);
       const normalizedSaved = normalizeProduct(savedProduct);
       setProducts(prev => [normalizedSaved, ...prev.filter(product => product.id !== created.id && product.id !== normalizedSaved.id)]);
@@ -596,7 +638,8 @@ export default function App() {
     setProducts(prev => prev.map(p => (p.id === productId ? normalizeProduct(res.product) : p)));
   };
 
-  const handleSaveSettings = (newSettings: PrinterSettings) => {
+  const handleSaveSettings = async (newSettings: PrinterSettings) => {
+    await PosApi.saveMoneySettings(newSettings);
     setPrinterSettings(newSettings);
     PosStorage.setPrinterSettings(newSettings);
   };
@@ -678,7 +721,9 @@ export default function App() {
           <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-slate-50 px-4 py-2 text-sm shrink-0">
             {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
               ? 'Pending — recovery copy stored; waiting for the server.' : `Rejected — ${saleFeedback.error}`}
-            {saleFeedback.state === 'rejected' && <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTendered ?? saleFeedback.order.total, paymentMethod)} className="ml-3 font-semibold text-emerald-700">Retry sale</button>}
+            {saleFeedback.state === 'rejected' && (cart.length
+              ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-emerald-700">Retry sale</button>
+              : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-emerald-700">Review rejected sale</button>)}
           </div>
         )}
         {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
@@ -709,7 +754,8 @@ export default function App() {
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onRemoveItem={handleRemoveCartItem}
                 onClearCart={handleClearCart}
-                taxRatePercent={printerSettings.taxRatePercent}
+                taxBp={printerSettings.taxBp}
+                taxInclusive={printerSettings.taxInclusive}
                 paymentMethod={paymentMethod}
                 onSelectPaymentMethod={setPaymentMethod}
                 onPlaceOrder={handlePlaceOrder}
