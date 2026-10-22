@@ -139,7 +139,7 @@ async function startServer() {
       address: settingsMap.address || '',
       whatsApp: settingsMap.whatsApp || '',
       ...taxSettings(db), moneySchemaVersion: 2,
-      paperWidth: settingsMap.paperWidth || '80mm',
+      paperWidth: settingsMap.paperWidth || '58mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',
       customerDisplayGreeting: settingsMap.customerDisplayGreeting || 'Welcome!',
       globalLowStockThreshold: Number(settingsMap.globalLowStockThreshold ?? 5),
@@ -334,7 +334,7 @@ async function startServer() {
     res.json({
       storeName: settingsMap.storeName || 'Maltiva Crust',
       ...taxSettings(db), moneySchemaVersion: 2,
-      paperWidth: settingsMap.paperWidth || '80mm',
+      paperWidth: settingsMap.paperWidth || '58mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',
       customerDisplayGreeting: settingsMap.customerDisplayGreeting || 'Welcome!',
       globalLowStockThreshold: Number(settingsMap.globalLowStockThreshold ?? 5),
