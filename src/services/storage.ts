@@ -5,7 +5,6 @@ import {
   INITIAL_PRODUCTS,
   INITIAL_ORDERS,
   INITIAL_TABLES,
-  INITIAL_USERS,
   INITIAL_PRINTER_SETTINGS,
   INITIAL_CUSTOMERS,
 } from '../data/initialData';
@@ -109,7 +108,7 @@ export class PosStorage {
 
   static getUsers(): User[] {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
-    return data ? JSON.parse(data) : INITIAL_USERS;
+    try { return data ? JSON.parse(data) : []; } catch { return []; }
   }
 
   static setUsers(users: User[]) {
@@ -165,7 +164,7 @@ export class PosStorage {
     localStorage.setItem(STORAGE_KEYS.OFFLINE_QUEUE, JSON.stringify([]));
   }
 
-  static getActiveUser(): User {
+  static getActiveUser(): User | null {
     const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER);
     if (data) {
       try {
@@ -174,7 +173,7 @@ export class PosStorage {
         // fallback
       }
     }
-    return INITIAL_USERS[0]; // Ibrahim Kadri (Admin)
+    return null;
   }
 
   static setActiveUser(user: User) {
@@ -199,5 +198,14 @@ export class PosStorage {
 
   static clearSession() {
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER);
+    localStorage.removeItem('tasty_pos_auth_token');
+  }
+
+  static getToken(): string | null {
+    try { return localStorage.getItem('tasty_pos_auth_token'); } catch { return null; }
+  }
+
+  static setToken(token: string) {
+    localStorage.setItem('tasty_pos_auth_token', token);
   }
 }

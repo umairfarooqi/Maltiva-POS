@@ -10,6 +10,7 @@ import { ManageDishesView } from './components/ManageDishesView';
 import { DashboardView } from './components/DashboardView';
 import { ProfitLossView } from './components/ProfitLossView';
 import { SettingsView } from './components/SettingsView';
+import { StaffManagementView } from './components/StaffManagementView';
 import { VariationModal } from './components/VariationModal';
 import { ThermalReceiptModal } from './components/ThermalReceiptModal';
 import { LoginScreen } from './components/LoginScreen';
@@ -98,6 +99,11 @@ export default function App() {
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const customerDisplayChannel = useRef<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    if (activeTab === 'staff' && currentUser?.role === 'admin') void refreshStaff();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentUser?.id]);
 
   const reconcileCheckoutDraft = (recoveredOrders: Order[]) => {
     if (!checkoutRecoveryPending.current) return;
@@ -689,16 +695,18 @@ export default function App() {
     PosStorage.setPrinterSettings(newSettings);
   };
 
-  const handleUpdateCashierCredentials = (newUsername: string, newPin: string) => {
-    const localUsers = [...allUsers];
-    const cashierIdx = localUsers.findIndex(u => u.role === 'cashier');
-    if (cashierIdx !== -1) {
-      localUsers[cashierIdx].username = newUsername;
-      localUsers[cashierIdx].pin = newPin;
-      localUsers[cashierIdx].password = newPin;
-      setAllUsers(localUsers);
-      PosStorage.setUsers(localUsers);
-    }
+  const refreshStaff = async () => {
+    try { setAllUsers(await PosApi.listUsers()); } catch { /* session may have expired; list reloads on next open */ }
+  };
+
+  const handleAddUser = async (input: Partial<User> & { password: string; pin: string }) => {
+    const created = await PosApi.createUser(input);
+    setAllUsers(prev => [...prev, created]);
+  };
+
+  const handleToggleUserActive = async (userId: string, active: boolean) => {
+    const updated = await PosApi.updateUser(userId, { active });
+    setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
 
   const handleAdminRegistered = (newAdmin: User) => {
@@ -706,7 +714,6 @@ export default function App() {
     setAllUsers(updated);
     PosStorage.setUsers(updated);
     setCurrentUser(newAdmin);
-    PosStorage.setSession(newAdmin);
   };
 
   const pendingBadge = (pendingOfflineCount > 0 || recoveryError) ? (
@@ -851,12 +858,20 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'staff' && currentUser.role === 'admin' && (
+            <StaffManagementView
+              users={allUsers}
+              currentUser={currentUser}
+              onAddUser={handleAddUser}
+              onToggleUserActive={handleToggleUserActive}
+            />
+          )}
+
           {activeTab === 'settings' && currentUser.role === 'admin' && (
             <SettingsView
               settings={printerSettings}
               onSaveSettings={handleSaveSettings}
               currentUser={currentUser}
-              onUpdateCashierCredentials={handleUpdateCashierCredentials}
               onResetCustomerDisplay={() => setCustomerConfirmation(null)}
               onOpenTestPrint={() => handleOpenPrintCurrentCart(true)}
             />

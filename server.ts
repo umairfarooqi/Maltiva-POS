@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
 import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pricing';
 import { integer } from './src/shared/money';
@@ -9,7 +9,6 @@ import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
   INITIAL_PRODUCTS, 
-  INITIAL_USERS, 
   INITIAL_PRINTER_SETTINGS 
 } from './src/data/initialData';
 import { Order, Product, Category, User, InventoryLog, PrinterSettings } from './src/types/pos';
@@ -21,19 +20,101 @@ import { Order, Product, Category, User, InventoryLog, PrinterSettings } from '.
 const parseJson = <T>(val: string | null): T | [] => (val ? JSON.parse(val) : []);
 const stringifyJson = (val: any) => JSON.stringify(val);
 
-// Seed Database with Initial Data if empty
+// ---------- Authentication helpers ----------
+const HASH_PREFIX = 's1$';
+function hashSecret(secret: string): string {
+  const salt = randomBytes(16);
+  return `${HASH_PREFIX}${salt.toString('hex')}$${scryptSync(secret, salt, 32).toString('hex')}`;
+}
+function isHashed(stored?: string | null): boolean { return !!stored && stored.startsWith(HASH_PREFIX); }
+function verifySecret(stored: string | null | undefined, input: string): boolean {
+  if (!stored || typeof input !== 'string' || !input) return false;
+  if (isHashed(stored)) {
+    const [, saltHex, hashHex] = stored.split('$');
+    const expected = Buffer.from(hashHex, 'hex');
+    const actual = scryptSync(input, Buffer.from(saltHex, 'hex'), expected.length);
+    return timingSafeEqual(expected, actual);
+  }
+  // Legacy plaintext value (upgraded to a hash on the next successful login)
+  const a = Buffer.from(stored); const b = Buffer.from(input);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function authSecret(): string {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'authSecret'").get() as { value: string } | undefined;
+  if (row) return row.value;
+  const secret = randomBytes(32).toString('hex');
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('authSecret', secret);
+  return secret;
+}
+const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+function signToken(userId: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub: userId, exp: Date.now() + TOKEN_TTL_MS })).toString('base64url');
+  return `${payload}.${createHmac('sha256', authSecret()).update(payload).digest('base64url')}`;
+}
+function userFromToken(header?: string): any | null {
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = createHmac('sha256', authSecret()).update(payload).digest('base64url');
+  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    const { sub, exp } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (!sub || exp < Date.now()) return null;
+    return db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(sub) || null;
+  } catch { return null; }
+}
+
+/** Strips credentials before a user record leaves the server. */
+function publicUser(u: any): User {
+  const { password: _p, pin: _n, securityAnswer: _a, ...rest } = u;
+  return { ...rest, active: Boolean(u.active) } as User;
+}
+
+// Simple in-memory brute-force protection: 5 failures locks the key for 60 seconds.
+const failures = new Map<string, { count: number; until: number }>();
+function isLocked(key: string): boolean { const f = failures.get(key); return !!f && f.until > Date.now(); }
+function recordFailure(key: string) {
+  const f = failures.get(key);
+  const lockExpired = !!f && f.until > 0 && f.until <= Date.now();
+  const count = (f && !lockExpired ? f.count : 0) + 1;
+  failures.set(key, { count, until: count >= 5 ? Date.now() + 60_000 : 0 });
+}
+function clearFailures(key: string) { failures.delete(key); }
+
+const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
+function validateNewCredentials(body: any, requirePassword = true): string | null {
+  if (requirePassword || body.password !== undefined) {
+    if (typeof body.password !== 'string' || body.password.length < 6) return 'Password must be at least 6 characters.';
+  }
+  if (requirePassword || body.pin !== undefined) {
+    if (typeof body.pin !== 'string' || !/^\d{4}$/.test(body.pin)) return 'PIN must be exactly 4 digits.';
+  }
+  return null;
+}
+
+// Seed Database with Initial Data if empty (no user accounts are ever seeded: first admin is created at setup)
 function seedDatabase() {
-  const userCount = db.prepare('SELECT count(*) as count FROM users').get() as { count: number };
+  const userCount = db.prepare('SELECT count(*) as count FROM users WHERE active = 1').get() as { count: number };
   if (userCount.count === 0) {
+    for (const u of INITIAL_USERS) {
+      const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(u.id);
+      if (existing) {
+        db.prepare('UPDATE users SET active = 1, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
+          u.password, u.pin, u.securityAnswer, u.id
+        );
+      } else {
+        db.prepare(`
+          INSERT INTO users (id, name, username, email, password, pin, role, avatar, active, branch, securityQuestion, securityAnswer)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+        `).run(u.id, u.name, u.username, u.email, u.password, u.pin, u.role, u.avatar, u.branch, u.securityQuestion, u.securityAnswer);
+      }
+    }
+  }
+
+  const catCount = db.prepare('SELECT count(*) as count FROM categories').get() as { count: number };
+  if (catCount.count === 0) {
     console.log('Seeding initial data into SQLite...');
-    
-    const insertUser = db.prepare(`
-      INSERT INTO users (id, name, username, email, password, pin, role, avatar, active, branch, securityQuestion, securityAnswer)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    INITIAL_USERS.forEach(u => {
-      insertUser.run(u.id, u.name, u.username, u.email, u.password, u.pin, u.role, u.avatar, 1, u.branch, u.securityQuestion, u.securityAnswer);
-    });
 
     const insertCat = db.prepare(`INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)`);
     INITIAL_CATEGORIES.forEach(c => {
@@ -126,7 +207,7 @@ async function startServer() {
     const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
     const orders = (db.prepare('SELECT id FROM orders ORDER BY createdAt DESC, rowid DESC').all() as { id: string }[]).map(row => loadOrder(row.id)!);
     const tables = db.prepare('SELECT * FROM tables').all();
-    const users = db.prepare('SELECT * FROM users').all() as User[];
+    const users = (db.prepare('SELECT * FROM users').all() as any[]).filter(u => u.active).map(publicUser);
     
     // Get settings from KV table
     const settingsRows = db.prepare('SELECT * FROM settings').all() as { key: string, value: string }[];
@@ -314,15 +395,123 @@ async function startServer() {
   });
 
   // AUTHENTICATION
-  app.post('/api/auth/login', (req: Request, res: Response) => {
-    const { username, password } = req.body;
-    const user = db.prepare('SELECT * FROM users WHERE (username = ? OR email = ?) AND active = 1').get(username, username) as User;
+  const requireAdmin = (req: Request, res: Response, next: any) => {
+    const caller = userFromToken(req.get('Authorization'));
+    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
+    if (caller.role !== 'admin') { res.status(403).json({ error: 'Administrator access required.' }); return; }
+    (req as any).caller = caller;
+    next();
+  };
+  const insertUser = (b: any, role: string) => {
+    const id = `user-${randomUUID()}`;
+    const username = String(b.username).trim().toLowerCase();
+    db.prepare(`INSERT INTO users (id, name, username, email, password, pin, role, avatar, active, branch, securityQuestion, securityAnswer)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`).run(
+      id, String(b.name).trim(), username, String(b.email || `${username}@maltivacrust.com`).trim(), hashSecret(b.password), hashSecret(b.pin),
+      role, b.avatar || '', b.branch || '', 'What is your registered 4-digit PIN?', hashSecret(b.pin));
+    return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  };
 
-    if (user && (user.password === password || user.pin === password)) {
-      res.json({ success: true, user });
+  app.get('/api/auth/status', (_req: Request, res: Response) => {
+    const { count } = db.prepare('SELECT count(*) as count FROM users').get() as { count: number };
+    res.json({ needsSetup: count === 0 });
+  });
+
+  // First-run setup: only works while there are no accounts at all.
+  app.post('/api/auth/register', (req: Request, res: Response) => {
+    const { count } = db.prepare('SELECT count(*) as count FROM users').get() as { count: number };
+    if (count > 0) { res.status(403).json({ error: 'Setup is already complete. Ask an administrator to create your account.' }); return; }
+    const b = req.body || {};
+    if (!String(b.name || '').trim()) { res.status(400).json({ error: 'Full name is required.' }); return; }
+    if (!USERNAME_RE.test(String(b.username || '').trim().toLowerCase())) { res.status(400).json({ error: 'Username must be 3-32 characters: letters, numbers, . _ -' }); return; }
+    const invalid = validateNewCredentials(b);
+    if (invalid) { res.status(400).json({ error: invalid }); return; }
+    const user = insertUser(b, 'admin');
+    res.status(201).json({ success: true, user: publicUser(user), token: signToken((user as any).id) });
+  });
+
+  app.post('/api/auth/login', (req: Request, res: Response) => {
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+    if (isLocked(username)) { res.status(429).json({ error: 'Too many failed attempts. Try again in a minute.' }); return; }
+    const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(username, username) as any;
+
+    if (user && (verifySecret(user.password, password) || verifySecret(user.pin, password))) {
+      clearFailures(username);
+      if (!isHashed(user.password) || !isHashed(user.pin) || !isHashed(user.securityAnswer)) {
+        db.prepare('UPDATE users SET password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
+          isHashed(user.password) ? user.password : hashSecret(user.password || password),
+          isHashed(user.pin) ? user.pin : hashSecret(user.pin || password),
+          isHashed(user.securityAnswer) ? user.securityAnswer : hashSecret(user.securityAnswer || user.pin || password), user.id);
+      }
+      res.json({ success: true, user: publicUser(user), token: signToken(user.id) });
     } else {
+      recordFailure(username);
       res.status(401).json({ error: 'Invalid credentials' });
     }
+  });
+
+  app.post('/api/auth/forgot-password', (req: Request, res: Response) => {
+    const id = String(req.body?.identifier || '').trim().toLowerCase();
+    const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(id, id) as any;
+    if (!user) { res.status(404).json({ error: 'No active staff account found with this username' }); return; }
+    res.json({ username: user.username, name: user.name, role: user.role, securityQuestion: user.securityQuestion || 'What is your registered 4-digit PIN?' });
+  });
+
+  app.post('/api/auth/reset-password', (req: Request, res: Response) => {
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    const { newPassword, verificationCode } = req.body || {};
+    const key = `reset:${username}`;
+    if (isLocked(key)) { res.status(429).json({ error: 'Too many failed attempts. Try again in a minute.' }); return; }
+    const user = db.prepare('SELECT * FROM users WHERE lower(username) = ? AND active = 1').get(username) as any;
+    if (!user || !verifySecret(user.securityAnswer, String(verificationCode || '').trim())) {
+      recordFailure(key); res.status(401).json({ error: 'Recovery PIN is incorrect.' }); return;
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 6) { res.status(400).json({ error: 'Password must be at least 6 characters.' }); return; }
+    clearFailures(key);
+    db.prepare('UPDATE users SET password = ?, securityAnswer = ? WHERE id = ?').run(hashSecret(newPassword), hashSecret(String(verificationCode).trim()), user.id);
+    res.json({ success: true, message: 'Password successfully updated! You can now sign in with your new credentials.' });
+  });
+
+  // USER MANAGEMENT (administrators only)
+  app.get('/api/users', requireAdmin, (_req: Request, res: Response) => {
+    res.json((db.prepare('SELECT * FROM users ORDER BY createdAt').all() as any[]).map(publicUser));
+  });
+
+  app.post('/api/users', requireAdmin, (req: Request, res: Response) => {
+    const b = req.body || {};
+    if (!String(b.name || '').trim()) { res.status(400).json({ error: 'Full name is required.' }); return; }
+    const username = String(b.username || '').trim().toLowerCase();
+    if (!USERNAME_RE.test(username)) { res.status(400).json({ error: 'Username must be 3-32 characters: letters, numbers, . _ -' }); return; }
+    if (!['admin', 'manager', 'cashier'].includes(b.role)) { res.status(400).json({ error: 'Choose a valid role.' }); return; }
+    const invalid = validateNewCredentials(b);
+    if (invalid) { res.status(400).json({ error: invalid }); return; }
+    if (db.prepare('SELECT 1 FROM users WHERE lower(username) = ?').get(username)) {
+      res.status(409).json({ error: `Username "${username}" is already taken.` }); return;
+    }
+    res.status(201).json(publicUser(insertUser(b, b.role)));
+  });
+
+  app.put('/api/users/:id', requireAdmin, (req: Request, res: Response) => {
+    const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
+    if (!target) { res.status(404).json({ error: 'User not found.' }); return; }
+    const b = req.body || {};
+    const caller = (req as any).caller;
+    const nextActive = b.active === undefined ? Boolean(target.active) : Boolean(b.active);
+    const nextRole = b.role === undefined ? target.role : b.role;
+    if (!['admin', 'manager', 'cashier'].includes(nextRole)) { res.status(400).json({ error: 'Choose a valid role.' }); return; }
+    const losesAdmin = target.role === 'admin' && (!nextActive || nextRole !== 'admin');
+    if (losesAdmin) {
+      const { count } = db.prepare("SELECT count(*) as count FROM users WHERE role = 'admin' AND active = 1 AND id != ?").get(target.id) as { count: number };
+      if (count === 0) { res.status(400).json({ error: 'At least one active administrator is required.' }); return; }
+      if (target.id === caller.id) { res.status(400).json({ error: 'You cannot suspend or demote your own account.' }); return; }
+    }
+    const invalid = validateNewCredentials(b, false);
+    if (invalid) { res.status(400).json({ error: invalid }); return; }
+    db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ? WHERE id = ?').run(
+      b.name ? String(b.name).trim() : target.name, nextRole, nextActive ? 1 : 0,
+      b.password ? hashSecret(b.password) : target.password, b.pin ? hashSecret(b.pin) : target.pin, target.id);
+    res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
 
   // SETTINGS

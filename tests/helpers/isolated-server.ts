@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { once } from 'node:events';
+import Database from 'better-sqlite3';
+import { INITIAL_USERS } from '../../src/data/initialData';
 
 const hostFetch = globalThis.fetch;
 
@@ -26,7 +28,19 @@ export async function isolatedServer() {
     child.stderr?.on('data', chunk => { output += chunk; });
     for (let attempt = 0; attempt < 150; attempt++) {
       if (child.exitCode !== null) throw new Error(`Server exited: ${output}`);
-      try { if ((await hostFetch(`${url}/api/health`)).ok) return; } catch { /* starting */ }
+      try {
+        if ((await hostFetch(`${url}/api/health`)).ok) {
+          // The server never seeds user accounts; sales need a cashier row for the fixture.
+          const db = new Database(path.join(dir, 'maltiva_pos.db'));
+          try {
+            for (const u of INITIAL_USERS) {
+              db.prepare(`INSERT OR IGNORE INTO users (id, name, username, email, password, pin, role, avatar, active, branch)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`).run(u.id, u.name, u.username, u.email, 'fixture-only-secret', u.pin, u.role, u.avatar, u.branch);
+            }
+          } finally { db.close(); }
+          return;
+        }
+      } catch { /* starting */ }
       await new Promise(resolve => setTimeout(resolve, 30));
     }
     throw new Error(`Server startup timed out: ${output}`);

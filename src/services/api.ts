@@ -29,6 +29,11 @@ function optionalCache(write: () => void) {
   try { write(); } catch { /* Cache capacity must not block durable sale recovery. */ }
 }
 
+function authHeaders(): Record<string, string> {
+  const token = PosStorage.getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 function pendingResult(order: Order): SaleResult {
   optionalCache(() => cacheOrder(order));
   return { success: false, state: 'pending', order };
@@ -332,159 +337,113 @@ export const PosApi = {
     return result;
   },
 
-  // AUTHENTICATION & LOGIN
+  // AUTHENTICATION & LOGIN (server is the only source of truth; credentials never live in the browser)
+  async authStatus(): Promise<{ needsSetup: boolean } | null> {
+    try {
+      const res = await fetch('/api/auth/status', { signal: AbortSignal.timeout(3000) });
+      return res.ok ? await res.json() : null;
+    } catch { return null; }
+  },
+
+  async registerAdmin(input: { name: string; username: string; password: string; pin: string }):
+    Promise<{ success: boolean; user?: User; error?: string }> {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        if (data.token) PosStorage.setToken(data.token);
+        PosStorage.setSession(data.user);
+        return { success: true, user: data.user };
+      }
+      return { success: false, error: data.error || 'Registration failed.' };
+    } catch { return { success: false, error: 'Cannot reach the POS server. Start it and retry.' }; }
+  },
+
   async login(
     username: string,
     passwordOrPin: string,
-    isOnline: boolean
+    _isOnline?: boolean
   ): Promise<{ success: boolean; user?: User; error?: string }> {
-    const cleanUser = username.trim().toLowerCase();
-    const cleanPass = passwordOrPin.trim();
-
-    // If online, try server authentication
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: cleanUser, password: cleanPass }),
-        });
-        const data = await res.json();
-        if (res.ok && data.user) {
-          PosStorage.setSession(data.user);
-          return { success: true, user: data.user };
-        } else {
-          return { success: false, error: data.error || 'Invalid credentials' };
-        }
-      } catch {
-        // network failure, fallback to offline local credentials check
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim().toLowerCase(), password: passwordOrPin.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        if (data.token) PosStorage.setToken(data.token);
+        PosStorage.setSession(data.user);
+        return { success: true, user: data.user };
       }
+      return { success: false, error: data.error || 'Invalid credentials' };
+    } catch {
+      return { success: false, error: 'Cannot reach the POS server. Start it and retry.' };
     }
-
-    // Offline / Local fallback authentication
-    const users = PosStorage.getUsers();
-    const matched = users.find(
-      u =>
-        u.active &&
-        (u.username?.toLowerCase() === cleanUser || u.email?.toLowerCase() === cleanUser)
-    );
-
-    if (!matched) {
-      return { success: false, error: 'User account not found' };
-    }
-
-    const passMatches =
-      (matched.password && matched.password === cleanPass) ||
-      (matched.pin && matched.pin === cleanPass);
-
-    if (!passMatches) {
-      return { success: false, error: 'Incorrect password or PIN' };
-    }
-
-    PosStorage.setSession(matched);
-    return { success: true, user: matched };
   },
 
   async forgotPassword(
     identifier: string,
-    isOnline: boolean
+    _isOnline?: boolean
   ): Promise<{ success: boolean; data?: any; error?: string }> {
-    const clean = identifier.trim().toLowerCase();
-
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: clean }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          return { success: true, data };
-        } else {
-          return { success: false, error: data.error || 'User not found' };
-        }
-      } catch {
-        // fallback
-      }
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: identifier.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      return res.ok ? { success: true, data } : { success: false, error: data.error || 'User not found' };
+    } catch {
+      return { success: false, error: 'Cannot reach the POS server. Start it and retry.' };
     }
-
-    const users = PosStorage.getUsers();
-    const user = users.find(
-      u =>
-        u.active &&
-        (u.username?.toLowerCase() === clean || u.email?.toLowerCase() === clean)
-    );
-
-    if (!user) {
-      return { success: false, error: 'No active staff account found with this username' };
-    }
-
-    return {
-      success: true,
-      data: {
-        username: user.username,
-        name: user.name,
-        role: user.role,
-        securityQuestion: user.securityQuestion || 'What is your registered 4-digit PIN?',
-        hasPin: Boolean(user.pin),
-      },
-    };
   },
 
   async resetPassword(
     username: string,
     newPassword: string,
     verificationCode: string,
-    isOnline: boolean
+    _isOnline?: boolean
   ): Promise<{ success: boolean; message?: string; error?: string }> {
-    const clean = username.trim().toLowerCase();
-
-    if (isOnline) {
-      try {
-        const res = await fetch('/api/auth/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: clean, newPassword, verificationCode }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          // Update local copy as well
-          const localUsers = PosStorage.getUsers();
-          const idx = localUsers.findIndex(
-            u => u.username?.toLowerCase() === clean || u.email?.toLowerCase() === clean
-          );
-          if (idx !== -1) {
-            localUsers[idx].password = newPassword;
-            if (/^\d{4}$/.test(newPassword)) localUsers[idx].pin = newPassword;
-            PosStorage.setUsers(localUsers);
-          }
-          return { success: true, message: data.message };
-        } else {
-          return { success: false, error: data.error || 'Password reset failed' };
-        }
-      } catch {
-        // fallback
-      }
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim().toLowerCase(), newPassword, verificationCode }),
+      });
+      const data = await res.json();
+      return res.ok ? { success: true, message: data.message } : { success: false, error: data.error || 'Password reset failed' };
+    } catch {
+      return { success: false, error: 'Cannot reach the POS server. Start it and retry.' };
     }
+  },
 
-    // Local / Offline fallback
-    const localUsers = PosStorage.getUsers();
-    const idx = localUsers.findIndex(
-      u => u.username?.toLowerCase() === clean || u.email?.toLowerCase() === clean
-    );
+  // USER MANAGEMENT (admin token required by the server)
+  async listUsers(): Promise<User[]> {
+    const res = await fetch('/api/users', { headers: authHeaders() });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Could not load staff accounts.');
+    return body;
+  },
 
-    if (idx === -1) {
-      return { success: false, error: 'User not found' };
-    }
+  async createUser(input: Partial<User> & { password: string; pin: string }): Promise<User> {
+    const res = await fetch('/api/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(input),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Could not create the staff account.');
+    return body;
+  },
 
-    localUsers[idx].password = newPassword;
-    if (/^\d{4}$/.test(newPassword)) localUsers[idx].pin = newPassword;
-    PosStorage.setUsers(localUsers);
-
-    return {
-      success: true,
-      message: 'Password successfully updated! You can now sign in with your new credentials.',
-    };
+  async updateUser(id: string, changes: Partial<User> & { password?: string; pin?: string }): Promise<User> {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(changes),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Could not update the staff account.');
+    return body;
   },
 };
+

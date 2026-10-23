@@ -28,7 +28,6 @@ interface SettingsViewProps {
   settings: PrinterSettings;
   onSaveSettings: (settings: PrinterSettings) => void | Promise<void>;
   currentUser: User;
-  onUpdateCashierCredentials?: (username: string, pin: string) => void;
   onOpenTestPrint: () => void;
   onResetCustomerDisplay?: () => void;
 }
@@ -37,20 +36,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onSaveSettings,
   currentUser,
-  onUpdateCashierCredentials,
   onOpenTestPrint,
   onResetCustomerDisplay,
 }) => {
   const { theme, setTheme } = useTheme();
   const [formData, setFormData] = useState<PrinterSettings>({ ...settings });
-  const [cashierUser, setCashierUser] = useState(settings.cashierUsername || 'cashier');
-  const [cashierPass, setCashierPass] = useState(settings.cashierPin || '1234');
   const saving = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [taxError, setTaxError] = useState('');
-  const [cashierSaved, setCashierSaved] = useState(false);
   const [isWipeSalesDialogOpen, setIsWipeSalesDialogOpen] = useState(false);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -63,15 +58,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     finally { saving.current = false; setIsSaving(false); }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
-  };
-
-  const handleUpdateCashier = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (onUpdateCashierCredentials) {
-      onUpdateCashierCredentials(cashierUser.trim().toLowerCase(), cashierPass.trim());
-    }
-    setCashierSaved(true);
-    setTimeout(() => setCashierSaved(false), 2000);
   };
 
   const handleOpenCustomerDisplay = () => {
@@ -381,51 +367,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </section>
 
-        {/* SECTION 4: USER & SECURITY (Admin Control) */}
-        <section className="bg-pos-surface p-5 rounded-lg border border-pos-border space-y-5">
-          <div className="flex items-center gap-3 pb-4 border-b border-pos-divider">
-              <div className="p-2 bg-pos-selected rounded-md">
-                <UserCog className="w-5 h-5 text-pos-accent" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-pos-text">Staff Security</h2>
-              <p className="text-[11px] text-pos-muted">Local offline access only. Server credentials are managed separately.</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleUpdateCashier} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1.5">Cashier Username</label>
-                <input
-                  type="text"
-                  required
-                  value={cashierUser}
-                  onChange={e => setCashierUser(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1.5">Access PIN</label>
-                <input
-                  type="text"
-                  required
-                  value={cashierPass}
-                  onChange={e => setCashierPass(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 px-4 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {cashierSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              <span>{cashierSaved ? 'Offline credentials updated' : 'Update offline PIN'}</span>
-            </button>
-          </form>
-        </section>
+        {/* Staff accounts are managed from the Staff tab (admin only). */}
       </div>
 
       {/* DATABASE MAINTENANCE (Bottom Bar) */}
