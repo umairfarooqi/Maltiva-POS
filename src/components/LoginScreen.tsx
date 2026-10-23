@@ -79,8 +79,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [signupName, setSignupName] = useState('');
   const [signupUsername, setSignupUsername] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
-  const [signupPin, setSignupPin] = useState('1234');
+  const [signupPin, setSignupPin] = useState('');
   const [signupError, setSignupError] = useState('');
+
+  // First-run setup: the server reports when no accounts exist yet.
+  const [needsSetup, setNeedsSetup] = useState(false);
+  useEffect(() => {
+    let active = true;
+    PosApi.authStatus().then(status => {
+      if (active && status?.needsSetup) { setNeedsSetup(true); setMode('signup'); }
+    });
+    return () => { active = false; };
+  }, []);
 
   // Authentication submission
   const submitAuthentication = useCallback(
@@ -123,7 +133,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     if (authMethod === 'pin') {
       const active = selectedUser || availableUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
       const userToAuth = active ? active.username : username;
-      submitAuthentication(userToAuth, pin || password || '1234');
+      submitAuthentication(userToAuth, pin || password);
     } else {
       submitAuthentication(username, password);
     }
@@ -192,14 +202,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setErrorMessage('');
   };
 
-  const handleQuickFill = (u: User) => {
-    setSelectedUser(u);
-    setUsername(u.username);
-    const defaultSecret = u.pin || u.password || '1234';
-    setPassword(defaultSecret);
-    setPin(u.pin || '1234');
-    setErrorMessage('');
-  };
 
   const handleLookupAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,29 +256,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       setSignupError('All fields are required.');
       return;
     }
+    if (!/^\d{4}$/.test(signupPin.trim())) {
+      setSignupError('Recovery PIN must be exactly 4 digits.');
+      return;
+    }
     setIsLoading(true);
     setSignupError('');
-    try {
-      const newAdmin: User = {
-        id: `user-admin-${Date.now()}`,
-        name: signupName.trim(),
-        username: signupUsername.trim().toLowerCase(),
-        email: `${signupUsername.trim().toLowerCase()}@maltivacrust.com`,
-        role: 'admin',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        pin: signupPin.trim() || '1234',
-        password: signupPassword.trim(),
-        active: true,
-        branch: 'Phase 3 DHA Lahore',
-        securityQuestion: 'Recovery PIN',
-        securityAnswer: signupPin.trim() || '1234',
-      };
-      if (onAdminRegistered) onAdminRegistered(newAdmin);
-      setIsLoading(false);
-      setMode('signin');
-    } catch {
-      setIsLoading(false);
-      setSignupError('Registration failed.');
+    const res = await PosApi.registerAdmin({
+      name: signupName.trim(),
+      username: signupUsername.trim().toLowerCase(),
+      password: signupPassword.trim(),
+      pin: signupPin.trim(),
+    });
+    setIsLoading(false);
+    if (res.success && res.user) {
+      if (onAdminRegistered) onAdminRegistered(res.user);
+      onLoginSuccess(res.user);
+    } else {
+      setSignupError(res.error || 'Registration failed.');
     }
   };
 
@@ -369,8 +366,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 )}
 
                 {/* Staff Selection Buttons */}
-                <div className="grid grid-cols-2 gap-2">
-                  {availableUsers.slice(0, 2).map(u => {
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                  {availableUsers.filter(u => u.active).map(u => {
                     const isSelected = selectedUser?.id === u.id;
                     return (
                       <button
@@ -536,7 +533,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                           required
                           value={username}
                           onChange={e => setUsername(e.target.value)}
-                          placeholder="admin or cashier"
+                          placeholder="Username"
                           className="w-full h-10 pl-10 pr-3 bg-[#0e1113] border border-white/[0.1] rounded-xl text-sm text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                         />
                       </div>
@@ -594,33 +591,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   </form>
                 )}
 
-                {/* Quick Access Preset Bar */}
-                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-gray-400">Quick Access:</span>
-                  <div className="flex gap-2">
-                    {availableUsers.slice(0, 2).map(u => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => handleQuickFill(u)}
-                        className="px-2.5 py-1 rounded-lg bg-[#0e1113] hover:bg-[#1a1f24] border border-white/[0.06] text-[11px] text-gray-300 hover:text-emerald-400 transition cursor-pointer font-medium"
-                      >
-                        {u.name} (1234)
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Footer Register Link */}
-                <div className="text-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setMode('signup')}
-                    className="text-xs text-gray-400 hover:text-gray-200 transition cursor-pointer"
-                  >
-                    New Admin? <span className="text-emerald-400 font-semibold hover:underline">Register Account</span>
-                  </button>
-                </div>
+                {availableUsers.length === 0 && (
+                  <p className="text-center text-[11px] text-gray-400">
+                    No staff accounts found. Ask an administrator to create your account.
+                  </p>
+                )}
               </>
             )}
 
@@ -662,7 +637,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                         required
                         value={forgotIdentifier}
                         onChange={e => setForgotIdentifier(e.target.value)}
-                        placeholder="e.g. admin or cashier"
+                        placeholder="Your username"
                         className="w-full h-10 px-3.5 bg-[#0e1113] border border-white/[0.1] rounded-xl text-sm text-white focus:border-emerald-500 outline-none"
                       />
                     </div>
@@ -687,7 +662,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                         required
                         value={verificationCode}
                         onChange={e => setVerificationCode(e.target.value)}
-                        placeholder="Security PIN (1234)"
+                        placeholder="Recovery PIN (4 digits)"
                         className="w-full h-10 px-3.5 bg-[#0e1113] border border-white/[0.1] rounded-xl text-sm text-white font-mono focus:border-emerald-500 outline-none"
                       />
                       <input
@@ -727,9 +702,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-white">Register Admin</h2>
-                    <p className="text-xs text-gray-400">Add an administrator account</p>
+                    <h2 className="text-lg font-bold text-white">{needsSetup ? 'First-Time Setup' : 'Register Admin'}</h2>
+                    <p className="text-xs text-gray-400">{needsSetup ? 'Create the first administrator account' : 'Add an administrator account'}</p>
                   </div>
+                  {!needsSetup && (
                   <button
                     type="button"
                     onClick={() => {
@@ -740,6 +716,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
+                  )}
                 </div>
 
                 {signupError && (

@@ -5,13 +5,13 @@ import { User, UserRole } from '../types/pos';
 interface StaffManagementViewProps {
   users: User[];
   currentUser: User;
-  onAddUser: (user: Partial<User>) => void;
-  onToggleUserActive: (userId: string, active: boolean) => void;
+  onAddUser: (user: Partial<User> & { password: string; pin: string }) => Promise<void>;
+  onToggleUserActive: (userId: string, active: boolean) => Promise<void>;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   users,
-  currentUser: _currentUser,
+  currentUser,
   onAddUser,
   onToggleUserActive,
 }) => {
@@ -20,41 +20,56 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('cashier');
-  const [pin, setPin] = useState('1234');
-  const [password, setPassword] = useState('maltiva123');
+  const [pin, setPin] = useState('');
+  const [password, setPassword] = useState('');
   const [usernameError, setUsernameError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [listError, setListError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || isSaving) return;
 
     const cleanUsername = (username.trim() || name.toLowerCase().replace(/\s+/g, '')).toLowerCase();
-    const isTaken = users.some(u => u.username?.toLowerCase() === cleanUsername);
-    if (isTaken) {
+    if (users.some(u => u.username?.toLowerCase() === cleanUsername)) {
       setUsernameError(`Username "${cleanUsername}" is already taken. Please choose another.`);
       return;
     }
+    if (password.length < 6) { setUsernameError('Password must be at least 6 characters.'); return; }
+    if (!/^\d{4}$/.test(pin)) { setUsernameError('PIN must be exactly 4 digits.'); return; }
 
-    onAddUser({
-      name,
-      username: cleanUsername,
-      email: email || `${cleanUsername}@maltivacrust.com`,
-      role,
-      pin: pin || '1234',
-      password: password || pin || 'maltiva123',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      active: true,
-      branch: 'Maltiva - Central Branch #01',
-    });
+    setIsSaving(true);
+    try {
+      await onAddUser({
+        name: name.trim(),
+        username: cleanUsername,
+        email: email.trim() || `${cleanUsername}@maltivacrust.com`,
+        role,
+        pin,
+        password,
+        active: true,
+      });
+    } catch (error) {
+      setUsernameError((error as Error).message);
+      setIsSaving(false);
+      return;
+    }
+    setIsSaving(false);
 
     setName('');
     setUsername('');
     setEmail('');
     setRole('cashier');
-    setPin('1234');
-    setPassword('maltiva123');
+    setPin('');
+    setPassword('');
     setUsernameError('');
     setIsModalOpen(false);
+  };
+
+  const handleToggle = async (u: User) => {
+    setListError('');
+    try { await onToggleUserActive(u.id, !u.active); }
+    catch (error) { setListError((error as Error).message); }
   };
 
   return (
@@ -132,6 +147,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         </div>
       </div>
 
+      {listError && (
+        <div role="alert" className="p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">{listError}</div>
+      )}
+
       {/* Staff Members List */}
       <div className="bg-pos-surface rounded-lg border border-pos-border overflow-hidden">
         <table className="w-full text-xs text-left">
@@ -140,7 +159,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               <th className="p-4">Staff Member</th>
               <th className="p-4">Assigned Role</th>
               <th className="p-4">Branch Location</th>
-              <th className="p-4">PIN Code</th>
+              <th className="p-4">Sign-in</th>
               <th className="p-4">Status</th>
               <th className="p-4 text-center">Toggle Access</th>
             </tr>
@@ -150,12 +169,18 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               <tr key={u.id} className="hover:bg-pos-inset">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
+                    {u.avatar ? (
                     <img
                       src={u.avatar}
                       alt={u.name}
                       referrerPolicy="no-referrer"
                       className="w-9 h-9 rounded-full object-cover border border-pos-border"
                     />
+                    ) : (
+                    <div className="w-9 h-9 rounded-full bg-pos-raised border border-pos-border flex items-center justify-center text-xs font-bold text-pos-secondary">
+                      {u.name.charAt(0).toUpperCase()}
+                    </div>
+                    )}
                     <div>
                       <p className="font-bold text-pos-text">{u.name}</p>
                       <p className="text-[11px] text-pos-muted font-mono">
@@ -181,7 +206,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   {u.branch || 'Branch #01'}
                 </td>
                 <td className="p-4 font-mono text-pos-muted">
-                  •••• ({u.pin})
+                  PIN & password set
                 </td>
                 <td className="p-4">
                   <span
@@ -195,7 +220,9 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </td>
                 <td className="p-4 text-center">
                   <button
-                    onClick={() => onToggleUserActive(u.id, !u.active)}
+                    onClick={() => void handleToggle(u)}
+                    disabled={u.id === currentUser.id}
+                    title={u.id === currentUser.id ? 'You cannot suspend your own account' : undefined}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
                       u.active
                         ? 'text-pos-danger-text hover:bg-pos-danger-bg'
@@ -306,16 +333,31 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
                 <div>
                   <label className="text-xs font-bold text-pos-secondary block mb-1">
-                    POS PIN / Password
+                    Password * (min 6 characters)
                   </label>
                   <input
-                    type="text"
-                    maxLength={12}
+                    type="password"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-pos-secondary block mb-1">
+                    4-digit PIN *
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    maxLength={4}
+                    autoComplete="off"
                     value={pin}
-                    onChange={e => {
-                      setPin(e.target.value);
-                      setPassword(e.target.value);
-                    }}
+                    onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
                     placeholder="4-digit PIN"
                     className="w-full px-3 py-2 border border-pos-control rounded-md text-xs font-mono text-center focus-visible:border-pos-accent"
                   />
@@ -332,9 +374,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition"
+                  disabled={isSaving}
+                  className="px-5 py-2.5 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
                 >
-                  Create Staff Account
+                  {isSaving ? 'Creating...' : 'Create Staff Account'}
                 </button>
               </div>
             </form>

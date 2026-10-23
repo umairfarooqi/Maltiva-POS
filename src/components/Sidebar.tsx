@@ -9,6 +9,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   X,
+  Users,
 } from 'lucide-react';
 import { UserRole } from '../types/pos';
 import { Dialog } from './ui/Dialog';
@@ -19,6 +20,7 @@ export type NavTab =
   | 'manage_dishes'
   | 'dashboard'
   | 'profit_loss'
+  | 'staff'
   | 'settings';
 
 interface SidebarProps {
@@ -51,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'manage_dishes' as NavTab, label: 'Dishes & Deals', icon: UtensilsCrossed, adminOnly: true },
     { id: 'dashboard' as NavTab, label: 'Daily Sales', icon: LayoutDashboard, adminOnly: true },
     { id: 'profit_loss' as NavTab, label: 'Profit & Loss', icon: TrendingUp, adminOnly: true },
+    { id: 'staff' as NavTab, label: 'Staff', icon: Users, adminOnly: true, onlyAdmin: true },
   ];
 
   const handleNavClick = (tabId: NavTab) => {
@@ -58,9 +61,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (onCloseMobile) onCloseMobile();
   };
 
-  const visibleItems = isCashier
+  const visibleItems = (isCashier
     ? navItems.filter(item => !item.adminOnly)
-    : navItems;
+    : navItems
+  ).filter(item => !('onlyAdmin' in item) || userRole === 'admin');
 
   return (
     <>
