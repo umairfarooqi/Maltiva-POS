@@ -300,16 +300,26 @@ async function startServer() {
 
   app.post('/api/products', requireStrictRole(['admin', 'manager']), (req, res) => {
     const data = req.body; validateProduct(data);
+    const stockQuantity = integer(data.stockQuantity === undefined ? 0 : data.stockQuantity, 'Opening stock quantity');
     const id = data.id || `prod-${Date.now()}`;
-    insertMapped('products', { ...data, id, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts) });
+    insertMapped('products', { ...data, id, stockQuantity, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts) });
     res.status(201).json(loadProduct(db, id));
   });
+  const updateCatalogProduct = db.transaction((id: string, data: any) => {
+    validateProduct(data);
+    if (!loadProduct(db, id)) problem('Product not found', 404);
+    // Stock snapshots from menu forms are never inventory commands. Preserve
+    // concurrent sales/adjustments, including requests from older clients.
+    const fields = ['name', 'categoryId', 'categoryName', 'pricePaisa', 'costPricePaisa',
+      'minStockThreshold', 'image', 'description', 'isAvailable', 'isDeal'] as const;
+    const catalog = Object.fromEntries(fields.filter(field => data[field] !== undefined).map(field => [field, data[field]]));
+    const row = mappedValues('products', { ...catalog, variations: stringifyJson(data.variations),
+      bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString() });
+    db.prepare(`UPDATE products SET ${Object.keys(row).map(k => `"${k}"=?`).join(',')} WHERE id=?`).run(...Object.values(row), id);
+    return loadProduct(db, id);
+  });
   app.put('/api/products/:id', requireStrictRole(['admin', 'manager']), (req, res) => {
-    const data = req.body; validateProduct(data);
-    const row = mappedValues('products', { ...data, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString() });
-    delete row.id;
-    db.prepare(`UPDATE products SET ${Object.keys(row).map(k => `"${k}"=?`).join(',')} WHERE id=?`).run(...Object.values(row), req.params.id);
-    res.json(loadProduct(db, req.params.id));
+    res.json(updateCatalogProduct.immediate(req.params.id, req.body));
   });
 
   app.delete('/api/products/:id', requireStrictRole(['admin', 'manager']), (req: Request, res: Response) => {
@@ -342,7 +352,7 @@ async function startServer() {
     return { product: loadProduct(db, productId), log };
   });
   app.post('/api/inventory/adjust', requireStrictRole(['admin', 'manager']), (req, res) => {
-    try { res.json(adjustInventory(req.body, (req as any).caller)); }
+    try { res.json(adjustInventory.immediate(req.body, (req as any).caller)); }
     catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
   });
 

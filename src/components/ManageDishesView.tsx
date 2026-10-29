@@ -339,7 +339,10 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     let parsedPrice: number, parsedCost: number;
     try { parsedPrice = parseRupees(formPrice); parsedCost = parseRupees(formCostPrice); setMoneyError(''); }
     catch (error) { setMoneyError((error as Error).message); return; }
-    const parsedStock = parseInt(formStock, 10);
+    const parsedStock = Number(formStock);
+    if (!editingProduct && (!formStock.trim() || !Number.isSafeInteger(parsedStock) || parsedStock < 0)) {
+      setSaveError('Opening stock must be a nonnegative whole number.'); return;
+    }
     const parsedMinThreshold = parseInt(formMinThreshold, 10);
 
     const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingProduct?.pricePaisa ?? 0);
@@ -358,7 +361,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       categoryName: category?.name || editingProduct?.categoryName || 'Special Dishes',
       pricePaisa: finalPrice,
       costPricePaisa: finalCost,
-      stockQuantity: !isNaN(parsedStock) ? parsedStock : (editingProduct?.stockQuantity ?? 25),
+      ...(!editingProduct ? { stockQuantity: parsedStock } : {}),
       minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingProduct?.minStockThreshold ?? 5),
       image: finalImage,
       description: formDescription,
@@ -381,7 +384,10 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     let parsedPrice: number, parsedCost: number;
     try { parsedPrice = parseRupees(dealPrice); parsedCost = parseRupees(dealCostPrice); setMoneyError(''); }
     catch (error) { setMoneyError((error as Error).message); return; }
-    const parsedStock = parseInt(dealStock, 10);
+    const parsedStock = Number(dealStock);
+    if (!editingDeal && (!dealStock.trim() || !Number.isSafeInteger(parsedStock) || parsedStock < 0)) {
+      setSaveError('Opening stock must be a nonnegative whole number.'); return;
+    }
     const parsedMinThreshold = parseInt(dealMinThreshold, 10);
 
     const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingDeal?.pricePaisa ?? 0);
@@ -400,7 +406,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       categoryName: category.name,
       pricePaisa: finalPrice,
       costPricePaisa: finalCost,
-      stockQuantity: !isNaN(parsedStock) ? parsedStock : (editingDeal?.stockQuantity ?? 30),
+      ...(!editingDeal ? { stockQuantity: parsedStock } : {}),
       minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingDeal?.minStockThreshold ?? 5),
       image: finalImage,
       description: dealDescription,
@@ -945,14 +951,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   </div>
                   <div className="group">
                     <label htmlFor="manage-field-6" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Initial Stock
+                      {editingProduct ? 'Stock when opened' : 'Opening stock'}
                     </label>
                     <input id="manage-field-6"
                       type="number"
+                      min="0" step="1" readOnly={Boolean(editingProduct)}
+                      aria-describedby={editingProduct ? 'dish-stock-help' : undefined}
                       value={formStock}
                       onChange={e => setFormStock(e.target.value)}
                       className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
                     />
+                    {editingProduct && <p id="dish-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                   </div>
                 </div>
                 <div className="group">
@@ -1138,14 +1147,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="group">
                     <label htmlFor="manage-field-12" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Stock Available
+                      {editingDeal ? 'Stock when opened' : 'Opening stock'}
                     </label>
                     <input id="manage-field-12"
                       type="number"
+                      min="0" step="1" readOnly={Boolean(editingDeal)}
+                      aria-describedby={editingDeal ? 'deal-stock-help' : undefined}
                       value={dealStock}
                       onChange={e => setDealStock(e.target.value)}
                       className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
                     />
+                    {editingDeal && <p id="deal-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                   </div>
                   <div className="group">
                     <label htmlFor="manage-field-13" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
