@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 
 const dbPath = path.join(process.cwd(), 'maltiva_pos.db');
-fs.copyFileSync(dbPath, `${dbPath}.before-menu-import.bak`);
 const db = new Database(dbPath);
 
 const rs = n => Math.round(n * 100); // rupees -> paisa
@@ -98,14 +97,23 @@ add('bakery-chicken-bread', 'cat-bakery', 'Chicken Bread', 350, 'Freshly baked c
 add('drink-soft', 'cat-drinks', 'Soft Drink', 200, 'Chilled soft drink.',
   [sizeGroup('drink', [['1 Ltr', 200], ['1.5 Ltr', 250]], 200)]);
 
-db.transaction(() => {
-  db.prepare('DELETE FROM products').run();
-  db.prepare('DELETE FROM categories').run();
-  const insCat = db.prepare('INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)');
-  categories.forEach(c => insCat.run(c.id, c.name, c.icon, c.order));
-  const insProd = db.prepare(`INSERT INTO products (id, name, categoryId, categoryName, price_paisa, cost_price_paisa, stockQuantity, minStockThreshold, image, description, isAvailable, isDeal, bundledProducts, variations, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, 0, 999, 0, '', ?, 1, ?, '[]', ?, ?, ?)`);
-  products.forEach(p => insProd.run(p.id, p.name, p.categoryId, catName[p.categoryId], rs(p.price), p.description, p.isDeal ? 1 : 0, JSON.stringify(p.variations), now, now));
-})();
-
-console.log(`Imported ${categories.length} categories and ${products.length} products.`);
+(async () => {
+  if (fs.existsSync(dbPath)) {
+    await db.backup(`${dbPath}.before-menu-import.bak`);
+  }
+  db.transaction(() => {
+    db.prepare('DELETE FROM products').run();
+    db.prepare('DELETE FROM categories').run();
+    const insCat = db.prepare('INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)');
+    categories.forEach(c => insCat.run(c.id, c.name, c.icon, c.order));
+    const insProd = db.prepare(`INSERT INTO products (id, name, categoryId, categoryName, price_paisa, cost_price_paisa, stockQuantity, minStockThreshold, image, description, isAvailable, isDeal, bundledProducts, variations, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, 0, 999, 0, '', ?, 1, ?, '[]', ?, ?, ?)`);
+    products.forEach(p => insProd.run(p.id, p.name, p.categoryId, catName[p.categoryId], rs(p.price), p.description, p.isDeal ? 1 : 0, JSON.stringify(p.variations), now, now));
+  })();
+  db.pragma('wal_checkpoint(TRUNCATE)');
+  db.close();
+  console.log(`Imported ${categories.length} categories and ${products.length} products.`);
+})().catch(err => {
+  console.error(err);
+  process.exitCode = 1;
+});

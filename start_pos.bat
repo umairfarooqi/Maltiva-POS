@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 
 echo [1/3] Closing any previous POS server...
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000') do taskkill /f /pid %%a >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr /R /C:":3000 .*LISTENING"') do taskkill /f /pid %%a >nul 2>&1
 
 echo [2/3] Starting Maltiva POS Server...
 start /min "Maltiva POS Server" npm run dev

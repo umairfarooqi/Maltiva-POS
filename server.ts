@@ -95,23 +95,6 @@ function validateNewCredentials(body: any, requirePassword = true): string | nul
 
 // Seed Database with Initial Data if empty (no user accounts are ever seeded: first admin is created at setup)
 function seedDatabase() {
-  const userCount = db.prepare('SELECT count(*) as count FROM users WHERE active = 1').get() as { count: number };
-  if (userCount.count === 0) {
-    for (const u of INITIAL_USERS) {
-      const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(u.id);
-      if (existing) {
-        db.prepare('UPDATE users SET active = 1, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
-          u.password, u.pin, u.securityAnswer, u.id
-        );
-      } else {
-        db.prepare(`
-          INSERT INTO users (id, name, username, email, password, pin, role, avatar, active, branch, securityQuestion, securityAnswer)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-        `).run(u.id, u.name, u.username, u.email, u.password, u.pin, u.role, u.avatar, u.branch, u.securityQuestion, u.securityAnswer);
-      }
-    }
-  }
-
   const catCount = db.prepare('SELECT count(*) as count FROM categories').get() as { count: number };
   if (catCount.count === 0) {
     console.log('Seeding initial data into SQLite...');
@@ -508,9 +491,11 @@ async function startServer() {
     }
     const invalid = validateNewCredentials(b, false);
     if (invalid) { res.status(400).json({ error: invalid }); return; }
-    db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ? WHERE id = ?').run(
+    const nextPin = b.pin ? hashSecret(b.pin) : target.pin;
+    const nextSecurityAnswer = b.pin ? nextPin : target.securityAnswer;
+    db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
       b.name ? String(b.name).trim() : target.name, nextRole, nextActive ? 1 : 0,
-      b.password ? hashSecret(b.password) : target.password, b.pin ? hashSecret(b.pin) : target.pin, target.id);
+      b.password ? hashSecret(b.password) : target.password, nextPin, nextSecurityAnswer, target.id);
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
 
