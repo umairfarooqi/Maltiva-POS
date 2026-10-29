@@ -178,8 +178,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       selectedCategoryId === 'cat-all'
         ? true
         : selectedCategoryId === 'cat-deals'
-        ? p.isDeal === true || p.categoryId === 'cat-deals'
-        : p.categoryId === selectedCategoryId;
+          ? p.isDeal === true || p.categoryId === 'cat-deals'
+          : p.categoryId === selectedCategoryId;
 
     const matchesSearch =
       !searchQuery ||
@@ -339,10 +339,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     let parsedPrice: number, parsedCost: number;
     try { parsedPrice = parseRupees(formPrice); parsedCost = parseRupees(formCostPrice); setMoneyError(''); }
     catch (error) { setMoneyError((error as Error).message); return; }
-    const parsedStock = Number(formStock);
-    if (!editingProduct && (!formStock.trim() || !Number.isSafeInteger(parsedStock) || parsedStock < 0)) {
-      setSaveError('Opening stock must be a nonnegative whole number.'); return;
-    }
+    const parsedStock = parseInt(formStock, 10);
     const parsedMinThreshold = parseInt(formMinThreshold, 10);
 
     const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingProduct?.pricePaisa ?? 0);
@@ -354,20 +351,22 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
     if (submitting.current) return;
     submitting.current = true; setIsSaving(true);
-    try { await onSaveProduct({
-      id: editingProduct?.id,
-      name: formName.trim() || editingProduct?.name || 'Maltiva Special Dish',
-      categoryId: formCategoryId || editingProduct?.categoryId || 'cat-special',
-      categoryName: category?.name || editingProduct?.categoryName || 'Special Dishes',
-      pricePaisa: finalPrice,
-      costPricePaisa: finalCost,
-      ...(!editingProduct ? { stockQuantity: parsedStock } : {}),
-      minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingProduct?.minStockThreshold ?? 5),
-      image: finalImage,
-      description: formDescription,
-      isDeal: false,
-      variations: packagedVariations,
-    }); setIsDishModalOpen(false); }
+    try {
+      await onSaveProduct({
+        id: editingProduct?.id,
+        name: formName.trim() || editingProduct?.name || 'Maltiva Special Dish',
+        categoryId: formCategoryId || editingProduct?.categoryId || 'cat-special',
+        categoryName: category?.name || editingProduct?.categoryName || 'Special Dishes',
+        pricePaisa: finalPrice,
+        costPricePaisa: finalCost,
+        stockQuantity: !isNaN(parsedStock) ? parsedStock : (editingProduct?.stockQuantity ?? 25),
+        minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingProduct?.minStockThreshold ?? 5),
+        image: finalImage,
+        description: formDescription,
+        isDeal: false,
+        variations: packagedVariations,
+      }); setIsDishModalOpen(false);
+    }
     catch (error) { setSaveError((error as Error).message); }
     finally { submitting.current = false; setIsSaving(false); }
   };
@@ -384,10 +383,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     let parsedPrice: number, parsedCost: number;
     try { parsedPrice = parseRupees(dealPrice); parsedCost = parseRupees(dealCostPrice); setMoneyError(''); }
     catch (error) { setMoneyError((error as Error).message); return; }
-    const parsedStock = Number(dealStock);
-    if (!editingDeal && (!dealStock.trim() || !Number.isSafeInteger(parsedStock) || parsedStock < 0)) {
-      setSaveError('Opening stock must be a nonnegative whole number.'); return;
-    }
+    const parsedStock = parseInt(dealStock, 10);
     const parsedMinThreshold = parseInt(dealMinThreshold, 10);
 
     const finalPrice = !isNaN(parsedPrice) ? parsedPrice : (editingDeal?.pricePaisa ?? 0);
@@ -399,21 +395,23 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
     if (submitting.current) return;
     submitting.current = true; setIsSaving(true);
-    try { await onSaveProduct({
-      id: editingDeal?.id,
-      name: dealName.trim() || editingDeal?.name || 'Maltiva Mega Combo Deal',
-      categoryId: dealCategoryId || editingDeal?.categoryId || 'cat-deals',
-      categoryName: category.name,
-      pricePaisa: finalPrice,
-      costPricePaisa: finalCost,
-      ...(!editingDeal ? { stockQuantity: parsedStock } : {}),
-      minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingDeal?.minStockThreshold ?? 5),
-      image: finalImage,
-      description: dealDescription,
-      isDeal: true,
-      bundledProducts: dealBundledItems,
-      variations: editingDeal?.variations || [],
-    }); setIsDealModalOpen(false); }
+    try {
+      await onSaveProduct({
+        id: editingDeal?.id,
+        name: dealName.trim() || editingDeal?.name || 'Maltiva Mega Combo Deal',
+        categoryId: dealCategoryId || editingDeal?.categoryId || 'cat-deals',
+        categoryName: category.name,
+        pricePaisa: finalPrice,
+        costPricePaisa: finalCost,
+        stockQuantity: !isNaN(parsedStock) ? parsedStock : (editingDeal?.stockQuantity ?? 30),
+        minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingDeal?.minStockThreshold ?? 5),
+        image: finalImage,
+        description: dealDescription,
+        isDeal: true,
+        bundledProducts: dealBundledItems,
+        variations: editingDeal?.variations || [],
+      }); setIsDealModalOpen(false);
+    }
     catch (error) { setSaveError((error as Error).message); }
     finally { submitting.current = false; setIsSaving(false); }
   };
@@ -546,16 +544,15 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 cat.id === 'cat-all'
                   ? products.length
                   : cat.id === 'cat-deals'
-                  ? products.filter(p => p.isDeal || p.categoryId === 'cat-deals').length
-                  : products.filter(p => p.categoryId === cat.id).length;
+                    ? products.filter(p => p.isDeal || p.categoryId === 'cat-deals').length
+                    : products.filter(p => p.categoryId === cat.id).length;
               return (
                 <div
                   key={cat.id}
-                  className={`group relative w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
-                    isSelected
+                  className={`group relative w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${isSelected
                       ? 'bg-pos-surface text-pos-accent border-pos-accent'
                       : 'bg-pos-surface border-pos-border/70 text-pos-secondary hover:border-pos-control hover:bg-pos-surface'
-                  }`}
+                    }`}
                 >
                   <button type="button" onClick={() => setSelectedCategoryId(cat.id)} aria-pressed={isSelected} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 truncate text-left">
                     <span className="w-6 text-center text-base shrink-0">{cat.icon || '🍽'}</span>
@@ -563,32 +560,31 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono transition-opacity ${
-                        isSelected ? 'bg-pos-action text-white' : 'bg-pos-raised text-pos-muted'
-                      } `}
+                      className={`min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono transition-opacity ${isSelected ? 'bg-pos-action text-white' : 'bg-pos-raised text-pos-muted'
+                        } `}
                     >
                       {actualCount}
                     </span>
                   </div>
                   {cat.id !== 'cat-all' && (
-                      <div className={`category-actions w-full shrink-0 items-center justify-end gap-1 rounded-md bg-pos-surface ${isSelected ? "flex" : "hidden group-hover:flex group-focus-within:flex"}`}>
-                        <button
-                          type="button"
-                          onClick={e => openEditCategoryModal(cat, e)}
-                          aria-label={`Edit ${cat.name}`}
-                          className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-accent transition"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={e => handleDeleteCategoryClick(cat.id, e)}
-                          aria-label={`Delete ${cat.name}`}
-                          className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-danger-text transition"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+                    <div className={`category-actions w-full shrink-0 items-center justify-end gap-1 rounded-md bg-pos-surface ${isSelected ? "flex" : "hidden group-hover:flex group-focus-within:flex"}`}>
+                      <button
+                        type="button"
+                        onClick={e => openEditCategoryModal(cat, e)}
+                        aria-label={`Edit ${cat.name}`}
+                        className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-accent transition"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={e => handleDeleteCategoryClick(cat.id, e)}
+                        aria-label={`Delete ${cat.name}`}
+                        className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-danger-text transition"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   )}
                 </div>
               );
@@ -651,18 +647,16 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <button
                 onClick={() => setViewMode('grid')}
                 title="Grid view"
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'grid' ? 'bg-pos-raised text-pos-accent' : 'text-pos-muted'
-                }`}
+                className={`p-1.5 rounded-md transition ${viewMode === 'grid' ? 'bg-pos-raised text-pos-accent' : 'text-pos-muted'
+                  }`}
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
                 title="List view"
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'list' ? 'bg-pos-raised text-pos-accent' : 'text-pos-muted'
-                }`}
+                className={`p-1.5 rounded-md transition ${viewMode === 'list' ? 'bg-pos-raised text-pos-accent' : 'text-pos-muted'
+                  }`}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -710,53 +704,52 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                           />
                         </button>
 
-                        <div className="flex items-center gap-1">
-                          {product.isDeal && (
-                            <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text">
-                              Deal
-                            </span>
-                          )}
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              toggleProductMenu(e, product.id);
-                            }}
-                            aria-label={`Actions for ${product.name}`}
-                            aria-haspopup="menu"
-                            aria-expanded={openMenuProductId === product.id}
-                            className="p-1.5 rounded-lg bg-pos-inset text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-1">
+                            {product.isDeal && (
+                              <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text leading-none">
+                                Deal
+                              </span>
+                            )}
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                toggleProductMenu(e, product.id);
+                              }}
+                              aria-label={`Actions for ${product.name}`}
+                              aria-haspopup="menu"
+                              aria-expanded={openMenuProductId === product.id}
+                              className="p-1.5 rounded-lg bg-pos-inset text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <ProductStockBadge product={product} />
                         </div>
                       </div>
 
-                      <div className="mb-3 space-y-1">
-                        {!product.isDeal && (
-                          <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
-                            {product.categoryName}
-                          </span>
-                        )}
-                        <h3 className="min-h-8 line-clamp-2 text-xs font-bold leading-snug text-pos-text">
+                      <div className="mb-2.5 space-y-0.5">
+                        <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
+                          {product.isDeal ? 'Combo Deal' : product.categoryName}
+                        </span>
+                        <h3 className="min-h-10 line-clamp-2 text-sm font-bold leading-snug text-pos-text">
                           <button type="button" className="text-left w-full" onClick={() => openEditDishModal(product)}>{product.name}</button>
                         </h3>
-                        <ProductStockBadge product={product} />
                       </div>
                     </div>
 
                     <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-pos-muted">Price</span>
-                        <span className="text-xs font-bold font-mono text-pos-text">
+                        <span className="text-sm font-black font-mono text-pos-text whitespace-nowrap">
                           {formatPKR(safePrice)}
                         </span>
                       </div>
                       <div className="flex flex-col text-right">
                         <span className="text-[10px] text-pos-muted">Margin</span>
                         <span
-                          className={`text-xs font-bold font-mono ${
-                            margin > 40 ? 'text-pos-success-text' : 'text-pos-warning-text'
-                          }`}
+                          className={`text-xs font-bold font-mono ${margin > 40 ? 'text-pos-success-text' : 'text-pos-warning-text'
+                            }`}
                         >
                           {margin.toFixed(0)}%
                         </span>
@@ -872,14 +865,14 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             <span>Delete Product</span>
           </button>
         </div>
-      , document.body)}
+        , document.body)}
 
       {/* DISH MODAL */}
       {isDishModalOpen && (
         <Dialog label="Dish editor" busy={isSaving || isDeleting} onClose={() => setIsDishModalOpen(false)} className="pos-editor bg-pos-surface rounded-lg max-w-3xl w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-            {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
-            {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="contents">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+          {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
+          <fieldset disabled={isSaving || isDeleting} className="contents">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-lg font-bold text-pos-text">
                 {editingProduct ? 'Edit Dish' : 'Add New Dish'}
@@ -894,204 +887,201 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </div>
             <form onSubmit={handleSaveDish} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
-              <div className="space-y-5">
-                <div className="group">
-                  <label htmlFor="manage-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                    Dish Name
-                  </label>
-                  <input id="manage-field-2"
-                    type="text"
-                    value={formName}
-                    onChange={e => setFormName(e.target.value)}
-                    className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-5">
                   <div className="group">
-                    <label htmlFor="manage-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Category
+                    <label htmlFor="manage-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                      Dish Name
                     </label>
-                    <select id="manage-field-3"
-                      value={formCategoryId}
-                      onChange={e => setFormCategoryId(e.target.value)}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent cursor-pointer"
-                    >
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="group">
-                    <label htmlFor="manage-field-4" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Selling Price (PKR)
-                    </label>
-                    <input id="manage-field-4"
-                      type="number"
-                      value={formPrice}
-                      onChange={e => { setFormPrice(e.target.value); setMoneyError(''); } }
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                    <input id="manage-field-2"
+                      type="text"
+                      value={formName}
+                      onChange={e => setFormName(e.target.value)}
+                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
                       required
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="group">
-                    <label htmlFor="manage-field-5" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Cost Price (PKR)
-                    </label>
-                    <input id="manage-field-5"
-                      type="number"
-                      value={formCostPrice}
-                      onChange={e => { setFormCostPrice(e.target.value); setMoneyError(''); } }
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
-                    />
-                  </div>
-                  <div className="group">
-                    <label htmlFor="manage-field-6" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      {editingProduct ? 'Stock when opened' : 'Opening stock'}
-                    </label>
-                    <input id="manage-field-6"
-                      type="number"
-                      min="0" step="1" readOnly={Boolean(editingProduct)}
-                      aria-describedby={editingProduct ? 'dish-stock-help' : undefined}
-                      value={formStock}
-                      onChange={e => setFormStock(e.target.value)}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
-                    />
-                    {editingProduct && <p id="dish-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
-                  </div>
-                </div>
-                <div className="group">
-                  <label htmlFor="manage-field-7" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                    Image URL
-                  </label>
-                  <input id="manage-field-7"
-                    type="text"
-                    value={formImage}
-                    onChange={e => setFormImage(e.target.value)}
-                    className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
-                  />
-                </div>
-                <div className="group">
-                  <label htmlFor="manage-field-8" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                    Description
-                  </label>
-                  <textarea id="manage-field-8"
-                    value={formDescription}
-                    onChange={e => setFormDescription(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-6">
-                <div className="p-5 bg-pos-success-bg rounded-md border border-pos-success-border flex flex-col items-center justify-center text-center space-y-2">
-                  <div className="flex items-center gap-2 text-pos-success-text">
-                    <TrendingUp className="w-5 h-5" />
-                    <span className="text-sm font-bold">Estimated Profit</span>
-                  </div>
-                  <div className="text-3xl font-black text-pos-success-text">
-                    {previewProfit === null ? 'Enter valid prices' : formatPKR(previewProfit)}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-pos-secondary uppercase tracking-wider">
-                      Variations & Add-ons
-                    </label>
-                    <button
-                      type="button"
-                      onClick={addDynamicVariation}
-                      className="text-xs font-bold text-pos-accent hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Option
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {formGroups.map((group, index) => <div key={group.id} className="rounded-md border border-pos-border p-3 space-y-2">
-                      <input aria-label="Variation group name" value={group.name} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, name: e.target.value } : g))} className="w-full bg-pos-inset rounded p-2 text-sm" />
-                      <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.required} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, required: e.target.checked } : g))} />Required choice</label>
-                      <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.multiSelect} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, multiSelect: e.target.checked } : g))} />Allow multiple choices</label>
-                      <button type="button" className="text-xs text-pos-danger-text" onClick={() => { setFormGroups(prev => prev.filter(g => g.id !== group.id)); setFormVariations(prev => prev.filter(v => v.groupId !== group.id)); }}>Remove group {index + 1}</button>
-                    </div>)}
-                    <button type="button" className="text-xs text-pos-accent" onClick={() => setFormGroups(prev => [...prev, { id: `group-${Date.now()}`, name: 'New group', required: false, multiSelect: false }])}>Add variation group</button>
-                  </div>
-                  <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                    {formVariations.map((v, idx) => (
-                      <div
-                        key={v.id || idx}
-                        className="flex flex-wrap items-center gap-2 bg-pos-inset p-2.5 rounded-md border border-pos-control"
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="group">
+                      <label htmlFor="manage-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Category
+                      </label>
+                      <select id="manage-field-3"
+                        value={formCategoryId}
+                        onChange={e => setFormCategoryId(e.target.value)}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent cursor-pointer"
                       >
-                        <select aria-label="Option group" value={v.groupId} onChange={e => setFormVariations(prev => prev.map(opt => opt.id === v.id ? { ...opt, groupId: e.target.value } : opt))} className="w-24 rounded bg-pos-surface p-1 text-xs">{formGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
-                        <input
-                          type="text"
-                          placeholder="Option Name (e.g., Extra Cheese)"
-                          value={v.name}
-                          onChange={e => {
-                            const updated = [...formVariations];
-                            updated[idx].name = e.target.value;
-                            setFormVariations(updated);
-                          }}
-                          className="min-w-0 flex-1 px-3 py-1.5 bg-pos-surface border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
-                        />
-                        <input
-                          type="number"
-                          placeholder="+Price"
-                          value={rupeeText(v.priceDeltaPaisa)}
-                          onChange={e => {
-                            const updated = [...formVariations];
-                            try { updated[idx].priceDeltaPaisa = parseRupees(e.target.value || '0', true); setMoneyError(''); }
-                            catch (error) { setMoneyError((error as Error).message); return; }
-                            setFormVariations(updated);
-                          }}
-                          className="w-20 px-2 py-1.5 bg-pos-surface border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
-                        />
-                        <button
-                          type="button"
-                          aria-label={`Remove option ${v.name || idx + 1}`}
-                          onClick={() => removeDynamicVariation(idx)}
-                          className="p-1.5 text-pos-muted hover:text-pos-danger-text transition cursor-pointer"
+                        {categories.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="group">
+                      <label htmlFor="manage-field-4" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Selling Price (PKR)
+                      </label>
+                      <input id="manage-field-4"
+                        type="number"
+                        value={formPrice}
+                        onChange={e => { setFormPrice(e.target.value); setMoneyError(''); }}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="group">
+                      <label htmlFor="manage-field-5" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Cost Price (PKR)
+                      </label>
+                      <input id="manage-field-5"
+                        type="number"
+                        value={formCostPrice}
+                        onChange={e => { setFormCostPrice(e.target.value); setMoneyError(''); }}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                      />
+                    </div>
+                    <div className="group">
+                      <label htmlFor="manage-field-6" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Initial Stock
+                      </label>
+                      <input id="manage-field-6"
+                        type="number"
+                        value={formStock}
+                        onChange={e => setFormStock(e.target.value)}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                      />
+                    </div>
+                  </div>
+                  <div className="group">
+                    <label htmlFor="manage-field-7" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                      Image URL
+                    </label>
+                    <input id="manage-field-7"
+                      type="text"
+                      value={formImage}
+                      onChange={e => setFormImage(e.target.value)}
+                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                    />
+                  </div>
+                  <div className="group">
+                    <label htmlFor="manage-field-8" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                      Description
+                    </label>
+                    <textarea id="manage-field-8"
+                      value={formDescription}
+                      onChange={e => setFormDescription(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-6">
+                  <div className="p-5 bg-pos-success-bg rounded-md border border-pos-success-border flex flex-col items-center justify-center text-center space-y-2">
+                    <div className="flex items-center gap-2 text-pos-success-text">
+                      <TrendingUp className="w-5 h-5" />
+                      <span className="text-sm font-bold">Estimated Profit</span>
+                    </div>
+                    <div className="text-3xl font-black text-pos-success-text">
+                      {previewProfit === null ? 'Enter valid prices' : formatPKR(previewProfit)}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-pos-secondary uppercase tracking-wider">
+                        Variations & Add-ons
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addDynamicVariation}
+                        className="text-xs font-bold text-pos-accent hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add Option
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {formGroups.map((group, index) => <div key={group.id} className="rounded-md border border-pos-border p-3 space-y-2">
+                        <input aria-label="Variation group name" value={group.name} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, name: e.target.value } : g))} className="w-full bg-pos-inset rounded p-2 text-sm" />
+                        <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.required} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, required: e.target.checked } : g))} />Required choice</label>
+                        <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.multiSelect} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, multiSelect: e.target.checked } : g))} />Allow multiple choices</label>
+                        <button type="button" className="text-xs text-pos-danger-text" onClick={() => { setFormGroups(prev => prev.filter(g => g.id !== group.id)); setFormVariations(prev => prev.filter(v => v.groupId !== group.id)); }}>Remove group {index + 1}</button>
+                      </div>)}
+                      <button type="button" className="text-xs text-pos-accent" onClick={() => setFormGroups(prev => [...prev, { id: `group-${Date.now()}`, name: 'New group', required: false, multiSelect: false }])}>Add variation group</button>
+                    </div>
+                    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                      {formVariations.map((v, idx) => (
+                        <div
+                          key={v.id || idx}
+                          className="flex flex-wrap items-center gap-2 bg-pos-inset p-2.5 rounded-md border border-pos-control"
                         >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                          <select aria-label="Option group" value={v.groupId} onChange={e => setFormVariations(prev => prev.map(opt => opt.id === v.id ? { ...opt, groupId: e.target.value } : opt))} className="w-24 rounded bg-pos-surface p-1 text-xs">{formGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
+                          <input
+                            type="text"
+                            placeholder="Option Name (e.g., Extra Cheese)"
+                            value={v.name}
+                            onChange={e => {
+                              const updated = [...formVariations];
+                              updated[idx].name = e.target.value;
+                              setFormVariations(updated);
+                            }}
+                            className="min-w-0 flex-1 px-3 py-1.5 bg-pos-surface border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                          />
+                          <input
+                            type="number"
+                            placeholder="+Price"
+                            value={rupeeText(v.priceDeltaPaisa)}
+                            onChange={e => {
+                              const updated = [...formVariations];
+                              try { updated[idx].priceDeltaPaisa = parseRupees(e.target.value || '0', true); setMoneyError(''); }
+                              catch (error) { setMoneyError((error as Error).message); return; }
+                              setFormVariations(updated);
+                            }}
+                            className="w-20 px-2 py-1.5 bg-pos-surface border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                          />
+                          <button
+                            type="button"
+                            aria-label={`Remove option ${v.name || idx + 1}`}
+                            onClick={() => removeDynamicVariation(idx)}
+                            className="p-1.5 text-pos-muted hover:text-pos-danger-text transition cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
+              <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
+                <button
+                  type="button"
+                  onClick={() => setIsDishModalOpen(false)}
+                  className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
+                >
+                  Save Dish
+                </button>
               </div>
-                <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
-                  <button
-                    type="button"
-                    onClick={() => setIsDishModalOpen(false)}
-                    className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
-                  >
-                    Save Dish
-                  </button>
-                </div>
             </form>
-            </fieldset>
+          </fieldset>
         </Dialog>
       )}
 
       {/* DEAL MODAL */}
       {isDealModalOpen && (
         <Dialog label="Deal editor" busy={isSaving || isDeleting} onClose={() => setIsDealModalOpen(false)} className="pos-editor bg-pos-surface rounded-lg max-w-3xl w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-            {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
-            {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="contents">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+          {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
+          <fieldset disabled={isSaving || isDeleting} className="contents">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-lg font-bold text-pos-text">
                 {editingDeal ? 'Edit Deal' : 'Create New Deal'}
@@ -1106,206 +1096,203 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </div>
             <form onSubmit={handleSaveDeal} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
-              <div className="space-y-5">
-                <div className="group">
-                  <label htmlFor="manage-field-9" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                    Deal Title
-                  </label>
-                  <input id="manage-field-9"
-                    type="text"
-                    value={dealName}
-                    onChange={e => setDealName(e.target.value)}
-                    className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-5">
                   <div className="group">
-                    <label htmlFor="manage-field-10" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Deal Price (PKR)
+                    <label htmlFor="manage-field-9" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                      Deal Title
                     </label>
-                    <input id="manage-field-10"
-                      type="number"
-                      value={dealPrice}
-                      onChange={e => { setDealPrice(e.target.value); setMoneyError(''); } }
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                    <input id="manage-field-9"
+                      type="text"
+                      value={dealName}
+                      onChange={e => setDealName(e.target.value)}
+                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
                       required
                     />
                   </div>
-                  <div className="group">
-                    <label htmlFor="manage-field-11" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Estimated Cost
-                    </label>
-                    <input id="manage-field-11"
-                      type="number"
-                      value={dealCostPrice}
-                      onChange={e => { setDealCostPrice(e.target.value); setMoneyError(''); } }
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="group">
+                      <label htmlFor="manage-field-10" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Deal Price (PKR)
+                      </label>
+                      <input id="manage-field-10"
+                        type="number"
+                        value={dealPrice}
+                        onChange={e => { setDealPrice(e.target.value); setMoneyError(''); }}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        required
+                      />
+                    </div>
+                    <div className="group">
+                      <label htmlFor="manage-field-11" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Estimated Cost
+                      </label>
+                      <input id="manage-field-11"
+                        type="number"
+                        value={dealCostPrice}
+                        onChange={e => { setDealCostPrice(e.target.value); setMoneyError(''); }}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="group">
-                    <label htmlFor="manage-field-12" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      {editingDeal ? 'Stock when opened' : 'Opening stock'}
-                    </label>
-                    <input id="manage-field-12"
-                      type="number"
-                      min="0" step="1" readOnly={Boolean(editingDeal)}
-                      aria-describedby={editingDeal ? 'deal-stock-help' : undefined}
-                      value={dealStock}
-                      onChange={e => setDealStock(e.target.value)}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
-                    />
-                    {editingDeal && <p id="deal-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="group">
+                      <label htmlFor="manage-field-12" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Stock Available
+                      </label>
+                      <input id="manage-field-12"
+                        type="number"
+                        value={dealStock}
+                        onChange={e => setDealStock(e.target.value)}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                      />
+                    </div>
+                    <div className="group">
+                      <label htmlFor="manage-field-13" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Image URL
+                      </label>
+                      <input id="manage-field-13"
+                        type="text"
+                        value={dealImage}
+                        onChange={e => setDealImage(e.target.value)}
+                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                      />
+                    </div>
                   </div>
                   <div className="group">
-                    <label htmlFor="manage-field-13" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Image URL
+                    <label htmlFor="manage-field-14" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                      Description
                     </label>
-                    <input id="manage-field-13"
-                      type="text"
-                      value={dealImage}
-                      onChange={e => setDealImage(e.target.value)}
+                    <textarea id="manage-field-14"
+                      value={dealDescription}
+                      onChange={e => setDealDescription(e.target.value)}
+                      rows={3}
                       className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
                     />
                   </div>
                 </div>
-                <div className="group">
-                  <label htmlFor="manage-field-14" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                    Description
-                  </label>
-                  <textarea id="manage-field-14"
-                    value={dealDescription}
-                    onChange={e => setDealDescription(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="manage-field-15" className="text-xs font-bold text-pos-secondary block mb-2 uppercase tracking-wider">
-                    Bundled Items
-                  </label>
+                <div className="space-y-6">
+                  <div>
+                    <label htmlFor="manage-field-15" className="text-xs font-bold text-pos-secondary block mb-2 uppercase tracking-wider">
+                      Bundled Items
+                    </label>
 
-                  <div className="flex items-center gap-2 mb-3">
-                    <select id="manage-field-15"
-                      value={selectedProductToAdd}
-                      onChange={e => setSelectedProductToAdd(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
-                    >
-                      <option value="">Select Existing Dish...</option>
-                      {products
-                        .filter(p => !p.isDeal)
-                        .map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({formatPKR(p.pricePaisa)})
-                          </option>
-                        ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAddProductToDeal}
-                      className="px-3 py-2 bg-pos-strong text-white rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-4">
-                    <input
-                      type="text"
-                      placeholder="Or Custom Item (e.g. 1.5L Cold Drink)"
-                      value={customItemInput}
-                      onChange={e => setCustomItemInput(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCustomItemToDeal}
-                      className="px-3 py-2 bg-pos-strong text-white rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
-                    >
-                      Custom
-                    </button>
-                  </div>
-
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {dealBundledItems.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between bg-pos-inset p-2.5 rounded-md border border-pos-control text-xs"
+                    <div className="flex items-center gap-2 mb-3">
+                      <select id="manage-field-15"
+                        value={selectedProductToAdd}
+                        onChange={e => setSelectedProductToAdd(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
                       >
-                        <span className="font-medium text-pos-text truncate max-w-[150px]">
-                          {item.productName}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label={`Decrease ${item.productName} bundle quantity`}
-                            onClick={() => handleUpdateDealItemQty(idx, -1)}
-                            className="p-1 text-pos-muted hover:text-pos-text"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="font-bold text-pos-text w-4 text-center">
-                            {item.quantity}
+                        <option value="">Select Existing Dish...</option>
+                        {products
+                          .filter(p => !p.isDeal)
+                          .map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({formatPKR(p.pricePaisa)})
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddProductToDeal}
+                        className="px-3 py-2 bg-pos-strong text-white rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-4">
+                      <input
+                        type="text"
+                        placeholder="Or Custom Item (e.g. 1.5L Cold Drink)"
+                        value={customItemInput}
+                        onChange={e => setCustomItemInput(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomItemToDeal}
+                        className="px-3 py-2 bg-pos-strong text-white rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
+                      >
+                        Custom
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {dealBundledItems.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between bg-pos-inset p-2.5 rounded-md border border-pos-control text-xs"
+                        >
+                          <span className="font-medium text-pos-text truncate max-w-[150px]">
+                            {item.productName}
                           </span>
-                          <button
-                            type="button"
-                            aria-label={`Increase ${item.productName} bundle quantity`}
-                            onClick={() => handleUpdateDealItemQty(idx, 1)}
-                            className="p-1 text-pos-muted hover:text-pos-text"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Remove ${item.productName} from deal`}
-                            onClick={() => handleRemoveDealItem(idx)}
-                            className="p-1 text-pos-danger-text hover:text-pos-danger-text ml-2"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              aria-label={`Decrease ${item.productName} bundle quantity`}
+                              onClick={() => handleUpdateDealItemQty(idx, -1)}
+                              className="p-1 text-pos-muted hover:text-pos-text"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="font-bold text-pos-text w-4 text-center">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={`Increase ${item.productName} bundle quantity`}
+                              onClick={() => handleUpdateDealItemQty(idx, 1)}
+                              className="p-1 text-pos-muted hover:text-pos-text"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${item.productName} from deal`}
+                              onClick={() => handleRemoveDealItem(idx)}
+                              className="p-1 text-pos-danger-text hover:text-pos-danger-text ml-2"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    {dealBundledItems.length === 0 && (
-                      <p className="text-xs text-pos-muted text-center py-4 bg-pos-inset rounded-md border border-dashed border-pos-control">
-                        No items added to deal yet.
-                      </p>
-                    )}
+                      ))}
+                      {dealBundledItems.length === 0 && (
+                        <p className="text-xs text-pos-muted text-center py-4 bg-pos-inset rounded-md border border-dashed border-pos-control">
+                          No items added to deal yet.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
+              <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
+                <button
+                  type="button"
+                  onClick={() => setIsDealModalOpen(false)}
+                  className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
+                >
+                  Save Deal
+                </button>
               </div>
-                <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
-                  <button
-                    type="button"
-                    onClick={() => setIsDealModalOpen(false)}
-                    className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
-                  >
-                    Save Deal
-                  </button>
-                </div>
             </form>
-            </fieldset>
+          </fieldset>
         </Dialog>
       )}
 
       {/* CATEGORY MODAL */}
       {isCategoryModalOpen && (
         <Dialog label="Category editor" busy={isSaving || isDeleting} onClose={() => setIsCategoryModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-pos-border">
-            {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
-            {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="contents">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+          {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
+          <fieldset disabled={isSaving || isDeleting} className="contents">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-lg font-bold text-pos-text">
                 {editingCategory ? 'Edit Category' : 'New Category'}
@@ -1320,47 +1307,46 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </div>
             <form onSubmit={handleSaveCategorySubmit} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto space-y-4 pr-1">
-              <div>
-                <label htmlFor="category-name-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
-                  Category Name
-                </label>
-                <input id="category-name-input"
-                  type="text"
-                  value={catNameInput}
-                  onChange={e => setCatNameInput(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="category-icon-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
-                  Icon Emoji
-                </label>
-                <input id="category-icon-input"
-                  type="text"
-                  value={catIconInput}
-                  onChange={e => setCatIconInput(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-lg text-center focus-visible:border-pos-accent"
-                  required
-                />
-                <div className="mt-2 grid grid-cols-5 gap-2">
-                  {FAST_FOOD_CATEGORY_EMOJIS.map(({ emoji, label }) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setCatIconInput(emoji)}
-                      aria-label={`Use ${label} emoji`}
-                      className={`h-10 rounded-md border text-lg transition hover:border-pos-accent hover:bg-pos-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pos-accent ${
-                        catIconInput === emoji
-                          ? 'border-pos-accent bg-pos-selected'
-                          : 'border-pos-border bg-pos-surface'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div>
+                  <label htmlFor="category-name-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
+                    Category Name
+                  </label>
+                  <input id="category-name-input"
+                    type="text"
+                    value={catNameInput}
+                    onChange={e => setCatNameInput(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                    required
+                  />
                 </div>
-              </div>
+                <div>
+                  <label htmlFor="category-icon-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
+                    Icon Emoji
+                  </label>
+                  <input id="category-icon-input"
+                    type="text"
+                    value={catIconInput}
+                    onChange={e => setCatIconInput(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-lg text-center focus-visible:border-pos-accent"
+                    required
+                  />
+                  <div className="mt-2 grid grid-cols-5 gap-2">
+                    {FAST_FOOD_CATEGORY_EMOJIS.map(({ emoji, label }) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setCatIconInput(emoji)}
+                        aria-label={`Use ${label} emoji`}
+                        className={`h-10 rounded-md border text-lg transition hover:border-pos-accent hover:bg-pos-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pos-accent ${catIconInput === emoji
+                            ? 'border-pos-accent bg-pos-selected'
+                            : 'border-pos-border bg-pos-surface'
+                          }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="shrink-0 flex items-center justify-end gap-2 pt-3 mt-3 border-t border-pos-divider">
                 <button
@@ -1378,16 +1364,16 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </button>
               </div>
             </form>
-            </fieldset>
+          </fieldset>
         </Dialog>
       )}
 
       {/* STOCK ADJUSTMENT MODAL */}
       {isStockModalOpen && selectedStockProduct && (
         <Dialog label="Adjust stock" busy={isSaving || isDeleting} onClose={() => setIsStockModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-pos-border">
-            {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
-            {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="contents">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+          {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
+          <fieldset disabled={isSaving || isDeleting} className="contents">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-pos-text">Adjust Stock</h3>
               <button
@@ -1404,44 +1390,44 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </p>
             <form onSubmit={handleStockAdjustSubmit} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto space-y-4 pr-1">
-              <div>
-                <label htmlFor="manage-field-18" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
-                  Type
-                </label>
-                <select id="manage-field-18"
-                  value={stockType}
-                  onChange={e => setStockType(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
-                >
-                  <option value="restock">Restock (+ Stock)</option>
-                  <option value="adjustment">Manual Adjustment (+ Stock)</option>
-                  <option value="waste">Waste / Loss (- Stock)</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="manage-field-19" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
-                  Quantity
-                </label>
-                <input id="manage-field-19"
-                  type="number"
-                  value={stockChangeQty}
-                  onChange={e => setStockChangeQty(e.target.value)}
-                  className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="manage-field-20" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
-                  Reason
-                </label>
-                <input id="manage-field-20"
-                  type="text"
-                  value={stockReason}
-                  onChange={e => setStockReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
-                  required
-                />
-              </div>
+                <div>
+                  <label htmlFor="manage-field-18" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
+                    Type
+                  </label>
+                  <select id="manage-field-18"
+                    value={stockType}
+                    onChange={e => setStockType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  >
+                    <option value="restock">Restock (+ Stock)</option>
+                    <option value="adjustment">Manual Adjustment (+ Stock)</option>
+                    <option value="waste">Waste / Loss (- Stock)</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="manage-field-19" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
+                    Quantity
+                  </label>
+                  <input id="manage-field-19"
+                    type="number"
+                    value={stockChangeQty}
+                    onChange={e => setStockChangeQty(e.target.value)}
+                    className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="manage-field-20" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
+                    Reason
+                  </label>
+                  <input id="manage-field-20"
+                    type="text"
+                    value={stockReason}
+                    onChange={e => setStockReason(e.target.value)}
+                    className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                    required
+                  />
+                </div>
               </div>
               <div className="shrink-0 flex items-center justify-end gap-2 pt-3 mt-3 border-t border-pos-divider">
                 <button
@@ -1459,16 +1445,16 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </button>
               </div>
             </form>
-            </fieldset>
+          </fieldset>
         </Dialog>
       )}
 
       {/* DELETE CONFIRMATION DIALOG */}
       {deleteConfirmTarget && (
         <Dialog label="Confirm deletion" busy={isSaving || isDeleting} onClose={() => setDeleteConfirmTarget(null)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto border border-pos-border text-center">
-            {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
-            {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="min-w-0">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+          {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
+          <fieldset disabled={isSaving || isDeleting} className="min-w-0">
             <div className="w-12 h-12 rounded-md bg-pos-danger-bg text-pos-danger-text flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
@@ -1493,7 +1479,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 {isDeleting ? 'Deleting...' : 'Yes, Delete'}
               </button>
             </div>
-            </fieldset>
+          </fieldset>
         </Dialog>
       )}
     </div>

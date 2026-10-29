@@ -54,8 +54,8 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       activeCategoryId === 'cat-all'
         ? true
         : activeCategoryId === 'cat-deals'
-        ? product.isDeal === true || product.categoryId === 'cat-deals'
-        : product.categoryId === activeCategoryId;
+          ? product.isDeal === true || product.categoryId === 'cat-deals'
+          : product.categoryId === activeCategoryId;
 
     const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
@@ -164,8 +164,8 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
               cat.id === 'cat-all'
                 ? products.length
                 : cat.id === 'cat-deals'
-                ? products.filter(p => p.isDeal === true || p.categoryId === 'cat-deals').length
-                : products.filter(p => p.categoryId === cat.id).length;
+                  ? products.filter(p => p.isDeal === true || p.categoryId === 'cat-deals').length
+                  : products.filter(p => p.categoryId === cat.id).length;
 
             const { icon: Icon } = getCategoryMeta(cat.id, cat.name);
 
@@ -174,11 +174,10 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
                 aria-pressed={isSelected}
-                className={`h-11 px-3 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${
-                  isSelected
+                className={`h-11 px-3 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${isSelected
                     ? 'border-pos-accent bg-pos-selected text-pos-accent shadow-xs'
                     : 'border-pos-border bg-pos-surface text-pos-secondary hover:border-pos-control hover:text-pos-text'
-                }`}
+                  }`}
               >
                 <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-pos-accent' : 'text-pos-muted'}`} aria-hidden="true" />
                 <div className="flex items-center gap-2">
@@ -186,11 +185,10 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     {cleanCategoryLabel(cat.name)}
                   </h3>
                   <p
-                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
-                      isSelected
+                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${isSelected
                         ? 'bg-pos-action text-white'
                         : 'bg-pos-raised text-pos-muted'
-                    }`}
+                      }`}
                   >
                     {actualCount} items
                   </p>
@@ -230,13 +228,11 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 <div
                   key={product.id}
                   onClick={addItem}
-                  className={`group h-full bg-pos-surface rounded-xl p-3 border transition-all duration-150 flex flex-col justify-between relative overflow-hidden ${
-                    cannotAdd ? 'cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
-                  } ${
-                    qtyInCart > 0
+                  className={`group h-full bg-pos-surface rounded-xl p-3 border transition-all duration-150 flex flex-col justify-between relative overflow-hidden ${cannotAdd ? 'cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
+                    } ${qtyInCart > 0
                       ? 'border-pos-accent bg-pos-selected/25 ring-1 ring-pos-accent/40'
                       : 'border-pos-border hover:border-pos-control hover:bg-pos-raised/40'
-                  }`}
+                    }`}
                 >
                   {/* Top Active Accent Bar when in Cart */}
                   {qtyInCart > 0 && (
@@ -244,48 +240,52 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                   )}
 
                   <div>
-                    {/* 1:1 Square Product Image + Info Row */}
-                    <div className="flex items-start gap-2 mb-2">
-                      <button
-                        type="button"
-                        disabled={cannotAdd}
-                        aria-label={`Add ${product.name}`}
-                        onClick={e => {
-                          e.stopPropagation();
-                          addItem();
-                        }}
-                        className="relative w-12 h-12 aspect-square shrink-0 rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 block disabled:opacity-60"
-                      >
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          onError={event => {
-                            if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
-                              event.currentTarget.src = '/placeholder-dish.svg';
-                            }
+                      {/* Top Row: 1:1 Image + Badges */}
+                      <div className="flex items-start justify-between gap-2 mb-2.5">
+                        <button
+                          type="button"
+                          disabled={cannotAdd}
+                          aria-label={`Add ${product.name}`}
+                          onClick={e => {
+                            e.stopPropagation();
+                            addItem();
                           }}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
-                        />
-                        {product.isDeal && (
-                          <span className="absolute top-1 left-1 z-10 rounded border border-pos-warning-border bg-pos-warning-bg/95 px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text leading-none">
+                          className="relative w-14 h-14 aspect-square shrink-0 rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 block disabled:opacity-60"
+                        >
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            onError={event => {
+                              if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                                event.currentTarget.src = '/placeholder-dish.svg';
+                              }
+                            }}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                          />
+                        </button>
+
+                        <div className="flex flex-col items-end gap-1 min-w-0">
+                          {product.isDeal && (
+                          <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text leading-none">
                             DEAL
                           </span>
                         )}
-                      </button>
+                        {hasVariations && (
+                          <span className="shrink-0 rounded-md bg-pos-raised border border-pos-border px-1.5 py-0.5 text-[9px] font-semibold text-pos-secondary leading-none">
+                            Options
+                          </span>
+                        )}
+                        <ProductStockBadge product={product} />
+                      </div>
+                    </div>
 
-                      <div className="min-w-0 flex-1 pt-0.5">
-                        <div className="flex items-center justify-between gap-1.5 mb-1">
-                          <span className="truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
+                        {/* Full-Width Category & Dish Name (No Side Cramping) */}
+                        <div className="mb-2.5 space-y-0.5">
+                          <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
                             {product.isDeal ? 'Combo Deal' : cleanCategoryLabel(product.categoryName)}
                           </span>
-                          {hasVariations && (
-                            <span className="shrink-0 rounded bg-pos-raised px-1.5 py-0.5 text-[9px] font-semibold text-pos-secondary">
-                              Options
-                            </span>
-                          )}
-                        </div>
 
-                        <h3 className="text-sm font-bold leading-snug text-pos-text">
+                        <h3 className="min-h-10 text-sm font-bold leading-snug text-pos-text">
                           <button
                             type="button"
                             disabled={cannotAdd}
@@ -293,90 +293,89 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                               e.stopPropagation();
                               addItem();
                             }}
-                            className="text-left w-full min-h-11 disabled:opacity-60 cursor-pointer"
+                            className="text-left w-full disabled:opacity-60 cursor-pointer"
                           >
                             <span className="line-clamp-2">{product.name}</span>
                           </button>
                         </h3>
 
-                        <span className="text-base font-black text-pos-text font-mono tracking-tight">
-                          {formatPKR(product.pricePaisa)}
-                        </span>
-                        <div className="mt-1 flex flex-wrap items-center gap-1">
-                          <ProductStockBadge product={product} />
-                          {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && (
-                            <p className="text-[10px] font-medium text-pos-warning-text">Max stock in order</p>
-                          )}
-                        </div>
+                        {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && (
+                          <p className="text-[10px] font-medium text-pos-warning-text">Max stock in order</p>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Touch quantity controls */}
-                  <div className="mt-auto flex items-center justify-end pt-2 border-t border-pos-divider/80">
-                    {qtyInCart === 0 ? (
-                      <button
-                        type="button"
-                        disabled={cannotAdd}
-                        aria-label={`Add one ${product.name}`}
-                        onClick={e => {
-                          e.stopPropagation();
-                          addItem();
-                        }}
-                        className="w-11 h-11 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    ) : (
-                      <div
-                        onClick={e => e.stopPropagation()}
-                        className="flex items-center gap-1.5 bg-pos-inset rounded-lg p-1 border border-pos-accent/50"
-                      >
-                        <button
-                          disabled={isLocked || plainQty === 0}
-                          title={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
-                          onClick={event => { event.stopPropagation(); onQuickDecrementFromCart(product); }}
-                          aria-label={`Remove one ${product.name}`}
-                          className="w-11 h-11 rounded-md bg-pos-surface text-pos-text hover:bg-pos-raised flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
-                        >
-                          <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        </button>
-                        <span className="text-xs font-black font-mono text-pos-accent min-w-[18px] text-center">
-                          {qtyInCart}
+                      {/* Bottom Bar: Price on Left + Touch Action Controls on Right */}
+                      <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider/80">
+                        <span className="text-base font-black text-pos-text font-mono tracking-tight whitespace-nowrap">
+                          {formatPKR(product.pricePaisa)}
                         </span>
-                        <button
-                          disabled={cannotAdd}
-                          onClick={addItem}
-                          aria-label={`Add one ${product.name}`}
-                          className="w-11 h-11 rounded-md bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
-                        >
-                          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      {totalCartQty > 0 && onOpenMobileCart && (
-        <div className="lg:hidden fixed bottom-4 right-4 z-40">
-          <button
-            onClick={onOpenMobileCart}
-            aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
-            className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-pos-action hover:bg-pos-action-hover text-white py-3 px-4 rounded-xl border border-pos-accent font-bold text-sm transition active:scale-[0.98] cursor-pointer"
-          >
-            <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-black">
-              {totalCartQty}
-            </span>
-            <span className="whitespace-nowrap">Checkout</span>
-            <span className="text-base font-black whitespace-nowrap font-mono">{formatPKR(totalCartPrice)}</span>
-          </button>
-        </div>
-      )}
+                        {qtyInCart === 0 ? (
+                          <button
+                            type="button"
+                            disabled={cannotAdd}
+                            aria-label={`Add one ${product.name}`}
+                            onClick={e => {
+                              e.stopPropagation();
+                              addItem();
+                            }}
+                            className="w-10 h-10 shrink-0 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        ) : (
+                          <div
+                            onClick={e => e.stopPropagation()}
+                            className="flex items-center gap-1 bg-pos-inset rounded-lg p-0.5 border border-pos-accent/50 shrink-0"
+                          >
+                            <button
+                              disabled={isLocked || plainQty === 0}
+                              title={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
+                              onClick={event => { event.stopPropagation(); onQuickDecrementFromCart(product); }}
+                              aria-label={`Remove one ${product.name}`}
+                              className="w-9 h-9 rounded-md bg-pos-surface text-pos-text hover:bg-pos-raised flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                            >
+                              <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                            </button>
+                            <span className="text-xs font-black font-mono text-pos-accent min-w-[18px] text-center">
+                              {qtyInCart}
+                            </span>
+                            <button
+                              disabled={cannotAdd}
+                              onClick={addItem}
+                              aria-label={`Add one ${product.name}`}
+                              className="w-9 h-9 rounded-md bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                            >
+                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    );
+            })}
+                  </div>
+        )}
+                </div>
+
+      {
+                totalCartQty > 0 && onOpenMobileCart && (
+                  <div className="lg:hidden fixed bottom-4 right-4 z-40">
+                    <button
+                      onClick={onOpenMobileCart}
+                      aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
+                      className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-pos-action hover:bg-pos-action-hover text-white py-3 px-4 rounded-xl border border-pos-accent font-bold text-sm transition active:scale-[0.98] cursor-pointer"
+                    >
+                      <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-black">
+                        {totalCartQty}
+                      </span>
+                      <span className="whitespace-nowrap">Checkout</span>
+                      <span className="text-base font-black whitespace-nowrap font-mono">{formatPKR(totalCartPrice)}</span>
+                    </button>
+                  </div>
+                )
+              }
     </div>
-  );
+        );
 };
