@@ -245,12 +245,12 @@
   }
 
   @page thermal-receipt-80 {
-    size: 80mm auto;
+    size: auto;
     margin: 0;
   }
 
   @page thermal-receipt-58 {
-    size: 58mm auto;
+    size: auto;
     margin: 0;
   }
 
@@ -321,4 +321,11 @@
     max-height: none !important;
     overflow: visible !important;
   }
+}
+/* Allow narrow receipt columns to wrap long names, notes and store details. */
+.receipt-content {
+  overflow-wrap: anywhere;
+}
+.receipt-content :where(div, span, p) {
+  min-width: 0;
 }

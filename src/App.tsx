@@ -93,7 +93,6 @@ export default function App() {
       return stored?.id && ['saved', 'pending', 'rejected'].includes(stored.persistenceState) ? stored : null;
     } catch { return null; }
   });
-  const [autoPrintOrderId, setAutoPrintOrderId] = useState<string | null>(null);
   const [receiptModalOrder, setReceiptModalOrder] = useState<Order | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
@@ -535,7 +534,6 @@ export default function App() {
       setPaymentMethod('cash');
       setOrderSequence(prev => prev + 1);
       setIsMobileCartOpen(false);
-      setAutoPrintOrderId(printerSettings.autoPrintDualSlips ? result.order.id : null);
       setReceiptModalOrder(result.order);
       setCustomerConfirmation(result.order);
       if (result.state === 'saved') {
@@ -620,7 +618,6 @@ export default function App() {
       synced: true,
     };
 
-    setAutoPrintOrderId(null);
     setReceiptModalOrder(tempOrder);
   };
 
@@ -843,7 +840,7 @@ export default function App() {
               products={products}
               currentUser={currentUser}
               onNavigateToTab={setActiveTab}
-              onSelectOrderPreview={order => { setAutoPrintOrderId(null); setReceiptModalOrder(order); }}
+              onSelectOrderPreview={order => { setReceiptModalOrder(order); }}
             />
           )}
 
@@ -896,11 +893,9 @@ export default function App() {
       {/* Dual Slip Thermal Receipt Print Modal (Customer Slip + Kitchen Slip) */}
       {receiptModalOrder && (
         <ThermalReceiptModal
-          onAutoPrinted={() => setAutoPrintOrderId(null)}
-          autoPrint={receiptModalOrder.id === autoPrintOrderId && printerSettings.autoPrintDualSlips}
           order={receiptModalOrder}
           settings={printerSettings}
-          onClose={() => { setReceiptModalOrder(null); setAutoPrintOrderId(null); }}
+          onClose={() => { setReceiptModalOrder(null); }}
         />
       )}
 

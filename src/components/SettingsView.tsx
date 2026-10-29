@@ -1,5 +1,5 @@
 import { parseRupees } from '../shared/money';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Printer,
   Save,
@@ -41,6 +41,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const { theme, setTheme } = useTheme();
   const [formData, setFormData] = useState<PrinterSettings>({ ...settings });
+  useEffect(() => { setFormData({ ...settings }); }, [settings]);
   const saving = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -256,21 +257,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
               </label>
 
-              <label className="flex items-center justify-between cursor-pointer group">
-                <div className="flex items-center gap-3">
-                  <Printer className="w-4 h-4 text-pos-muted group-hover:text-pos-info-text transition-colors" />
-                  <div>
-                    <p className="text-xs font-bold text-pos-secondary">Open print dialog after confirmed sale</p>
-                    <p className="text-[10px] text-pos-muted">Select a printer in the browser dialog to finish printing. Kitchen slip is included when enabled.</p>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={formData.autoPrintDualSlips}
-                  onChange={e => setFormData({ ...formData, autoPrintDualSlips: e.target.checked })}
-                  className="w-4 h-4 accent-pos-action"
-                />
-              </label>
+              <p className="text-[10px] text-pos-muted">Orders open a receipt preview. Use its Print button to select a printer and print.</p>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-pos-selected border border-pos-success-border rounded-md">

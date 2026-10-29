@@ -3,10 +3,10 @@ import { X, Printer, Copy, Check, Scissors } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 import { Order, PrinterSettings } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { receiptText } from '../utils/receiptText';
+import { prepareReceiptPrint, printReceipt } from '../utils/printReceipt';
 
 interface ThermalReceiptModalProps {
-  autoPrint?: boolean;
-  onAutoPrinted?: () => void;
   order: Order | null;
   settings: PrinterSettings;
   onClose: () => void;
@@ -14,8 +14,6 @@ interface ThermalReceiptModalProps {
 
 export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   order,
-  autoPrint = false,
-  onAutoPrinted,
   settings,
   onClose,
 }) => {
@@ -23,13 +21,28 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   const [activeTab, setActiveTab] = useState<'both' | 'customer' | 'kitchen'>(settings.kitchenPrinterEnabled ? 'both' : 'customer');
   const [copied, setCopied] = useState(false);
 
-  const afterAutoPrint = useRef(onAutoPrinted); afterAutoPrint.current = onAutoPrinted;
-  const printed = useRef<string | null>(null);
+  const printArea = useRef<HTMLDivElement>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printError, setPrintError] = useState('');
   useEffect(() => {
-    if (!autoPrint || order?.persistenceState !== 'saved' || printed.current === order.id) return;
-    const timer = window.setTimeout(() => { printed.current = order.id; window.print(); afterAutoPrint.current?.(); }, 150);
-    return () => window.clearTimeout(timer);
-  }, [autoPrint, order?.id, order?.persistenceState]);
+    setPaperWidth(settings.paperWidth || '58mm');
+  }, [settings.paperWidth]);
+
+  useEffect(() => {
+    let restore: (() => void) | undefined;
+    const beforePrint = () => {
+      restore?.();
+      if (printArea.current) restore = prepareReceiptPrint(printArea.current, paperWidth);
+    };
+    const afterPrint = () => { restore?.(); restore = undefined; };
+    window.addEventListener('beforeprint', beforePrint);
+    window.addEventListener('afterprint', afterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', beforePrint);
+      window.removeEventListener('afterprint', afterPrint);
+      afterPrint();
+    };
+  }, [paperWidth, order?.id]);
 
   if (!order) return null;
 
@@ -48,112 +61,17 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
     minute: '2-digit',
   });
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const generateEscPosText = () => {
-    const divider = '-'.repeat(paperWidth === '80mm' ? 42 : 32);
-    let lines: string[] = [];
-
-    // --- SLIP 1: CUSTOMER RECEIPT ---
-    if (activeTab === 'both' || activeTab === 'customer') {
-      lines.push('==========================================');
-      if (persistenceLabel) lines.push(persistenceLabel);
-      lines.push(settings.storeName || 'Maltiva Crust');
-      lines.push('         COUNTER TAKEAWAY                 ');
-      lines.push('      Fresh food. Clear pickup.           ');
-      if (settings.address) lines.push(settings.address);
-      if (settings.whatsApp) lines.push(`WhatsApp: ${settings.whatsApp}`);
-      lines.push(divider);
-      lines.push(`TOKEN #: ${order.tokenNumber || order.orderNumber.replace('#F', '')}    [TAKEAWAY]`);
-      lines.push(`ORDER:   ${order.orderNumber}`);
-      lines.push(`DATE:    ${formattedDate} ${formattedTime}`);
-      lines.push(`CASHIER: ${order.cashierName}`);
-      lines.push(divider);
-      lines.push('QTY  ITEM                         AMOUNT');
-      lines.push(divider);
-
-      order.items.forEach(it => {
-        const name = it.productName.substring(0, 22).padEnd(22, ' ');
-        const pricePaisa = formatPKR(it.totalPricePaisa).padStart(8, ' ');
-        lines.push(`${it.quantity}x  ${name} ${pricePaisa}`);
-
-        if (it.bundledProducts && it.bundledProducts.length > 0) {
-          it.bundledProducts.forEach(b => {
-            lines.push(`   * ${b.quantity}x ${b.productName}`);
-          });
-        }
-
-        if (it.selectedVariations && it.selectedVariations.length > 0) {
-          it.selectedVariations.forEach(v => {
-            lines.push(`   + ${v.optionName}`);
-          });
-        }
-
-        if (it.notes) {
-          lines.push(`   Note: ${it.notes}`);
-        }
-      });
-
-      lines.push(divider);
-      lines.push(`SUBTOTAL:                 ${formatPKR(order.subtotalPaisa)}`);
-      if (order.taxPaisa > 0) {
-        lines.push(`TAX:                      ${formatPKR(order.taxPaisa)}`);
-      }
-      lines.push(`TOTAL PAYABLE:            ${formatPKR(order.totalPaisa)}`);
-      lines.push(`PAYMENT MODE:             ${order.paymentMethod.toUpperCase()}`);
-      lines.push(divider);
-      lines.push('       THANK YOU FOR YOUR ORDER!          ');
-      lines.push('     Follow us @MaltivaCrust              ');
-      if (settings.whatsApp) lines.push(`Order / WhatsApp: ${settings.whatsApp}`);
-      lines.push('==========================================');
-    }
-
-    // --- SLIP 2: KITCHEN ORDER TICKET (KOT) ---
-    if (activeTab === 'both' || activeTab === 'kitchen') {
-      if (activeTab === 'both') {
-        lines.push('');
-        lines.push('---------------- TEAR HERE ---------------');
-        lines.push('');
-      }
-      lines.push('==========================================');
-      if (persistenceLabel) lines.push(persistenceLabel);
-      lines.push('     *** KITCHEN SLIP - TAKEAWAY ***      ');
-      lines.push(`           TOKEN #: ${order.tokenNumber || order.orderNumber.replace('#F', '')}           `);
-      lines.push(`ORDER: ${order.orderNumber}  | TIME: ${formattedTime}`);
-      lines.push(`CASHIER: ${order.cashierName}`);
-      lines.push(divider);
-      lines.push('QTY  PREPARATION ITEM');
-      lines.push(divider);
-
-      order.items.forEach(it => {
-        lines.push(`[ ] ${it.quantity}x  ${it.productName.toUpperCase()}`);
-        if (it.bundledProducts && it.bundledProducts.length > 0) {
-          it.bundledProducts.forEach(b => {
-            lines.push(`      -> ${b.quantity}x ${b.productName}`);
-          });
-        }
-        if (it.selectedVariations && it.selectedVariations.length > 0) {
-          it.selectedVariations.forEach(v => {
-            lines.push(`      ++ ${v.optionName}`);
-          });
-        }
-        if (it.notes) {
-          lines.push(`      ** SPECIAL: ${it.notes} **`);
-        }
-      });
-
-      lines.push(divider);
-      lines.push('          READY FOR COUNTER PICKUP        ');
-      lines.push('==========================================');
-    }
-
-    return lines.join('\n');
+  const handlePrint = async () => {
+    if (!printArea.current || isPrinting) return;
+    setIsPrinting(true);
+    setPrintError('');
+    try { await printReceipt(printArea.current, paperWidth); }
+    catch (error) { setPrintError((error as Error).message || 'Could not open printing. Please retry.'); }
+    finally { setIsPrinting(false); }
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(generateEscPosText());
+    navigator.clipboard.writeText(receiptText(order, settings, paperWidth, activeTab));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -236,9 +154,10 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
         {/* Scrollable Receipt Body */}
         <div
+          ref={printArea}
           id="thermal-receipt-print-area"
           data-paper-width={paperWidth}
-          className="theme-paper p-4 sm:p-6 overflow-y-auto flex-1 bg-pos-raised flex flex-col items-center gap-6"
+          className="theme-paper receipt-content p-4 sm:p-6 overflow-y-auto flex-1 bg-pos-raised flex flex-col items-center gap-6"
         >
           {/* SLIP 1: CUSTOMER RECEIPT */}
           {(activeTab === 'both' || activeTab === 'customer') && (
@@ -295,7 +214,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 {order.items.map(it => (
                   <div key={it.id} className="text-xs">
                     <div className="flex justify-between items-start gap-1">
-                      <span className="font-bold flex-1">
+                      <span className="font-bold min-w-0 flex-1">
                         {it.quantity}x {it.productName}
                       </span>
                       <span className="font-bold shrink-0">{formatPKR(it.totalPricePaisa)}</span>
@@ -314,6 +233,9 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                       <div className="pl-3 text-[10px] text-pos-muted">
                         + {it.selectedVariations.map(v => v.optionName).join(', ')}
                       </div>
+                    )}
+                    {it.notes && (
+                      <p className="mt-1 text-[10px] text-pos-secondary">Note: {it.notes}</p>
                     )}
                   </div>
                 ))}
@@ -402,7 +324,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                       <span className="w-5 h-5 rounded bg-pos-strong text-white flex items-center justify-center font-bold text-xs shrink-0">
                         {it.quantity}
                       </span>
-                      <div className="flex-1">
+                      <div className="min-w-0 flex-1">
                         <span className="text-sm font-black text-pos-text leading-tight block">
                           {it.productName.toUpperCase()}
                         </span>
@@ -441,6 +363,8 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
           )}
         </div>
 
+        {printError && <p role="alert" className="px-6 py-2 text-pos-danger-text text-sm">{printError}</p>}
+
         {/* Modal Footer Controls */}
         <div className="p-4 px-6 border-t border-pos-divider bg-pos-surface flex flex-wrap items-center justify-between gap-3">
           <button
@@ -460,6 +384,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             </button>
             <button
               onClick={handlePrint}
+              disabled={isPrinting}
               className="flex items-center gap-1.5 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
             >
               <Printer className="w-4 h-4" />

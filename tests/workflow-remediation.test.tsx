@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { VariationModal } from '../src/components/VariationModal';
@@ -6,6 +6,9 @@ import { ManageDishesView } from '../src/components/ManageDishesView';
 import { CartDrawer } from '../src/components/CartDrawer';
 import { ThermalReceiptModal } from '../src/components/ThermalReceiptModal';
 import { Dialog } from '../src/components/ui/Dialog';
+import { printReceipt } from '../src/utils/printReceipt';
+vi.mock('../src/utils/printReceipt', async importOriginal => ({ ...await importOriginal<typeof import('../src/utils/printReceipt')>(), printReceipt: vi.fn().mockResolvedValue(undefined) }));
+
 import { PosApi } from '../src/services/api';
 import { PosStorage } from '../src/services/storage';
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_USERS, INITIAL_PRINTER_SETTINGS } from '../src/data/initialData';
@@ -28,15 +31,24 @@ describe('workflow remediation', () => {
     expect(root.inert).toBe(false); expect(document.body.style.overflow).toBe(previousOverflow);
     view.unmount(); root.remove();
   });
-  it('opens the browser print dialog once for a confirmed sale and never for a pending sale', () => {
-    vi.useFakeTimers(); const print = vi.spyOn(window, 'print').mockImplementation(() => {});
-    const order = { ...saleFixture('print-once'), persistenceState: 'pending' as const };
-    const view = render(<ThermalReceiptModal autoPrint order={order} settings={INITIAL_PRINTER_SETTINGS} onClose={vi.fn()} />);
-    act(() => vi.advanceTimersByTime(200)); expect(print).not.toHaveBeenCalled();
-    view.rerender(<ThermalReceiptModal autoPrint order={{ ...order, persistenceState: 'saved' }} settings={INITIAL_PRINTER_SETTINGS} onClose={vi.fn()} />);
-    act(() => vi.advanceTimersByTime(200)); expect(print).toHaveBeenCalledOnce();
-    view.rerender(<ThermalReceiptModal autoPrint order={{ ...order, persistenceState: 'saved' }} settings={{ ...INITIAL_PRINTER_SETTINGS, storeName: 'Updated' }} onClose={vi.fn()} />);
-    act(() => vi.advanceTimersByTime(200)); expect(print).toHaveBeenCalledOnce();
+  it('waits for the preview Print button even after a sale is confirmed', async () => {
+    const nativePrint = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const print = vi.mocked(printReceipt); print.mockClear();
+    const order = { ...saleFixture('manual-print'), persistenceState: 'pending' as const };
+    const view = render(<ThermalReceiptModal order={order} settings={INITIAL_PRINTER_SETTINGS} onClose={vi.fn()} />);
+    view.rerender(<ThermalReceiptModal order={{ ...order, persistenceState: 'saved' }} settings={INITIAL_PRINTER_SETTINGS} onClose={vi.fn()} />);
+    await new Promise(resolve => setTimeout(resolve, 200));
+    expect(nativePrint).not.toHaveBeenCalled(); expect(print).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Print Customer Slip' }));
+    expect(print).toHaveBeenCalledWith(document.querySelector('#thermal-receipt-print-area'), '58mm');
+  });
+  it('applies a refreshed saved width and allows a temporary preview override', async () => {
+    const order = saleFixture('paper-width');
+    const view = render(<ThermalReceiptModal order={order} settings={{ ...INITIAL_PRINTER_SETTINGS, paperWidth: '80mm' }} onClose={vi.fn()} />);
+    view.rerender(<ThermalReceiptModal order={order} settings={{ ...INITIAL_PRINTER_SETTINGS, paperWidth: '58mm' }} onClose={vi.fn()} />);
+    expect(document.querySelector('#thermal-receipt-print-area')).toHaveAttribute('data-paper-width', '58mm');
+    await userEvent.click(screen.getByRole('button', { name: '80mm' }));
+    expect(document.querySelector('#thermal-receipt-print-area')).toHaveAttribute('data-paper-width', '80mm');
   });
   it('edits existing notes and options and returns the new quantity', async () => {
     const user = userEvent.setup(); const save = vi.fn();
