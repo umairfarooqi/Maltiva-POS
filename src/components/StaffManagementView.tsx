@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserPlus, Check, X, KeyRound, Mail } from 'lucide-react';
+import { UserPlus, X, KeyRound, Check } from 'lucide-react';
 import { User, UserRole } from '../types/pos';
 
 interface StaffManagementViewProps {
@@ -7,6 +7,7 @@ interface StaffManagementViewProps {
   currentUser: User;
   onAddUser: (user: Partial<User> & { password: string; pin: string }) => Promise<void>;
   onToggleUserActive: (userId: string, active: boolean) => Promise<void>;
+  onResetUserPin?: (userId: string, pin: string, password?: string) => Promise<void>;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -14,6 +15,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   currentUser,
   onAddUser,
   onToggleUserActive,
+  onResetUserPin,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
@@ -25,6 +27,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [usernameError, setUsernameError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [listError, setListError] = useState('');
+  const [listSuccess, setListSuccess] = useState('');
+
+  // Reset PIN / Password Modal State
+  const [resetTarget, setResetTarget] = useState<User | null>(null);
+  const [resetPin, setResetPin] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +78,42 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   const handleToggle = async (u: User) => {
     setListError('');
+    setListSuccess('');
     try { await onToggleUserActive(u.id, !u.active); }
     catch (error) { setListError((error as Error).message); }
+  };
+
+  const handleOpenReset = (u: User) => {
+    setResetTarget(u);
+    setResetPin('');
+    setResetPassword('');
+    setResetError('');
+    setListError('');
+    setListSuccess('');
+  };
+
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget || !onResetUserPin || isResetting) return;
+    if (!/^\d{4}$/.test(resetPin)) {
+      setResetError('New PIN must be exactly 4 digits.');
+      return;
+    }
+    if (resetPassword && resetPassword.length < 6) {
+      setResetError('New password must be at least 6 characters (or leave blank to keep current password).');
+      return;
+    }
+    setIsResetting(true);
+    setResetError('');
+    try {
+      await onResetUserPin(resetTarget.id, resetPin, resetPassword || undefined);
+      setListSuccess(`Credentials updated and account unlocked for ${resetTarget.name}.`);
+      setResetTarget(null);
+    } catch (error) {
+      setResetError((error as Error).message);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -150,6 +194,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       {listError && (
         <div role="alert" className="p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">{listError}</div>
       )}
+      {listSuccess && (
+        <div role="status" className="p-2.5 rounded-md bg-pos-success-bg border border-pos-success-border text-pos-success-text text-xs flex items-center gap-2">
+          <Check className="w-4 h-4 shrink-0" />
+          <span>{listSuccess}</span>
+        </div>
+      )}
 
       {/* Staff Members List */}
       <div className="bg-pos-surface rounded-lg border border-pos-border overflow-hidden">
@@ -161,7 +211,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               <th className="p-4">Branch Location</th>
               <th className="p-4">Sign-in</th>
               <th className="p-4">Status</th>
-              <th className="p-4 text-center">Toggle Access</th>
+              <th className="p-4 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-pos-divider">
@@ -219,18 +269,31 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   </span>
                 </td>
                 <td className="p-4 text-center">
-                  <button
-                    onClick={() => void handleToggle(u)}
-                    disabled={u.id === currentUser.id}
-                    title={u.id === currentUser.id ? 'You cannot suspend your own account' : undefined}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                      u.active
-                        ? 'text-pos-danger-text hover:bg-pos-danger-bg'
-                        : 'text-pos-success-text hover:bg-pos-success-bg'
-                    }`}
-                  >
-                    {u.active ? 'Suspend' : 'Activate'}
-                  </button>
+                  <div className="inline-flex items-center gap-2">
+                    {onResetUserPin && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReset(u)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-pos-secondary hover:bg-pos-raised border border-pos-border transition"
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        <span>Reset PIN</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void handleToggle(u)}
+                      disabled={u.id === currentUser.id}
+                      title={u.id === currentUser.id ? 'You cannot suspend your own account' : undefined}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                        u.active
+                          ? 'text-pos-danger-text hover:bg-pos-danger-bg'
+                          : 'text-pos-success-text hover:bg-pos-success-bg'
+                      }`}
+                    >
+                      {u.active ? 'Suspend' : 'Activate'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -378,6 +441,84 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   className="px-5 py-2.5 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
                 >
                   {isSaving ? 'Creating...' : 'Create Staff Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Reset Staff PIN / Password */}
+      {resetTarget && (
+        <div className="fixed inset-0 bg-black/65 flex items-center justify-center p-4 z-50">
+          <div className="bg-pos-surface rounded-lg max-w-sm w-full p-6 border border-pos-border">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-pos-text">Reset PIN & Unlock</h3>
+                <p className="text-xs text-pos-muted">{resetTarget.name} (@{resetTarget.username})</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetTarget(null)}
+                aria-label="Close PIN reset"
+                className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {resetError && (
+              <div role="alert" className="mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
+                {resetError}
+              </div>
+            )}
+
+            <form onSubmit={handleResetSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                  New 4-Digit PIN *
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  required
+                  maxLength={4}
+                  autoComplete="off"
+                  value={resetPin}
+                  onChange={e => setResetPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="4-digit PIN"
+                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs font-mono text-center focus-visible:border-pos-accent"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                  New Password (optional, min 6 chars)
+                </label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={resetPassword}
+                  onChange={e => setResetPassword(e.target.value)}
+                  placeholder="Leave blank to keep existing password"
+                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResetTarget(null)}
+                  className="px-4 py-2 text-xs font-semibold text-pos-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isResetting}
+                  className="px-5 py-2 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
+                >
+                  {isResetting ? 'Updating...' : 'Save New PIN'}
                 </button>
               </div>
             </form>

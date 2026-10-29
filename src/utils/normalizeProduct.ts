@@ -30,7 +30,14 @@ export function normalizeProduct(raw: Partial<Product>): Product {
     description: typeof raw.description === 'string' ? raw.description : '',
     isAvailable: raw.isAvailable !== false,
     isDeal: Boolean(raw.isDeal),
-    variations: Array.isArray(raw.variations) ? raw.variations : [],
+    variations: Array.isArray(raw.variations) ? raw.variations.map(group => ({
+      ...group,
+      options: Array.isArray(group.options) ? group.options.map(opt => ({
+        ...opt,
+        priceDeltaPaisa: opt.priceDeltaPaisa === undefined ? 0 : integer(Number(opt.priceDeltaPaisa), 'Option price', true),
+        costDeltaPaisa: opt.costDeltaPaisa === undefined ? 0 : integer(Number(opt.costDeltaPaisa), 'Option cost', true),
+      })) : [],
+    })) : [],
     bundledProducts: Array.isArray(raw.bundledProducts) ? raw.bundledProducts : [],
     createdAt: raw.createdAt || now,
     updatedAt: raw.updatedAt || now,

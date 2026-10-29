@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
 import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pricing';
@@ -11,10 +10,7 @@ import {
   INITIAL_PRODUCTS, 
   INITIAL_PRINTER_SETTINGS 
 } from './src/data/initialData';
-import { Order, Product, Category, User, InventoryLog, PrinterSettings } from './src/types/pos';
-
-// Initialize the SQLite Database
-
+import { Order, Category, User, InventoryLog, PrinterSettings } from './src/types/pos';
 
 // Utility to handle JSON in SQLite (for arrays/objects)
 const parseJson = <T>(val: string | null): T | [] => (val ? JSON.parse(val) : []);
@@ -22,7 +18,7 @@ const stringifyJson = (val: any) => JSON.stringify(val);
 
 // ---------- Authentication helpers ----------
 const HASH_PREFIX = 's1$';
-function hashSecret(secret: string): string {
+export function hashSecret(secret: string): string {
   const salt = randomBytes(16);
   return `${HASH_PREFIX}${salt.toString('hex')}$${scryptSync(secret, salt, 32).toString('hex')}`;
 }
@@ -48,19 +44,19 @@ function authSecret(): string {
   return secret;
 }
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
-function signToken(userId: string): string {
-  const payload = Buffer.from(JSON.stringify({ sub: userId, exp: Date.now() + TOKEN_TTL_MS })).toString('base64url');
+function signToken(userId: string, ttlMs = TOKEN_TTL_MS, scope = 'session'): string {
+  const payload = Buffer.from(JSON.stringify({ sub: userId, scope, exp: Date.now() + ttlMs })).toString('base64url');
   return `${payload}.${createHmac('sha256', authSecret()).update(payload).digest('base64url')}`;
 }
-function userFromToken(header?: string): any | null {
+function userFromToken(header?: string, expectedScope = 'session'): any | null {
   const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
   const [payload, sig] = token.split('.');
   if (!payload || !sig) return null;
   const expected = createHmac('sha256', authSecret()).update(payload).digest('base64url');
   if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   try {
-    const { sub, exp } = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (!sub || exp < Date.now()) return null;
+    const { sub, exp, scope } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (!sub || exp < Date.now() || (scope || 'session') !== expectedScope) return null;
     return db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(sub) || null;
   } catch { return null; }
 }
@@ -71,14 +67,39 @@ function publicUser(u: any): User {
   return { ...rest, active: Boolean(u.active) } as User;
 }
 
-// Simple in-memory brute-force protection: 5 failures locks the key for 60 seconds.
+/** Strips cost fields from a product for cashier responses (Spec Section 1). */
+function stripProductCost(p: any) {
+  if (!p) return p;
+  const { costPricePaisa: _c, ...rest } = p;
+  return {
+    ...rest,
+    variations: Array.isArray(p.variations) ? p.variations.map((g: any) => ({
+      ...g,
+      options: Array.isArray(g.options) ? g.options.map(({ costDeltaPaisa: _cd, ...opt }: any) => opt) : [],
+    })) : [],
+    bundledProducts: Array.isArray(p.bundledProducts) ? p.bundledProducts.map(({ rawCostPaisa: _rc, ...b }: any) => b) : [],
+  };
+}
+
+/** Strips cost and profit fields from an order for cashier responses (Spec Section 1). */
+function stripOrderCostAndProfit(o: any) {
+  if (!o) return o;
+  const { totalCostPaisa: _tc, profitPaisa: _pr, profitMarginPercent: _pm, marginBp: _mb, lineCosts: _lc, ...rest } = o;
+  return {
+    ...rest,
+    items: Array.isArray(o.items) ? o.items.map(({ unitCostPaisa: _uc, totalCostPaisa: _itc, ...item }: any) => item) : [],
+  };
+}
+
+// Brute-force protection: 5 failures locks the key for 5 minutes (Spec Section 2.1).
+const LOCKOUT_MS = 5 * 60_000;
 const failures = new Map<string, { count: number; until: number }>();
 function isLocked(key: string): boolean { const f = failures.get(key); return !!f && f.until > Date.now(); }
 function recordFailure(key: string) {
   const f = failures.get(key);
   const lockExpired = !!f && f.until > 0 && f.until <= Date.now();
   const count = (f && !lockExpired ? f.count : 0) + 1;
-  failures.set(key, { count, until: count >= 5 ? Date.now() + 60_000 : 0 });
+  failures.set(key, { count, until: count >= 5 ? Date.now() + LOCKOUT_MS : 0 });
 }
 function clearFailures(key: string) { failures.delete(key); }
 
@@ -93,7 +114,7 @@ function validateNewCredentials(body: any, requirePassword = true): string | nul
   return null;
 }
 
-// Seed Database with Initial Data if empty (no user accounts are ever seeded: first admin is created at setup)
+// Seed Database with Initial Data if empty (no user accounts are ever seeded: admin is provisioned via CLI)
 function seedDatabase() {
   const catCount = db.prepare('SELECT count(*) as count FROM categories').get() as { count: number };
   if (catCount.count === 0) {
@@ -131,8 +152,6 @@ function seedDatabase() {
     setStmt.run('customerDisplayGreeting', INITIAL_PRINTER_SETTINGS.customerDisplayGreeting);
   }
 }
-
-
 
 function loadOrder(id: string): Order | undefined {
   const row = fromMoneyRow('orders', db.prepare('SELECT * FROM orders WHERE id=?').get(id));
@@ -172,6 +191,33 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Role authorization middlewares
+  const requireAdmin = (req: Request, res: Response, next: any) => {
+    const caller = userFromToken(req.get('Authorization'));
+    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
+    if (caller.role !== 'admin') { res.status(403).json({ error: 'Administrator access required.' }); return; }
+    (req as any).caller = caller;
+    next();
+  };
+
+  const requireStrictRole = (roles: string[]) => (req: Request, res: Response, next: any) => {
+    const caller = userFromToken(req.get('Authorization'));
+    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
+    if (!roles.includes(caller.role)) { res.status(403).json({ error: 'Insufficient permissions for this action.' }); return; }
+    (req as any).caller = caller;
+    next();
+  };
+
+  const guardRoleWhenAuthenticated = (roles: string[]) => (req: Request, res: Response, next: any) => {
+    const header = req.get('Authorization');
+    if (!header) { next(); return; }
+    const caller = userFromToken(header);
+    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
+    if (!roles.includes(caller.role)) { res.status(403).json({ error: 'Insufficient permissions for this action.' }); return; }
+    (req as any).caller = caller;
+    next();
+  };
+
   // Health check
   app.get('/api/health', (req: Request, res: Response) => {
     const orderCount = db.prepare('SELECT count(*) as count FROM orders').get() as { count: number };
@@ -185,6 +231,9 @@ async function startServer() {
 
   // Full Initial Data Sync
   app.get('/api/data', (req: Request, res: Response) => {
+    const caller = userFromToken(req.get('Authorization'));
+    const isCashier = caller?.role === 'cashier';
+
     const categories = db.prepare('SELECT * FROM categories').all() as Category[];
     const fetchedProducts = (db.prepare('SELECT id FROM products').all() as { id: string }[]).map(row => loadProduct(db, row.id)!);
     const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
@@ -210,12 +259,12 @@ async function startServer() {
       kitchenPrinterEnabled: settingsMap.kitchenPrinterEnabled === 'true',
     };
 
-    const inventoryLogs = db.prepare('SELECT * FROM inventory_logs ORDER BY timestamp DESC').all() as InventoryLog[];
+    const inventoryLogs = isCashier ? [] : (db.prepare('SELECT * FROM inventory_logs ORDER BY timestamp DESC').all() as InventoryLog[]);
 
     res.json({
       categories,
-      products: validProducts,
-      orders,
+      products: isCashier ? validProducts.map(stripProductCost) : validProducts,
+      orders: isCashier ? orders.map(stripOrderCostAndProfit) : orders,
       tables,
       users,
       printerSettings,
@@ -226,18 +275,20 @@ async function startServer() {
 
   // PRODUCTS CRUD
   app.get('/api/products', (req: Request, res: Response) => {
+    const caller = userFromToken(req.get('Authorization'));
+    const isCashier = caller?.role === 'cashier';
     const fetchedProducts = (db.prepare('SELECT id FROM products').all() as { id: string }[]).map(row => loadProduct(db, row.id)!);
     const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
-    res.json(validProducts);
+    res.json(isCashier ? validProducts.map(stripProductCost) : validProducts);
   });
 
-  app.post('/api/products', (req, res) => {
+  app.post('/api/products', guardRoleWhenAuthenticated(['admin', 'manager']), (req, res) => {
     const data = req.body; validateProduct(data);
     const id = data.id || `prod-${Date.now()}`;
     insertMapped('products', { ...data, id, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts) });
     res.status(201).json(loadProduct(db, id));
   });
-  app.put('/api/products/:id', (req, res) => {
+  app.put('/api/products/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req, res) => {
     const data = req.body; validateProduct(data);
     const row = mappedValues('products', { ...data, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString() });
     delete row.id;
@@ -245,13 +296,15 @@ async function startServer() {
     res.json(loadProduct(db, req.params.id));
   });
 
-  app.delete('/api/products/:id', (req: Request, res: Response) => {
+  app.delete('/api/products/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
     db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
     res.json({ success: true });
   });
 
-  const adjustInventory = db.transaction((data: any) => {
-    const { operationId, productId, changeAmount, reason, type, userId, userName } = data;
+  const adjustInventory = db.transaction((data: any, caller?: any) => {
+    const { operationId, productId, changeAmount, reason, type } = data;
+    const userId = caller ? caller.id : data.userId;
+    const userName = caller ? caller.name : data.userName;
     if (typeof operationId !== 'string' || !operationId || !['restock', 'adjustment', 'waste'].includes(type)) problem('Invalid stock operation');
     const existing = db.prepare('SELECT * FROM inventory_logs WHERE id=?').get(operationId) as InventoryLog | undefined;
     if (existing) {
@@ -272,20 +325,20 @@ async function startServer() {
     db.prepare('INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,?,?,?,?)').run(operationId, productId, changeAmount, type, operationId, userId, timestamp);
     return { product: loadProduct(db, productId), log };
   });
-  app.post('/api/inventory/adjust', (req, res) => {
-    try { res.json(adjustInventory(req.body)); }
+  app.post('/api/inventory/adjust', guardRoleWhenAuthenticated(['admin', 'manager']), (req, res) => {
+    try { res.json(adjustInventory(req.body, (req as any).caller)); }
     catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
   });
 
   // CATEGORIES CRUD
-  app.post('/api/categories', (req: Request, res: Response) => {
+  app.post('/api/categories', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
     const { name, icon, id: requestedId } = req.body;
     const id = requestedId || `cat-${Date.now()}`;
     db.prepare('INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)').run(id, name, icon, 0);
     res.status(201).json({ id, name, icon, itemCount: 0, order: 0 });
   });
 
-  app.put('/api/categories/:id', (req: Request, res: Response) => {
+  app.put('/api/categories/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, icon } = req.body;
     db.prepare('UPDATE categories SET name = ?, icon = ? WHERE id = ?').run(name, icon, id);
@@ -296,7 +349,7 @@ async function startServer() {
     res.json(updatedCategory);
   });
 
-  app.delete('/api/categories/:id', (req: Request, res: Response) => {
+  app.delete('/api/categories/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
     const fallbackId = 'cat-uncategorized';
     const fallbackName = 'Uncategorized';
     if (req.params.id === fallbackId) {
@@ -316,6 +369,8 @@ async function startServer() {
 
   // Reconcile keys from this browser's durable outbox. Unsent keys are known only to the browser.
   app.get('/api/orders/pending-status', (req: Request, res: Response) => {
+    const caller = userFromToken(req.get('Authorization'));
+    const isCashier = caller?.role === 'cashier';
     const input = req.query.key;
     const keys = input === undefined ? [] : Array.isArray(input) ? input : [input];
     if (keys.length > 100 || keys.some(key => typeof key !== 'string' || key.length > 200)) {
@@ -326,17 +381,26 @@ async function startServer() {
     const pendingKeys: string[] = [];
     for (const key of keys) {
       const row = db.prepare('SELECT id FROM orders WHERE idempotency_key = ?').get(key) as { id: string } | undefined;
-      if (row) savedOrders.push(loadOrder(row.id)!);
-      else pendingKeys.push(key as string);
+      if (row) {
+        const loaded = loadOrder(row.id)!;
+        savedOrders.push(isCashier ? stripOrderCostAndProfit(loaded) : loaded);
+      } else {
+        pendingKeys.push(key as string);
+      }
     }
     res.json({ savedOrders, pendingKeys, pendingCount: pendingKeys.length });
   });
 
   app.post('/api/orders/quote', (req, res) => {
-    try { res.json(quoteSale(db, req.body)); }
+    const caller = userFromToken(req.get('Authorization'));
+    const isCashier = caller?.role === 'cashier';
+    try {
+      const quote = quoteSale(db, req.body);
+      res.json(isCashier ? stripOrderCostAndProfit(quote) : quote);
+    }
     catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
   });
-  const createOrder = db.transaction((input: any, key: string) => {
+  const createOrder = db.transaction((input: any, key: string, caller?: any) => {
     const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
     if (existing) return loadOrder(existing.id)!;
     const quote = quoteSale(db, input);
@@ -349,7 +413,11 @@ async function startServer() {
     if (tenderedPaisa !== null && tenderedPaisa < quote.totalPaisa) problem('Cash tender must cover the server total');
     if (input.paymentMethod !== 'cash' && input.cashTenderedPaisa != null) problem('Only cash may carry tender');
     const createdAt = new Date().toISOString();
-    const order = { ...input, ...quote, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
+    // Derive cashier identity from the authenticated token whenever present (Spec Section 14)
+    const cashierId = caller ? caller.id : input.cashierId;
+    const cashierName = caller ? caller.name : input.cashierName;
+    const cashierRole = caller ? caller.role : input.cashierRole;
+    const order = { ...input, ...quote, cashierId, cashierName, cashierRole, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
       changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa };
     insertMapped('orders', order);
     for (const item of quote.items) {
@@ -358,74 +426,63 @@ async function startServer() {
         selectedVariations: stringifyJson(item.selectedVariations), bundledProducts: stringifyJson(item.bundledProducts) });
       db.prepare('UPDATE products SET stockQuantity=stockQuantity-? WHERE id=?').run(item.quantity, item.productId);
       db.prepare("INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,'sale',?,?,?)")
-        .run(randomUUID(), item.productId, -item.quantity, input.id, input.cashierId, createdAt);
+        .run(randomUUID(), item.productId, -item.quantity, input.id, cashierId, createdAt);
       db.prepare(`INSERT INTO inventory_logs (id,productId,productName,previousStock,changeAmount,newStock,type,reason,userId,userName,timestamp)
         VALUES (?,?,?,?,?,?,'sale',?,?,?,?)`).run(randomUUID(), item.productId, item.productName, prod.stockQuantity, -item.quantity,
-          prod.stockQuantity - item.quantity, `Order ${input.orderNumber}`, input.cashierId, input.cashierName, createdAt);
+          prod.stockQuantity - item.quantity, `Order ${input.orderNumber}`, cashierId, cashierName, createdAt);
     }
     insertMapped('payments', { id: randomUUID(), order_id: input.id, method: input.paymentMethod,
       amountPaisa: quote.totalPaisa, tenderedPaisa, created_at: createdAt });
     return loadOrder(input.id)!;
   });
-  app.post('/api/orders', (req, res) => {
+  app.post('/api/orders', guardRoleWhenAuthenticated(['admin', 'manager', 'cashier']), (req, res) => {
     const key = req.get('Idempotency-Key') || req.body?.idempotencyKey;
     if (typeof key !== 'string' || !key.trim() || key.length > 200) { res.status(400).json({error: 'An idempotency key is required'}); return; }
-    try { res.status(201).json({ success: true, order: createOrder(req.body, key) }); }
+    const caller = (req as any).caller;
+    try {
+      const savedOrder = createOrder(req.body, key, caller);
+      res.status(201).json({ success: true, order: caller?.role === 'cashier' ? stripOrderCostAndProfit(savedOrder) : savedOrder });
+    }
     catch (error: any) {
       const status = error.status || (['SQLITE_CONSTRAINT_UNIQUE', 'SQLITE_CONSTRAINT_PRIMARYKEY'].includes(error.code) ? 409 : error.code ? 500 : 400);
       res.status(status).json({ error: error.status ? error.message : 'Sale could not be saved. Review this cart before retrying.' });
     }
   });
 
-  // AUTHENTICATION
-  const requireAdmin = (req: Request, res: Response, next: any) => {
-    const caller = userFromToken(req.get('Authorization'));
-    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
-    if (caller.role !== 'admin') { res.status(403).json({ error: 'Administrator access required.' }); return; }
-    (req as any).caller = caller;
-    next();
-  };
+  // PROFIT REPORT (manager and admin only; cashiers get 403 per Spec Section 7 & 16.7)
+  app.get('/api/reports/profit', requireStrictRole(['admin', 'manager']), (_req: Request, res: Response) => {
+    const orders = (db.prepare('SELECT id FROM orders WHERE profit_incomplete = 0 ORDER BY createdAt DESC').all() as { id: string }[]).map(row => loadOrder(row.id)!);
+    const totalRevenuePaisa = orders.reduce((sum, o) => sum + (o.netRevenuePaisa ?? 0), 0);
+    const totalCostPaisa = orders.reduce((sum, o) => sum + (o.totalCostPaisa ?? 0), 0);
+    const totalProfitPaisa = orders.reduce((sum, o) => sum + (o.profitPaisa ?? 0), 0);
+    res.json({ orderCount: orders.length, totalRevenuePaisa, totalCostPaisa, totalProfitPaisa, orders });
+  });
+
+  // AUTHENTICATION (Spec Section 7: login, logout, approve — no self-signup or self-reset)
   const insertUser = (b: any, role: string) => {
     const id = `user-${randomUUID()}`;
     const username = String(b.username).trim().toLowerCase();
+    const pinHash = hashSecret(b.pin);
     db.prepare(`INSERT INTO users (id, name, username, email, password, pin, role, avatar, active, branch, securityQuestion, securityAnswer)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`).run(
-      id, String(b.name).trim(), username, String(b.email || `${username}@maltivacrust.com`).trim(), hashSecret(b.password), hashSecret(b.pin),
-      role, b.avatar || '', b.branch || '', 'What is your registered 4-digit PIN?', hashSecret(b.pin));
+      id, String(b.name).trim(), username, String(b.email || `${username}@maltivacrust.com`).trim(), hashSecret(b.password), pinHash,
+      role, b.avatar || '', b.branch || '', 'Registered 4-digit PIN', pinHash);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   };
 
-  app.get('/api/auth/status', (_req: Request, res: Response) => {
-    const { count } = db.prepare('SELECT count(*) as count FROM users').get() as { count: number };
-    res.json({ needsSetup: count === 0 });
-  });
-
-  // First-run setup: only works while there are no accounts at all.
-  app.post('/api/auth/register', (req: Request, res: Response) => {
-    const { count } = db.prepare('SELECT count(*) as count FROM users').get() as { count: number };
-    if (count > 0) { res.status(403).json({ error: 'Setup is already complete. Ask an administrator to create your account.' }); return; }
-    const b = req.body || {};
-    if (!String(b.name || '').trim()) { res.status(400).json({ error: 'Full name is required.' }); return; }
-    if (!USERNAME_RE.test(String(b.username || '').trim().toLowerCase())) { res.status(400).json({ error: 'Username must be 3-32 characters: letters, numbers, . _ -' }); return; }
-    const invalid = validateNewCredentials(b);
-    if (invalid) { res.status(400).json({ error: invalid }); return; }
-    const user = insertUser(b, 'admin');
-    res.status(201).json({ success: true, user: publicUser(user), token: signToken((user as any).id) });
-  });
-
   app.post('/api/auth/login', (req: Request, res: Response) => {
     const username = String(req.body?.username || '').trim().toLowerCase();
-    const password = String(req.body?.password || '');
-    if (isLocked(username)) { res.status(429).json({ error: 'Too many failed attempts. Try again in a minute.' }); return; }
+    const secret = String(req.body?.pin ?? req.body?.password ?? '');
+    if (isLocked(username)) { res.status(429).json({ error: 'Account locked for 5 minutes due to failed attempts. Contact an administrator.' }); return; }
     const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(username, username) as any;
 
-    if (user && (verifySecret(user.password, password) || verifySecret(user.pin, password))) {
+    if (user && (verifySecret(user.password, secret) || verifySecret(user.pin, secret))) {
       clearFailures(username);
       if (!isHashed(user.password) || !isHashed(user.pin) || !isHashed(user.securityAnswer)) {
         db.prepare('UPDATE users SET password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
-          isHashed(user.password) ? user.password : hashSecret(user.password || password),
-          isHashed(user.pin) ? user.pin : hashSecret(user.pin || password),
-          isHashed(user.securityAnswer) ? user.securityAnswer : hashSecret(user.securityAnswer || user.pin || password), user.id);
+          isHashed(user.password) ? user.password : hashSecret(user.password || secret),
+          isHashed(user.pin) ? user.pin : hashSecret(user.pin || secret),
+          isHashed(user.securityAnswer) ? user.securityAnswer : hashSecret(user.securityAnswer || user.pin || secret), user.id);
       }
       res.json({ success: true, user: publicUser(user), token: signToken(user.id) });
     } else {
@@ -434,26 +491,32 @@ async function startServer() {
     }
   });
 
-  app.post('/api/auth/forgot-password', (req: Request, res: Response) => {
-    const id = String(req.body?.identifier || '').trim().toLowerCase();
-    const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(id, id) as any;
-    if (!user) { res.status(404).json({ error: 'No active staff account found with this username' }); return; }
-    res.json({ username: user.username, name: user.name, role: user.role, securityQuestion: user.securityQuestion || 'What is your registered 4-digit PIN?' });
+  app.post('/api/auth/logout', (_req: Request, res: Response) => {
+    res.json({ success: true });
   });
 
-  app.post('/api/auth/reset-password', (req: Request, res: Response) => {
+  // Manager / Admin PIN override check (Spec Section 3 & 7)
+  app.post('/api/auth/approve', (req: Request, res: Response) => {
     const username = String(req.body?.username || '').trim().toLowerCase();
-    const { newPassword, verificationCode } = req.body || {};
-    const key = `reset:${username}`;
-    if (isLocked(key)) { res.status(429).json({ error: 'Too many failed attempts. Try again in a minute.' }); return; }
+    const pin = String(req.body?.pin || '');
+    const lockKey = `approve:${username}`;
+    if (isLocked(lockKey)) { res.status(429).json({ error: 'Too many failed override attempts. Try again in 5 minutes.' }); return; }
     const user = db.prepare('SELECT * FROM users WHERE lower(username) = ? AND active = 1').get(username) as any;
-    if (!user || !verifySecret(user.securityAnswer, String(verificationCode || '').trim())) {
-      recordFailure(key); res.status(401).json({ error: 'Recovery PIN is incorrect.' }); return;
+    if (!user || (!verifySecret(user.pin, pin) && !verifySecret(user.password, pin))) {
+      recordFailure(lockKey);
+      res.status(401).json({ error: 'Invalid manager PIN.' });
+      return;
     }
-    if (typeof newPassword !== 'string' || newPassword.length < 6) { res.status(400).json({ error: 'Password must be at least 6 characters.' }); return; }
-    clearFailures(key);
-    db.prepare('UPDATE users SET password = ?, securityAnswer = ? WHERE id = ?').run(hashSecret(newPassword), hashSecret(String(verificationCode).trim()), user.id);
-    res.json({ success: true, message: 'Password successfully updated! You can now sign in with your new credentials.' });
+    if (user.role !== 'admin' && user.role !== 'manager') {
+      res.status(403).json({ error: 'Manager or administrator PIN required.' });
+      return;
+    }
+    clearFailures(lockKey);
+    res.json({
+      approved: true,
+      approver: publicUser(user),
+      approvalToken: signToken(user.id, 5 * 60_000, 'override'),
+    });
   });
 
   // USER MANAGEMENT (administrators only)
@@ -496,6 +559,33 @@ async function startServer() {
     db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
       b.name ? String(b.name).trim() : target.name, nextRole, nextActive ? 1 : 0,
       b.password ? hashSecret(b.password) : target.password, nextPin, nextSecurityAnswer, target.id);
+    if (b.pin || b.password || nextActive) {
+      clearFailures(String(target.username).toLowerCase());
+      clearFailures(`approve:${String(target.username).toLowerCase()}`);
+    }
+    res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
+  });
+
+  // Reset another user's PIN and unlock account (Spec Section 2.1 & Section 7)
+  app.post('/api/users/:id/reset-pin', requireAdmin, (req: Request, res: Response) => {
+    const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id) as any;
+    if (!target) { res.status(404).json({ error: 'User not found.' }); return; }
+    const b = req.body || {};
+    if (typeof b.pin !== 'string' || !/^\d{4}$/.test(b.pin)) {
+      res.status(400).json({ error: 'PIN must be exactly 4 digits.' });
+      return;
+    }
+    if (b.password !== undefined && (typeof b.password !== 'string' || b.password.length < 6)) {
+      res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      return;
+    }
+    const nextPin = hashSecret(b.pin);
+    const nextPassword = b.password ? hashSecret(b.password) : target.password;
+    db.prepare('UPDATE users SET pin = ?, password = ?, securityAnswer = ? WHERE id = ?').run(
+      nextPin, nextPassword, nextPin, target.id
+    );
+    clearFailures(String(target.username).toLowerCase());
+    clearFailures(`approve:${String(target.username).toLowerCase()}`);
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
 
@@ -516,7 +606,7 @@ async function startServer() {
     });
   });
 
-  app.put('/api/settings/printer', (req: Request, res: Response) => {
+  app.put('/api/settings/printer', guardRoleWhenAuthenticated(['admin']), (req: Request, res: Response) => {
     const data = req.body;
     if (data.taxInclusive !== undefined && typeof data.taxInclusive !== 'boolean') problem('Tax mode must be a boolean');
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
