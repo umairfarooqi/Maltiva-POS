@@ -1,6 +1,7 @@
 import React from 'react';
-import { Trash2, Printer, Power, X, Banknote, CreditCard, ScanLine, ShoppingBag } from 'lucide-react';
+import { Trash2, Printer, Power, X, Banknote, CreditCard, ScanLine, ShoppingBag, Pencil } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
+import { CashKeypad } from './CashKeypad';
 import { CartItem, PaymentMethod } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { computeTotals, parseRupees, rupeeText } from '../shared/money';
@@ -44,6 +45,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   isMobileOpen = false,
   onCloseMobile,
 }) => {
+  const [keypadOpen, setKeypadOpen] = React.useState(false);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const { subtotalPaisa, taxPaisa, totalPaisa: totalPayable } = computeTotals(cart, { taxBp, taxInclusive });
   const totalCount = cart.reduce((s, it) => s + it.quantity, 0);
@@ -65,9 +67,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   ] as const;
 
   const drawerContent = (
-    <div className="w-full xl:w-96 h-full bg-pos-surface flex flex-col justify-between select-none border-l border-pos-border font-sans">
+    <div className="w-full min-h-0 h-full bg-pos-surface flex flex-col justify-between select-none border-l border-pos-border font-sans">
       {/* STICKY HEADER */}
-      <div className="shrink-0 px-5 py-3.5 bg-pos-chrome border-b border-pos-divider flex items-center justify-between">
+      <div className="shrink-0 px-3 py-2 bg-pos-chrome border-b border-pos-divider flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div>
             <div className="flex items-center gap-2">
@@ -88,7 +90,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <button
             onClick={() => setConfirmClear(true)}
             disabled={cart.length === 0 || isProcessing}
-            className="p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-lg hover:bg-pos-danger-bg cursor-pointer active:scale-95"
+            className="min-w-11 min-h-11 p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-lg hover:bg-pos-danger-bg cursor-pointer active:scale-95"
             title="Clear Order"
             aria-label="Clear order"
           >
@@ -99,7 +101,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               type="button"
               disabled={isProcessing}
               onClick={onCloseMobile}
-              className="p-2 text-pos-muted hover:text-pos-text transition rounded-lg hover:bg-pos-raised cursor-pointer"
+              className="min-w-11 min-h-11 p-2 text-pos-muted hover:text-pos-text transition rounded-lg hover:bg-pos-raised cursor-pointer"
               title="Close order drawer"
               aria-label="Close order drawer"
             >
@@ -110,7 +112,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       </div>
 
       {/* SCROLLABLE RECEIPT ITEMS */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-1">
         {error && isMobileOpen && <p role="alert" className="text-sm text-pos-danger-text mb-3">{error}</p>}
 
         {cart.length === 0 ? (
@@ -126,84 +128,42 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             {cart.map(item => (
               <div
                 key={item.cartItemId}
-                className="py-3 first:pt-1 last:pb-1 space-y-2 group"
+                className="py-2"
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-xs font-extrabold font-mono text-pos-accent">{item.quantity}x</span>
-                      <span className="text-sm font-bold text-pos-text break-words leading-snug">
-                        {item.product.name}
-                      </span>
-                    </div>
-                    {item.product.isDeal && (
-                      <span className="inline-block mt-0.5 text-[10px] text-pos-warning-text font-semibold uppercase tracking-wide">Combo Deal</span>
-                    )}
-                    {item.selectedVariations.length > 0 && (
-                      <p className="text-xs text-pos-muted mt-0.5 leading-snug">
-                        {item.selectedVariations.map(v => v.optionName).join(', ')}
-                      </p>
-                    )}
-                    {item.notes && (
-                      <p className="text-xs text-pos-secondary mt-0.5 italic break-words">
-                        Note: {item.notes}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-sm font-bold font-mono text-pos-text shrink-0">
-                    {formatPKR(item.totalPricePaisa)}
-                  </span>
-                </div>
-
-                {/* Compact Touch Row for Item Actions */}
-                <div className="flex items-center justify-between gap-2 pt-0.5">
-                  <div className="inline-flex items-center gap-1 bg-pos-inset rounded-lg p-0.5 border border-pos-border">
-                    <button
-                      type="button"
-                      disabled={isProcessing}
-                      aria-label={`Decrease quantity of ${item.product.name}`}
-                      onClick={() => onUpdateQuantity(item.cartItemId, -1)}
-                      className="w-8 h-8 rounded-md bg-pos-surface hover:bg-pos-raised text-pos-text font-bold text-sm flex items-center justify-center transition disabled:opacity-40 cursor-pointer active:scale-95"
-                    >
-                      -
-                    </button>
-                    <span className="px-2 text-xs font-bold font-mono text-pos-text min-w-[24px] text-center" aria-label="Quantity">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={isProcessing}
-                      aria-label={`Increase quantity of ${item.product.name}`}
-                      onClick={() => onUpdateQuantity(item.cartItemId, 1)}
-                      className="w-8 h-8 rounded-md bg-pos-surface hover:bg-pos-raised text-pos-accent font-bold text-sm flex items-center justify-center transition disabled:opacity-40 cursor-pointer active:scale-95"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {onEditItem && (
-                      <button
-                        type="button"
-                        disabled={isProcessing}
+                    {onEditItem ? (
+                      <button type="button" disabled={isProcessing} onClick={() => onEditItem(item)}
                         aria-label={`Edit ${item.product.name}`}
-                        onClick={() => onEditItem(item)}
-                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-pos-accent hover:bg-pos-selected transition disabled:opacity-40 cursor-pointer"
-                      >
-                        Edit
+                        className="min-h-11 w-full text-left text-sm font-bold text-pos-text break-words leading-snug disabled:opacity-40">
+                        {item.product.name} <Pencil aria-hidden="true" className="inline w-3 h-3 text-pos-muted" />
+                        <span className="block text-xs font-mono text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
                       </button>
+                    ) : (
+                      <div className="text-sm font-bold text-pos-text break-words">
+                        {item.product.name}
+                        <span className="block text-xs font-mono text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
+                      </div>
                     )}
-                    <button
-                      type="button"
-                      disabled={isProcessing}
-                      aria-label={`Remove ${item.product.name}`}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button type="button" disabled={isProcessing} aria-label={`Decrease quantity of ${item.product.name}`}
+                      onClick={() => onUpdateQuantity(item.cartItemId, -1)}
+                      className="w-11 h-11 rounded-lg bg-pos-inset text-pos-text font-bold disabled:opacity-40">-</button>
+                    <span className="min-w-5 text-center text-sm font-bold font-mono text-pos-text" aria-label="Quantity">{item.quantity}</span>
+                    <button type="button" disabled={isProcessing} aria-label={`Increase quantity of ${item.product.name}`}
+                      onClick={() => onUpdateQuantity(item.cartItemId, 1)}
+                      className="w-11 h-11 rounded-lg bg-pos-inset text-pos-accent font-bold disabled:opacity-40">+</button>
+                    <button type="button" disabled={isProcessing} aria-label={`Remove ${item.product.name}`}
                       onClick={() => onRemoveItem(item.cartItemId)}
-                      className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-pos-danger-text hover:bg-pos-danger-bg transition disabled:opacity-40 cursor-pointer"
-                    >
-                      Remove
+                      className="w-11 h-11 flex items-center justify-center rounded-lg text-pos-danger-text hover:bg-pos-danger-bg disabled:opacity-40">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
+                {item.product.isDeal && <p className="text-xs text-pos-warning-text">Combo Deal</p>}
+                {item.selectedVariations.length > 0 && <p className="text-xs text-pos-secondary break-words mt-1">{item.selectedVariations.map(v => v.optionName).join(', ')}</p>}
+                {item.notes && <p className="text-xs text-pos-secondary break-words mt-1">Note: {item.notes}</p>}
               </div>
             ))}
           </div>
@@ -217,7 +177,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       </div>
 
       {/* UNIFIED BOTTOM CHECKOUT DOCK */}
-      <div className="shrink-0 p-4 bg-pos-chrome border-t border-pos-border space-y-3">
+      <div className="shrink-0 p-2 bg-pos-chrome border-t border-pos-border space-y-1.5">
         {/* Payment Summary */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
@@ -232,15 +192,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
           )}
 
-          <div className="pt-2 border-t border-pos-divider flex items-baseline justify-between">
+          <div className="pt-1 border-t border-pos-divider flex items-baseline justify-between">
             <span className="text-sm font-bold text-pos-text">Total Payable</span>
-            <span className="text-xl font-black font-mono text-pos-accent tracking-tight">{formatPKR(totalPayable)}</span>
+            <span className="text-lg font-black font-mono text-pos-accent tracking-tight">{formatPKR(totalPayable)}</span>
           </div>
         </div>
 
         {/* Cash Tendered & Change Due (compact 2-column row when cart has items) */}
         {cart.length > 0 && paymentMethod === 'cash' && (
-          <div className="rounded-lg border border-pos-border bg-pos-surface p-2.5 space-y-2">
+          <div className="space-y-1">
             <div className="grid grid-cols-2 gap-2.5 items-center">
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1" htmlFor="cash-tendered">
@@ -249,26 +209,36 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <input
                   disabled={isProcessing}
                   id="cash-tendered"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
+                  inputMode="none"
+                  aria-haspopup="dialog"
+                  onClick={() => setKeypadOpen(true)}
                   value={tenderText}
                   onChange={event => {
                     setTenderText(event.target.value);
                     try { setCashTendered(parseRupees(event.target.value)); setInvalidTender(false); }
                     catch { setInvalidTender(true); }
                   }}
-                  className="w-full h-9 rounded-md border border-pos-control bg-pos-inset px-2.5 text-sm font-bold font-mono text-pos-text focus-visible:border-pos-accent"
+                  className="w-full h-11 rounded-md border border-pos-control bg-pos-inset px-2.5 text-sm font-bold font-mono text-pos-text focus-visible:border-pos-accent"
                 />
               </div>
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1">
                   Change Due
                 </span>
-                <div className="h-9 flex items-center justify-between rounded-md border border-pos-border bg-pos-inset px-2.5 text-sm font-black font-mono text-pos-accent">
+                <div className="h-11 flex items-center justify-between rounded-md border border-pos-border bg-pos-inset px-2.5 text-sm font-black font-mono text-pos-accent">
                   <span>{formatPKR(changeDuePaisa)}</span>
                 </div>
               </div>
+            </div>
+            <div className="grid grid-cols-5 gap-1" aria-label="Quick cash amounts">
+              {[null, 500, 1000, 2000, 5000].map(amount => (
+                <button key={amount ?? 'exact'} type="button" disabled={isProcessing || (amount !== null && amount * 100 < totalPayable)}
+                  onClick={() => { const paisa = amount === null ? totalPayable : amount * 100; setCashTendered(paisa); setTenderText(rupeeText(paisa)); setInvalidTender(false); }}
+                  className="min-h-11 rounded-md border border-pos-control bg-pos-inset text-xs font-bold text-pos-text disabled:opacity-40">
+                  {amount === null ? 'Exact' : amount}
+                </button>
+              ))}
             </div>
             {!cashPaymentValid && (
               <p className="text-xs font-semibold text-pos-danger-text">Tender must cover the total amount.</p>
@@ -279,7 +249,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {/* Payment Method Selector */}
         <div className="space-y-1.5">
           <h3 className="sr-only">Payment Method</h3>
-          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-lg bg-pos-inset border border-pos-border">
+          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-pos-inset border border-pos-border">
             {paymentMethods.map(({ value, label, Icon }) => (
               <button
                 key={value}
@@ -287,7 +257,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 disabled={isProcessing}
                 aria-pressed={paymentMethod === value}
                 onClick={() => onSelectPaymentMethod(value)}
-                className={`h-9 flex items-center justify-center gap-1.5 rounded-md text-xs font-bold transition cursor-pointer active:scale-95 ${
+                className={`h-11 flex items-center justify-center gap-1.5 rounded-md text-xs font-bold transition cursor-pointer active:scale-95 ${
                   paymentMethod === value
                     ? 'bg-pos-selected text-pos-accent border border-pos-accent/60'
                     : ' border border-transparent text-pos-secondary hover:text-pos-text hover:bg-pos-surface/60'
@@ -328,7 +298,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   return (
     <>
-      {!isMobileOpen && <aside className="hidden xl:block w-96 h-full shrink-0">
+      {!isMobileOpen && <aside className="hidden lg:block w-[336px] h-full min-h-0 shrink-0">
         {drawerContent}
       </aside>}
       {isMobileOpen && (
@@ -337,6 +307,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           {drawerContent}
         </Dialog>
       )}
+      {keypadOpen && <CashKeypad totalPaisa={totalPayable} initialValue={tenderText} busy={isProcessing}
+        onClose={() => setKeypadOpen(false)} onConfirm={value => {
+          setCashTendered(parseRupees(value)); setTenderText(rupeeText(parseRupees(value))); setInvalidTender(false); setKeypadOpen(false);
+        }} />}
       {confirmClear && <Dialog label="Clear current order?" onClose={() => setConfirmClear(false)} className="w-full max-w-sm rounded-xl border border-pos-border bg-pos-surface p-5">
         <h2 className="font-bold text-pos-text">Clear current order?</h2>
         <p className="text-sm text-pos-muted mt-2">This removes every item and its instructions from this order.</p>

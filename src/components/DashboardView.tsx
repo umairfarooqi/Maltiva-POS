@@ -128,6 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ].map(tab => (
             <button
               key={tab.id}
+              aria-pressed={dateFilter === tab.id}
               onClick={() => setDateFilter(tab.id as any)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 dateFilter === tab.id
@@ -156,6 +157,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ].map(p => (
             <button
               key={p.id}
+              aria-pressed={paymentFilter === p.id}
               onClick={() => setPaymentFilter(p.id as any)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 paymentFilter === p.id
@@ -173,9 +175,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {dateFilter === 'custom' && (
         <div className="bg-pos-surface p-3 rounded-lg border border-pos-border flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-pos-secondary">From Date:</label>
+            <label htmlFor="sales-from-date" className="text-xs font-bold text-pos-secondary">From Date:</label>
             <input
-              type="date"
+              id="sales-from-date" type="date"
               value={customStartDate}
               onChange={e => setCustomStartDate(e.target.value)}
               className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
@@ -183,9 +185,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-pos-secondary">To Date:</label>
+            <label htmlFor="sales-to-date" className="text-xs font-bold text-pos-secondary">To Date:</label>
             <input
-              type="date"
+              id="sales-to-date" type="date"
               value={customEndDate}
               onChange={e => setCustomEndDate(e.target.value)}
               className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"

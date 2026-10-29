@@ -120,7 +120,7 @@ export const CustomerDisplayWindow: React.FC = () => {
         <span className="text-sm sm:text-base text-pos-secondary">Made for your cravings.</span>
       </header>
 
-      <main className="flex-1 min-h-0 lg:overflow-hidden w-full max-w-[1600px] mx-auto p-5 sm:p-8 lg:p-10">
+      <main className="flex-1 min-h-0 lg:overflow-y-auto w-full max-w-[1600px] mx-auto p-5 sm:p-8 lg:p-10">
         {!hasItems && !lastOrder ? (
           <section aria-label="Welcome" className="grid items-center gap-8 lg:gap-12 lg:grid-cols-2 min-h-[calc(100dvh-12rem)]">
             <div className="max-w-xl">
@@ -180,7 +180,7 @@ export const CustomerDisplayWindow: React.FC = () => {
             </aside>
           </div>
         ) : lastOrder ? (
-          <section role="status" aria-live="polite" className="min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center text-center max-w-3xl mx-auto py-10">
+          <section role="status" aria-live="polite" className="customer-confirmation min-h-[calc(100dvh-12rem)] flex flex-col items-center justify-center text-center max-w-3xl mx-auto py-10">
             <StatusIcon className={`w-12 h-12 mb-6 ${confirmed ? 'text-pos-success-text' : rejected ? 'text-pos-danger-text' : 'text-pos-warning-text'}`} aria-hidden="true" />
             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">{confirmed ? 'Thank you!' : draft ? 'Review your order' : rejected ? 'Please speak to our cashier' : 'Confirming your order'}</h1>
             {confirmed ? (

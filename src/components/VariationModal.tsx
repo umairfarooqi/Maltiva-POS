@@ -116,11 +116,11 @@ export const VariationModal: React.FC<VariationModalProps> = ({
   };
 
   return (
-    <Dialog label={initialItem ? `Edit ${product.name}` : `Customize ${product.name}`} onClose={onClose} className="bg-pos-surface rounded-lg max-w-md w-full overflow-hidden border border-pos-border flex flex-col max-h-[90vh]">
+    <Dialog label={initialItem ? `Edit ${product.name}` : `Customize ${product.name}`} onClose={onClose} className="bg-pos-surface rounded-lg max-w-md w-full overflow-hidden border border-pos-border flex flex-col max-h-[calc(100dvh-2rem)]">
         {error && <p role="alert" className="p-4 text-sm text-pos-danger-text">{error}</p>}
         {/* Header */}
-        <div className="p-5 border-b border-pos-divider flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="shrink-0 p-3 border-b border-pos-divider flex items-center justify-between">
+          <div className="min-w-0 flex-1 flex items-center gap-3">
             <img
               src={product.image}
               alt={product.name}
@@ -132,7 +132,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               }}
               className="w-12 h-12 aspect-square rounded-xl object-cover border border-pos-border shrink-0"
             />
-            <div>
+            <div className="min-w-0 break-words">
               <span className="text-[11px] font-semibold text-pos-accent uppercase tracking-wider">
                 {product.categoryName}
               </span>
@@ -147,14 +147,14 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close item options"
-            className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary hover:bg-pos-raised flex items-center justify-center transition"
+            className="w-11 h-11 shrink-0 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary hover:bg-pos-raised flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Variations List (Scrollable) */}
-        <div className="p-5 overflow-y-auto space-y-5 flex-1">
+        <div className="min-h-0 p-3 overflow-y-auto space-y-4 flex-1">
           {product.variations.length === 0 ? (
             <p className="text-sm text-pos-muted py-2">
               No extra variations for this dish. You can add notes or adjust quantity below.
@@ -192,7 +192,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                       >
                         <div className="flex items-center gap-2.5">
                           <div
-                            className={`w-4 h-4 rounded-${group.multiSelect ? 'md' : 'full'} flex items-center justify-center border ${
+                            className={`w-4 h-4 ${group.multiSelect ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border ${
                               isSelected
                                 ? 'bg-pos-action border-pos-accent text-white'
                                 : 'border-pos-control'
@@ -234,13 +234,13 @@ export const VariationModal: React.FC<VariationModalProps> = ({
         </div>
 
         {/* Footer: Quantity & Add Button */}
-        <div className="p-5 border-t border-pos-divider bg-pos-inset/60 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 bg-pos-surface border border-pos-control rounded-md p-1">
+        <div className="shrink-0 p-3 border-t border-pos-divider bg-pos-inset/60 flex flex-wrap items-center justify-between gap-2">
+          <div className="shrink-0 flex items-center gap-2 bg-pos-surface border border-pos-control rounded-md p-1">
             <button
               aria-label="Decrease item quantity"
               disabled={quantity <= 1}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-pos-secondary hover:bg-pos-raised font-bold transition"
+              className="w-11 h-11 rounded-lg flex items-center justify-center text-pos-secondary hover:bg-pos-raised font-bold transition"
             >
               -
             </button>
@@ -251,7 +251,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               disabled={quantity >= maximumQuantity}
               aria-label="Increase item quantity"
               onClick={() => setQuantity(quantity + 1)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-pos-accent hover:bg-pos-selected font-bold transition"
+              className="w-11 h-11 rounded-lg flex items-center justify-center text-pos-accent hover:bg-pos-selected font-bold transition"
             >
               +
             </button>
@@ -259,7 +259,8 @@ export const VariationModal: React.FC<VariationModalProps> = ({
 
           <button
             onClick={handleAdd}
-            className="flex-1 py-3 px-4 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-sm font-bold flex items-center justify-between transition"
+            disabled={maximumQuantity < 1 || quantity > maximumQuantity}
+            className="min-w-[160px] min-h-11 flex-1 py-3 px-3 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-sm font-bold flex flex-wrap gap-2 items-center justify-between transition disabled:opacity-40"
           >
             <span>{initialItem ? 'Update item' : 'Add to Order'}</span>
             <span className="font-mono">{formatPKR(totalPricePaisa)}</span>

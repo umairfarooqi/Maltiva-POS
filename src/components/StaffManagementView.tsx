@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, X, KeyRound, Check } from 'lucide-react';
 import { User, UserRole } from '../types/pos';
+import { Dialog } from './ui/Dialog';
 
 interface StaffManagementViewProps {
   users: User[];
@@ -124,7 +125,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             Staff & Role-Based Access Control
           </h1>
           <p className="text-xs text-pos-muted mt-0.5">
-            Strict permission gating: Cashiers (Order Line only), Managers (Menu & Daily Sales), Admins (Full Control)
+            Strict permission gating: Cashiers (Order Line only), Managers (Menu, Daily Sales & Settings), Admins (Full Control)
           </p>
         </div>
 
@@ -164,7 +165,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             </h3>
           </div>
           <p className="text-xs text-pos-muted">
-            Store supervisor. Manages dishes, dynamic variations, stock updates, tables, and views daily & yesterday sales only.
+            Store supervisor. Manages dishes, variations, stock updates, settings, and daily sales.
           </p>
           <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Add & update menu dishes</p>
@@ -303,12 +304,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* MODAL: Add New Staff */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/65 flex items-center justify-center p-4 z-50">
-          <div className="bg-pos-surface rounded-lg max-w-md w-full p-6 border border-pos-border">
-            <div className="flex items-center justify-between mb-4">
+        <Dialog label="Add staff member" busy={isSaving} onClose={() => setIsModalOpen(false)} className="bg-pos-surface rounded-lg max-w-md w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-base font-bold text-pos-text">Add Staff Member</h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                disabled={isSaving} onClick={() => setIsModalOpen(false)}
                 aria-label="Close staff editor"
                 className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary flex items-center justify-center"
               >
@@ -317,17 +317,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             </div>
 
             {usernameError && (
-              <div className="mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
+              <div role="alert" className="shrink-0 mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
                 {usernameError}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="min-h-0 flex flex-col overflow-hidden">
+              <fieldset disabled={isSaving} className="contents">
+              <div className="min-h-0 overflow-y-auto space-y-3 pr-1">
               <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                <label htmlFor="staffmanagementview-field-1" className="text-xs font-bold text-pos-secondary block mb-1">
                   Full Name *
                 </label>
-                <input
+                <input id="staffmanagementview-field-1"
                   type="text"
                   required
                   value={name}
@@ -343,12 +345,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                <label htmlFor="staffmanagementview-field-2" className="text-xs font-bold text-pos-secondary block mb-1">
                   Unique Username * (Used for Sign In)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pos-muted text-xs font-mono">@</span>
-                  <input
+                  <input id="staffmanagementview-field-2"
                     type="text"
                     required
                     value={username}
@@ -366,10 +368,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                <label htmlFor="staffmanagementview-field-3" className="text-xs font-bold text-pos-secondary block mb-1">
                   Email Address
                 </label>
-                <input
+                <input id="staffmanagementview-field-3"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -380,10 +382,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-pos-secondary block mb-1">
+                  <label htmlFor="staffmanagementview-field-4" className="text-xs font-bold text-pos-secondary block mb-1">
                     System Role *
                   </label>
-                  <select
+                  <select id="staffmanagementview-field-4"
                     value={role}
                     onChange={e => setRole(e.target.value as UserRole)}
                     className="w-full px-3 py-2 border border-pos-control rounded-md text-xs bg-pos-surface focus-visible:border-pos-accent"
@@ -395,10 +397,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-pos-secondary block mb-1">
+                  <label htmlFor="staffmanagementview-field-5" className="text-xs font-bold text-pos-secondary block mb-1">
                     Password * (min 6 characters)
                   </label>
-                  <input
+                  <input id="staffmanagementview-field-5"
                     type="password"
                     required
                     minLength={6}
@@ -410,10 +412,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-pos-secondary block mb-1">
+                  <label htmlFor="staffmanagementview-field-6" className="text-xs font-bold text-pos-secondary block mb-1">
                     4-digit PIN *
                   </label>
-                  <input
+                  <input id="staffmanagementview-field-6"
                     type="password"
                     inputMode="numeric"
                     required
@@ -427,10 +429,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              </div>
+              <div className="shrink-0 border-t border-pos-divider mt-3 pt-3 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  disabled={isSaving} onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 text-xs font-semibold text-pos-muted"
                 >
                   Cancel
@@ -443,23 +446,22 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   {isSaving ? 'Creating...' : 'Create Staff Account'}
                 </button>
               </div>
+              </fieldset>
             </form>
-          </div>
-        </div>
+        </Dialog>
       )}
 
       {/* MODAL: Reset Staff PIN / Password */}
       {resetTarget && (
-        <div className="fixed inset-0 bg-black/65 flex items-center justify-center p-4 z-50">
-          <div className="bg-pos-surface rounded-lg max-w-sm w-full p-6 border border-pos-border">
-            <div className="flex items-center justify-between mb-4">
+        <Dialog label="Reset staff PIN" busy={isResetting} onClose={() => setResetTarget(null)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <div>
                 <h3 className="text-base font-bold text-pos-text">Reset PIN & Unlock</h3>
                 <p className="text-xs text-pos-muted">{resetTarget.name} (@{resetTarget.username})</p>
               </div>
               <button
                 type="button"
-                onClick={() => setResetTarget(null)}
+                disabled={isResetting} onClick={() => setResetTarget(null)}
                 aria-label="Close PIN reset"
                 className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary flex items-center justify-center"
               >
@@ -468,17 +470,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             </div>
 
             {resetError && (
-              <div role="alert" className="mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
+              <div role="alert" className="shrink-0 mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
                 {resetError}
               </div>
             )}
 
-            <form onSubmit={handleResetSubmit} className="space-y-4">
+            <form onSubmit={handleResetSubmit} className="min-h-0 flex flex-col overflow-hidden">
+              <fieldset disabled={isResetting} className="contents">
+              <div className="min-h-0 overflow-y-auto space-y-3 pr-1">
               <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                <label htmlFor="staffmanagementview-field-7" className="text-xs font-bold text-pos-secondary block mb-1">
                   New 4-Digit PIN *
                 </label>
-                <input
+                <input id="staffmanagementview-field-7"
                   type="password"
                   inputMode="numeric"
                   required
@@ -492,10 +496,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1">
+                <label htmlFor="staffmanagementview-field-8" className="text-xs font-bold text-pos-secondary block mb-1">
                   New Password (optional, min 6 chars)
                 </label>
-                <input
+                <input id="staffmanagementview-field-8"
                   type="password"
                   autoComplete="new-password"
                   value={resetPassword}
@@ -505,10 +509,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              </div>
+              <div className="shrink-0 border-t border-pos-divider mt-3 pt-3 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setResetTarget(null)}
+                  disabled={isResetting} onClick={() => setResetTarget(null)}
                   className="px-4 py-2 text-xs font-semibold text-pos-muted"
                 >
                   Cancel
@@ -521,9 +526,9 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   {isResetting ? 'Updating...' : 'Save New PIN'}
                 </button>
               </div>
+              </fieldset>
             </form>
-          </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

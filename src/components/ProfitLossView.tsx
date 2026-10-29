@@ -225,6 +225,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
           ].map(f => (
             <button
               key={f.id}
+              aria-pressed={dateFilter === f.id}
               onClick={() => setDateFilter(f.id as any)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 dateFilter === f.id
@@ -240,7 +241,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
         {/* Category Filter */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-pos-muted">Category:</span>
-          <select
+          <select aria-label="Profit category filter"
             value={selectedCategoryId}
             onChange={e => setSelectedCategoryId(e.target.value)}
             className="px-3 py-1.5 border border-pos-control rounded-md text-xs bg-pos-surface text-pos-secondary focus-visible:border-pos-accent"
@@ -345,7 +346,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             No sales recorded in the selected period.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div tabIndex={0} role="region" aria-label="Profit breakdown table" className="overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-pos-inset border-b border-pos-divider text-pos-muted font-semibold uppercase text-[10px]">
                 <tr>

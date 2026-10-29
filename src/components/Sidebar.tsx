@@ -54,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'order_line' as NavTab, label: 'Order Line', icon: Store, adminOnly: false },
     { id: 'manage_dishes' as NavTab, label: 'Dishes & Deals', icon: UtensilsCrossed, adminOnly: true },
     { id: 'dashboard' as NavTab, label: 'Daily Sales', icon: LayoutDashboard, adminOnly: true },
-    { id: 'profit_loss' as NavTab, label: 'Profit & Loss', icon: TrendingUp, adminOnly: true },
+    { id: 'profit_loss' as NavTab, label: 'Profit & Loss', icon: TrendingUp, adminOnly: true, onlyAdmin: true },
     { id: 'staff' as NavTab, label: 'Staff', icon: Users, adminOnly: true, onlyAdmin: true },
   ];
 
@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <aside
-        className="hidden lg:block shrink-0 h-full transition-[width] duration-200 ease-out"
+        className="hidden lg:block shrink-0 h-full overflow-y-auto transition-[width] duration-200 ease-out"
         style={{ width: isCollapsed ? 72 : 228 }}
       >
         <div
@@ -216,7 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* MOBILE / TABLET DRAWER (< lg)                            */}
       {/* ======================================================== */}
       {isMobileOpen && (
-        <Dialog label="Navigation" onClose={() => onCloseMobile?.()} backdropClassName="!p-0 !justify-start" className="w-64 h-full bg-pos-chrome border-r border-pos-border flex flex-col justify-between py-5 px-4">
+        <Dialog label="Navigation" onClose={() => onCloseMobile?.()} backdropClassName="!p-0 !justify-start" className="w-64 h-full overflow-y-auto bg-pos-chrome border-r border-pos-border flex flex-col justify-between py-5 px-4">
             <div>
               {/* Brand Logo & Close */}
               <div className="flex items-center justify-between mb-6 pl-1">

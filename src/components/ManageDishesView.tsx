@@ -199,6 +199,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   const [formDescription, setFormDescription] = useState('');
   const [formVariations, setFormVariations] = useState<DynamicVariationOption[]>([]);
 
+  // Partially entered money is valid editing state; final validation remains in Save.
+  const previewProfit = (() => {
+    try { return parseRupees(formPrice) - parseRupees(formCostPrice); }
+    catch { return null; }
+  })();
+
   const [dealName, setDealName] = useState('');
   const [dealCategoryId, setDealCategoryId] = useState('cat-deals');
   const [dealPrice, setDealPrice] = useState('1999');
@@ -539,13 +545,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               return (
                 <div
                   key={cat.id}
-                  className={`group relative w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
+                  className={`group relative w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-pos-surface text-pos-accent border-pos-accent'
                       : 'bg-pos-surface border-pos-border/70 text-pos-secondary hover:border-pos-control hover:bg-pos-surface'
                   }`}
                 >
-                  <button type="button" onClick={() => setSelectedCategoryId(cat.id)} aria-pressed={isSelected} className="flex min-w-0 flex-1 items-center gap-3 truncate text-left">
+                  <button type="button" onClick={() => setSelectedCategoryId(cat.id)} aria-pressed={isSelected} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 truncate text-left">
                     <span className="w-6 text-center text-base shrink-0">{cat.icon || '🍽'}</span>
                     <span className="truncate">{cat.name}</span>
                   </button>
@@ -553,18 +559,18 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <span
                       className={`min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono transition-opacity ${
                         isSelected ? 'bg-pos-action text-white' : 'bg-pos-raised text-pos-muted'
-                      } ${cat.id !== 'cat-all' ? 'group-hover:opacity-0' : ''}`}
+                      } `}
                     >
                       {actualCount}
                     </span>
                   </div>
                   {cat.id !== 'cat-all' && (
-                      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-pos-surface px-1 opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-opacity">
+                      <div className={`category-actions w-full shrink-0 items-center justify-end gap-1 rounded-md bg-pos-surface ${isSelected ? "flex" : "hidden group-hover:flex group-focus-within:flex"}`}>
                         <button
                           type="button"
                           onClick={e => openEditCategoryModal(cat, e)}
                           aria-label={`Edit ${cat.name}`}
-                          className="p-1 text-pos-muted hover:text-pos-accent transition"
+                          className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-accent transition"
                         >
                           <Edit2 className="w-3 h-3" />
                         </button>
@@ -572,7 +578,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                           type="button"
                           onClick={e => handleDeleteCategoryClick(cat.id, e)}
                           aria-label={`Delete ${cat.name}`}
-                          className="p-1 text-pos-muted hover:text-pos-danger-text transition"
+                          className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-danger-text transition"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -864,23 +870,24 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DISH MODAL */}
       {isDishModalOpen && (
-        <Dialog label="Dish editor" busy={isSaving || isDeleting} onClose={() => setIsDishModalOpen(false)} className="bg-pos-surface rounded-lg max-w-3xl w-full p-6 border border-pos-border max-h-[90vh] overflow-y-auto scrollbar-none">
+        <Dialog label="Dish editor" busy={isSaving || isDeleting} onClose={() => setIsDishModalOpen(false)} className="pos-editor bg-pos-surface rounded-lg max-w-3xl w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
             {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
             {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="min-w-0">
-            <div className="flex items-center justify-between mb-6">
+            <fieldset disabled={isSaving || isDeleting} className="contents">
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-lg font-bold text-pos-text">
                 {editingProduct ? 'Edit Dish' : 'Add New Dish'}
               </h3>
               <button
                 onClick={() => setIsDishModalOpen(false)}
                 aria-label="Close dish editor"
-                className="p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
+                className="min-h-11 min-w-11 p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSaveDish} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <form onSubmit={handleSaveDish} className="min-h-0 flex flex-col overflow-hidden">
+              <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
               <div className="space-y-5">
                 <div className="group">
                   <label htmlFor="manage-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
@@ -979,7 +986,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <span className="text-sm font-bold">Estimated Profit</span>
                   </div>
                   <div className="text-3xl font-black text-pos-success-text">
-                    {formatPKR((parseRupees(formPrice) || 0) - (parseRupees(formCostPrice) || 0))}
+                    {previewProfit === null ? 'Enter valid prices' : formatPKR(previewProfit)}
                   </div>
                 </div>
 
@@ -1038,6 +1045,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         />
                         <button
                           type="button"
+                          aria-label={`Remove option ${v.name || idx + 1}`}
                           onClick={() => removeDynamicVariation(idx)}
                           className="p-1.5 text-pos-muted hover:text-pos-danger-text transition cursor-pointer"
                         >
@@ -1047,23 +1055,23 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     ))}
                   </div>
                 </div>
-
-                <div className="pt-4 flex items-center justify-end gap-3 border-t border-pos-divider">
+              </div>
+              </div>
+                <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
                   <button
                     type="button"
                     onClick={() => setIsDishModalOpen(false)}
-                    className="px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                    className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
+                    className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
                   >
                     Save Dish
                   </button>
                 </div>
-              </div>
             </form>
             </fieldset>
         </Dialog>
@@ -1071,23 +1079,24 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DEAL MODAL */}
       {isDealModalOpen && (
-        <Dialog label="Deal editor" busy={isSaving || isDeleting} onClose={() => setIsDealModalOpen(false)} className="bg-pos-surface rounded-lg max-w-3xl w-full p-6 border border-pos-border max-h-[90vh] overflow-y-auto scrollbar-none">
+        <Dialog label="Deal editor" busy={isSaving || isDeleting} onClose={() => setIsDealModalOpen(false)} className="pos-editor bg-pos-surface rounded-lg max-w-3xl w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
             {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
             {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="min-w-0">
-            <div className="flex items-center justify-between mb-6">
+            <fieldset disabled={isSaving || isDeleting} className="contents">
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-lg font-bold text-pos-text">
                 {editingDeal ? 'Edit Deal' : 'Create New Deal'}
               </h3>
               <button
                 onClick={() => setIsDealModalOpen(false)}
                 aria-label="Close deal editor"
-                className="p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
+                className="min-h-11 min-w-11 p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSaveDeal} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <form onSubmit={handleSaveDeal} className="min-h-0 flex flex-col overflow-hidden">
+              <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
               <div className="space-y-5">
                 <div className="group">
                   <label htmlFor="manage-field-9" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
@@ -1222,6 +1231,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
+                            aria-label={`Decrease ${item.productName} bundle quantity`}
                             onClick={() => handleUpdateDealItemQty(idx, -1)}
                             className="p-1 text-pos-muted hover:text-pos-text"
                           >
@@ -1232,6 +1242,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                           </span>
                           <button
                             type="button"
+                            aria-label={`Increase ${item.productName} bundle quantity`}
                             onClick={() => handleUpdateDealItemQty(idx, 1)}
                             className="p-1 text-pos-muted hover:text-pos-text"
                           >
@@ -1239,6 +1250,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                           </button>
                           <button
                             type="button"
+                            aria-label={`Remove ${item.productName} from deal`}
                             onClick={() => handleRemoveDealItem(idx)}
                             className="p-1 text-pos-danger-text hover:text-pos-danger-text ml-2"
                           >
@@ -1254,23 +1266,23 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     )}
                   </div>
                 </div>
-
-                <div className="pt-4 flex items-center justify-end gap-3 border-t border-pos-divider">
+              </div>
+              </div>
+                <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
                   <button
                     type="button"
                     onClick={() => setIsDealModalOpen(false)}
-                    className="px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                    className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
+                    className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
                   >
                     Save Deal
                   </button>
                 </div>
-              </div>
             </form>
             </fieldset>
         </Dialog>
@@ -1278,11 +1290,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* CATEGORY MODAL */}
       {isCategoryModalOpen && (
-        <Dialog label="Category editor" busy={isSaving || isDeleting} onClose={() => setIsCategoryModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto border border-pos-border">
+        <Dialog label="Category editor" busy={isSaving || isDeleting} onClose={() => setIsCategoryModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-pos-border">
             {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
             {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="min-w-0">
-            <div className="flex items-center justify-between mb-6">
+            <fieldset disabled={isSaving || isDeleting} className="contents">
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-lg font-bold text-pos-text">
                 {editingCategory ? 'Edit Category' : 'New Category'}
               </h3>
@@ -1294,7 +1306,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSaveCategorySubmit} className="space-y-4">
+            <form onSubmit={handleSaveCategorySubmit} className="min-h-0 flex flex-col overflow-hidden">
+              <div className="min-h-0 overflow-y-auto space-y-4 pr-1">
               <div>
                 <label htmlFor="category-name-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                   Category Name
@@ -1336,7 +1349,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   ))}
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-pos-divider">
+              </div>
+              <div className="shrink-0 flex items-center justify-end gap-2 pt-3 mt-3 border-t border-pos-divider">
                 <button
                   type="button"
                   onClick={() => setIsCategoryModalOpen(false)}
@@ -1358,10 +1372,10 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* STOCK ADJUSTMENT MODAL */}
       {isStockModalOpen && selectedStockProduct && (
-        <Dialog label="Adjust stock" busy={isSaving || isDeleting} onClose={() => setIsStockModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto border border-pos-border">
+        <Dialog label="Adjust stock" busy={isSaving || isDeleting} onClose={() => setIsStockModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-pos-border">
             {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
             {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
-            <fieldset disabled={isSaving || isDeleting} className="min-w-0">
+            <fieldset disabled={isSaving || isDeleting} className="contents">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-pos-text">Adjust Stock</h3>
               <button
@@ -1376,7 +1390,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               Adjust inventory quantity for{' '}
               <span className="font-bold text-pos-text">{selectedStockProduct.name}</span>.
             </p>
-            <form onSubmit={handleStockAdjustSubmit} className="space-y-4">
+            <form onSubmit={handleStockAdjustSubmit} className="min-h-0 flex flex-col overflow-hidden">
+              <div className="min-h-0 overflow-y-auto space-y-4 pr-1">
               <div>
                 <label htmlFor="manage-field-18" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                   Type
@@ -1415,7 +1430,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   required
                 />
               </div>
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-pos-divider">
+              </div>
+              <div className="shrink-0 flex items-center justify-end gap-2 pt-3 mt-3 border-t border-pos-divider">
                 <button
                   type="button"
                   onClick={() => setIsStockModalOpen(false)}

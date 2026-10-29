@@ -77,9 +77,9 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   };
 
   return (
-    <Dialog label="Receipt preview" onClose={onClose} className="bg-pos-surface rounded-lg max-w-2xl w-full overflow-hidden border border-pos-border flex flex-col max-h-[96vh]">
+    <Dialog label="Receipt preview" onClose={onClose} className="bg-pos-surface rounded-lg max-w-2xl w-full overflow-hidden border border-pos-border flex flex-col max-h-[calc(100dvh-2rem)]">
         {/* Modal Top Bar */}
-        <div className="p-4 px-6 border-b border-pos-divider bg-pos-inset/80">
+        <div className="shrink-0 p-3 border-b border-pos-divider bg-pos-inset/80">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <Printer className="w-5 h-5 text-pos-accent" />
@@ -95,7 +95,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             <button
               onClick={onClose}
               aria-label="Close receipt preview"
-              className="w-8 h-8 shrink-0 rounded-md bg-pos-raised/80 text-pos-muted hover:bg-pos-control flex items-center justify-center transition"
+              className="w-11 h-11 shrink-0 rounded-md bg-pos-raised/80 text-pos-muted hover:bg-pos-control flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -103,9 +103,9 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             {/* Slip Filter Tabs */}
-            <div className="flex items-center gap-1 bg-pos-raised/60 p-1 rounded-md text-xs font-semibold">
+            <div className="flex flex-wrap items-center gap-1 bg-pos-raised/60 p-1 rounded-md text-xs font-semibold">
               <button
-                onClick={() => setActiveTab('both')}
+                aria-pressed={activeTab === 'both'} onClick={() => setActiveTab('both')}
                 className={`px-3 py-1 rounded-lg transition ${
                   activeTab === 'both' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
                 }`}
@@ -113,7 +113,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 Both Slips (2)
               </button>
               <button
-                onClick={() => setActiveTab('customer')}
+                aria-pressed={activeTab === 'customer'} onClick={() => setActiveTab('customer')}
                 className={`px-2.5 py-1 rounded-lg transition ${
                   activeTab === 'customer' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
                 }`}
@@ -121,7 +121,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 Customer Slip
               </button>
               <button
-                onClick={() => setActiveTab('kitchen')}
+                aria-pressed={activeTab === 'kitchen'} onClick={() => setActiveTab('kitchen')}
                 className={`px-2.5 py-1 rounded-lg transition ${
                   activeTab === 'kitchen' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
                 }`}
@@ -133,7 +133,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             {/* Paper Width */}
             <div className="flex items-center gap-1 bg-pos-surface border border-pos-border rounded-lg p-0.5 text-xs">
               <button
-                onClick={() => setPaperWidth('80mm')}
+                aria-pressed={paperWidth === '80mm'} onClick={() => setPaperWidth('80mm')}
                 className={`px-2 py-1 rounded font-mono font-semibold transition ${
                   paperWidth === '80mm' ? 'bg-pos-action text-white' : 'text-pos-muted'
                 }`}
@@ -141,7 +141,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 80mm
               </button>
               <button
-                onClick={() => setPaperWidth('58mm')}
+                aria-pressed={paperWidth === '58mm'} onClick={() => setPaperWidth('58mm')}
                 className={`px-2 py-1 rounded font-mono font-semibold transition ${
                   paperWidth === '58mm' ? 'bg-pos-action text-white' : 'text-pos-muted'
                 }`}
@@ -155,9 +155,10 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         {/* Scrollable Receipt Body */}
         <div
           ref={printArea}
+          tabIndex={0} role="region" aria-label="Receipt contents"
           id="thermal-receipt-print-area"
           data-paper-width={paperWidth}
-          className="theme-paper receipt-content p-4 sm:p-6 overflow-y-auto flex-1 bg-pos-raised flex flex-col items-center gap-6"
+          className="theme-paper receipt-content p-4 sm:p-6 min-h-0 overflow-y-auto flex-1 bg-pos-raised flex flex-col items-center gap-6"
         >
           {/* SLIP 1: CUSTOMER RECEIPT */}
           {(activeTab === 'both' || activeTab === 'customer') && (
@@ -366,7 +367,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
         {printError && <p role="alert" className="px-6 py-2 text-pos-danger-text text-sm">{printError}</p>}
 
         {/* Modal Footer Controls */}
-        <div className="p-4 px-6 border-t border-pos-divider bg-pos-surface flex flex-wrap items-center justify-between gap-3">
+        <div className="shrink-0 p-3 border-t border-pos-divider bg-pos-surface flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 px-4 py-2 border border-pos-control hover:bg-pos-inset rounded-md text-xs font-semibold text-pos-secondary transition"

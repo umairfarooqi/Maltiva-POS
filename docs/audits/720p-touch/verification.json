@@ -1,0 +1,3863 @@
+{
+  "date": "2026-10-30",
+  "method": "Real React App/components with isolated fixture data and mocked API methods; headless Chrome with touch enabled. Main audit used the actual index head and loaded Plus Jakarta Sans. No live business data was edited.",
+  "primary": {
+    "results": [
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Order Line",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Dishes & Deals",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Daily Sales",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Daily Sales-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Profit & Loss",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Profit & Loss-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Staff",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Settings",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "login",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "login-error",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "login-password",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "variations",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 575,
+            "y": 642,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "variations-notes",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 575,
+            "y": 642,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "cash-keypad",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 125,
+          "bottom": 595
+        },
+        "actionBounds": [
+          {
+            "action": "Use amount",
+            "x": 547.40625,
+            "y": 534,
+            "width": 267.59375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "receipt",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Done",
+            "x": 708.140625,
+            "y": 647,
+            "width": 65.125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "receipt-Both Slips (2)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "receipt-Kitchen Slip (KOT)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 43.78125,
+          "bottom": 676.21875
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "receipt-Customer Slip",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "receipt-58mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "receipt-80mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "clear-order",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 271,
+          "bottom": 449
+        },
+        "actionBounds": [
+          {
+            "action": "Clear all items",
+            "x": 700.125,
+            "y": 384,
+            "width": 110.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "logout",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 273,
+          "bottom": 447
+        },
+        "actionBounds": [
+          {
+            "action": "Log out",
+            "x": 723.671875,
+            "y": 378,
+            "width": 83.328125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "menu",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "dish-edit",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 47.5,
+          "bottom": 672.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 903.109375,
+            "y": 611.5,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "dish-empty-price",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 47.5,
+          "bottom": 672.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 903.109375,
+            "y": 611.5,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "dish-options",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 903.109375,
+            "y": 643,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "deal",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 91.5,
+          "bottom": 628.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 902.125,
+            "y": 567.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "deal-populated",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 91.5,
+          "bottom": 628.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 902.125,
+            "y": 567.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "category",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 153.5,
+          "bottom": 566.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save",
+            "x": 754.4375,
+            "y": 505.5,
+            "width": 60.5625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Adjust Stock",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 150.5,
+          "bottom": 569.5
+        },
+        "actionBounds": [
+          {
+            "action": "Apply",
+            "x": 748.265625,
+            "y": 508.5,
+            "width": 66.734375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "Delete Product",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 235,
+          "bottom": 485
+        },
+        "actionBounds": [
+          {
+            "action": "Yes, Delete",
+            "x": 633.671875,
+            "y": 416,
+            "width": 97.578125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "staff-add",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 88,
+          "bottom": 632
+        },
+        "actionBounds": [
+          {
+            "action": "Create Staff Account",
+            "x": 683.453125,
+            "y": 571,
+            "width": 163.546875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "staff-reset",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 210.5,
+          "bottom": 509.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save New PIN",
+            "x": 695.3125,
+            "y": 448.5,
+            "width": 119.6875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "clear-cache",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 227,
+          "bottom": 493
+        },
+        "actionBounds": [
+          {
+            "action": "Clear cached sales",
+            "x": 611.921875,
+            "y": 424,
+            "width": 141.0625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customers",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "tables",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "help",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customer-idle",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customer-cart",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customer-saved",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customer-pending",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customer-rejected",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "dark",
+        "name": "customer-draft",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Order Line",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Dishes & Deals",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Daily Sales",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Daily Sales-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Profit & Loss",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Profit & Loss-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Staff",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Settings",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "login",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "login-error",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "login-password",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "variations",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 575,
+            "y": 642,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "variations-notes",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 575,
+            "y": 642,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "cash-keypad",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 125,
+          "bottom": 595
+        },
+        "actionBounds": [
+          {
+            "action": "Use amount",
+            "x": 547.40625,
+            "y": 534,
+            "width": 267.59375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "receipt",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Done",
+            "x": 708.140625,
+            "y": 647,
+            "width": 65.125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "receipt-Both Slips (2)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "receipt-Kitchen Slip (KOT)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 43.78125,
+          "bottom": 676.21875
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "receipt-Customer Slip",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "receipt-58mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "receipt-80mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "clear-order",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 271,
+          "bottom": 449
+        },
+        "actionBounds": [
+          {
+            "action": "Clear all items",
+            "x": 700.125,
+            "y": 384,
+            "width": 110.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "logout",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 273,
+          "bottom": 447
+        },
+        "actionBounds": [
+          {
+            "action": "Log out",
+            "x": 723.671875,
+            "y": 378,
+            "width": 83.328125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "menu",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "dish-edit",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 47.5,
+          "bottom": 672.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 903.109375,
+            "y": 611.5,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "dish-empty-price",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 47.5,
+          "bottom": 672.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 903.109375,
+            "y": 611.5,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "dish-options",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 704
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 903.109375,
+            "y": 643,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "deal",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 91.5,
+          "bottom": 628.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 902.125,
+            "y": 567.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "deal-populated",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 91.5,
+          "bottom": 628.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 902.125,
+            "y": 567.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "category",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 153.5,
+          "bottom": 566.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save",
+            "x": 754.4375,
+            "y": 505.5,
+            "width": 60.5625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Adjust Stock",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 150.5,
+          "bottom": 569.5
+        },
+        "actionBounds": [
+          {
+            "action": "Apply",
+            "x": 748.265625,
+            "y": 508.5,
+            "width": 66.734375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "Delete Product",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 235,
+          "bottom": 485
+        },
+        "actionBounds": [
+          {
+            "action": "Yes, Delete",
+            "x": 633.671875,
+            "y": 416,
+            "width": 97.578125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "staff-add",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 88,
+          "bottom": 632
+        },
+        "actionBounds": [
+          {
+            "action": "Create Staff Account",
+            "x": 683.453125,
+            "y": 571,
+            "width": 163.546875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "staff-reset",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 210.5,
+          "bottom": 509.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save New PIN",
+            "x": 695.3125,
+            "y": 448.5,
+            "width": 119.6875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "clear-cache",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 227,
+          "bottom": 493
+        },
+        "actionBounds": [
+          {
+            "action": "Clear cached sales",
+            "x": 611.921875,
+            "y": 424,
+            "width": 141.0625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customers",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "tables",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "help",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customer-idle",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customer-cart",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customer-saved",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customer-pending",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customer-rejected",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "theme": "light",
+        "name": "customer-draft",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Order Line",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Dishes & Deals",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Daily Sales",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Daily Sales-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Profit & Loss",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Profit & Loss-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Staff",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Settings",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "login",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "login-error",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "login-password",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "variations",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 447,
+            "y": 498,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "variations-notes",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 447,
+            "y": 498,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "cash-keypad",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 53,
+          "bottom": 523
+        },
+        "actionBounds": [
+          {
+            "action": "Use amount",
+            "x": 419.40625,
+            "y": 462,
+            "width": 267.59375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "receipt",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Done",
+            "x": 580.140625,
+            "y": 503,
+            "width": 65.125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "receipt-Both Slips (2)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "receipt-Kitchen Slip (KOT)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "receipt-Customer Slip",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "receipt-58mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "receipt-80mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "clear-order",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 199,
+          "bottom": 377
+        },
+        "actionBounds": [
+          {
+            "action": "Clear all items",
+            "x": 572.125,
+            "y": 312,
+            "width": 110.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "logout",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 201,
+          "bottom": 375
+        },
+        "actionBounds": [
+          {
+            "action": "Log out",
+            "x": 595.671875,
+            "y": 306,
+            "width": 83.328125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "menu",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "dish-edit",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 775.109375,
+            "y": 499,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "dish-empty-price",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 775.109375,
+            "y": 499,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "dish-options",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 775.109375,
+            "y": 499,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "deal",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 19.5,
+          "bottom": 556.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 774.125,
+            "y": 495.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "deal-populated",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 19.5,
+          "bottom": 556.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 774.125,
+            "y": 495.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "category",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 81.5,
+          "bottom": 494.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save",
+            "x": 626.4375,
+            "y": 433.5,
+            "width": 60.5625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Adjust Stock",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 78.5,
+          "bottom": 497.5
+        },
+        "actionBounds": [
+          {
+            "action": "Apply",
+            "x": 620.265625,
+            "y": 436.5,
+            "width": 66.734375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "Delete Product",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 163,
+          "bottom": 413
+        },
+        "actionBounds": [
+          {
+            "action": "Yes, Delete",
+            "x": 505.671875,
+            "y": 344,
+            "width": 97.578125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "staff-add",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Create Staff Account",
+            "x": 555.453125,
+            "y": 499,
+            "width": 163.546875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "staff-reset",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 138.5,
+          "bottom": 437.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save New PIN",
+            "x": 567.3125,
+            "y": 376.5,
+            "width": 119.6875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "clear-cache",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 155,
+          "bottom": 421
+        },
+        "actionBounds": [
+          {
+            "action": "Clear cached sales",
+            "x": 483.921875,
+            "y": 352,
+            "width": 141.0625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customers",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "tables",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "help",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customer-idle",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customer-cart",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customer-saved",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customer-pending",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customer-rejected",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "dark",
+        "name": "customer-draft",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Order Line",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Dishes & Deals",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Daily Sales",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Daily Sales-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Profit & Loss",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Profit & Loss-custom-dates",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Staff",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Settings",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "login",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "login-error",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "login-password",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "variations",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 447,
+            "y": 498,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "variations-notes",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Update item",
+            "x": 447,
+            "y": 498,
+            "width": 276,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "cash-keypad",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 53,
+          "bottom": 523
+        },
+        "actionBounds": [
+          {
+            "action": "Use amount",
+            "x": 419.40625,
+            "y": 462,
+            "width": 267.59375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "receipt",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Done",
+            "x": 580.140625,
+            "y": 503,
+            "width": 65.125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "receipt-Both Slips (2)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "receipt-Kitchen Slip (KOT)",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "receipt-Customer Slip",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "receipt-58mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "receipt-80mm",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "clear-order",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 199,
+          "bottom": 377
+        },
+        "actionBounds": [
+          {
+            "action": "Clear all items",
+            "x": 572.125,
+            "y": 312,
+            "width": 110.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "logout",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 201,
+          "bottom": 375
+        },
+        "actionBounds": [
+          {
+            "action": "Log out",
+            "x": 595.671875,
+            "y": 306,
+            "width": 83.328125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "menu",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "dish-edit",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 775.109375,
+            "y": 499,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "dish-empty-price",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 775.109375,
+            "y": 499,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "dish-options",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Save Dish",
+            "x": 775.109375,
+            "y": 499,
+            "width": 103.890625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "deal",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 19.5,
+          "bottom": 556.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 774.125,
+            "y": 495.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "deal-populated",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 19.5,
+          "bottom": 556.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save Deal",
+            "x": 774.125,
+            "y": 495.5,
+            "width": 104.875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "category",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 81.5,
+          "bottom": 494.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save",
+            "x": 626.4375,
+            "y": 433.5,
+            "width": 60.5625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Adjust Stock",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 78.5,
+          "bottom": 497.5
+        },
+        "actionBounds": [
+          {
+            "action": "Apply",
+            "x": 620.265625,
+            "y": 436.5,
+            "width": 66.734375,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "Delete Product",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 163,
+          "bottom": 413
+        },
+        "actionBounds": [
+          {
+            "action": "Yes, Delete",
+            "x": 505.671875,
+            "y": 344,
+            "width": 97.578125,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "staff-add",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 16,
+          "bottom": 560
+        },
+        "actionBounds": [
+          {
+            "action": "Create Staff Account",
+            "x": 555.453125,
+            "y": 499,
+            "width": 163.546875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "staff-reset",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 138.5,
+          "bottom": 437.5
+        },
+        "actionBounds": [
+          {
+            "action": "Save New PIN",
+            "x": 567.3125,
+            "y": 376.5,
+            "width": 119.6875,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "clear-cache",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": {
+          "top": 155,
+          "bottom": 421
+        },
+        "actionBounds": [
+          {
+            "action": "Clear cached sales",
+            "x": 483.921875,
+            "y": 352,
+            "width": 141.0625,
+            "height": 44,
+            "inside": true
+          }
+        ]
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customers",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "tables",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "help",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customer-idle",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customer-cart",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customer-saved",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customer-pending",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customer-rejected",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      },
+      {
+        "width": 1024,
+        "height": 576,
+        "theme": "light",
+        "name": "customer-draft",
+        "axe": [],
+        "overflow": false,
+        "small": [],
+        "clipped": [],
+        "dialog": null,
+        "actionBounds": []
+      }
+    ],
+    "errors": []
+  },
+  "narrow": [
+    {
+      "width": 800,
+      "height": 600,
+      "name": "Order Line",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "Dishes & Deals",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "Daily Sales",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "Profit & Loss",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "Staff",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "settings",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "login",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "variations",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 584
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "-",
+          "bottom": 566
+        },
+        {
+          "name": "+",
+          "bottom": 566
+        },
+        {
+          "name": "Update itemRs. 990",
+          "bottom": 566
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "receipt",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 584
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Copy Text (ESC/POS)",
+          "bottom": 571
+        },
+        {
+          "name": "Done",
+          "bottom": 571
+        },
+        {
+          "name": "Print Customer Slip",
+          "bottom": 571
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "keypad",
+      "overflow": false,
+      "dialog": {
+        "top": 65,
+        "bottom": 535
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Backspace",
+          "bottom": 434
+        },
+        {
+          "name": "Clear",
+          "bottom": 518
+        },
+        {
+          "name": "Use amount",
+          "bottom": 518
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "clear-cart",
+      "overflow": false,
+      "dialog": {
+        "top": 211,
+        "bottom": 389
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Keep order",
+          "bottom": 368
+        },
+        {
+          "name": "Clear all items",
+          "bottom": 368
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "deal",
+      "overflow": false,
+      "dialog": {
+        "top": 31.5,
+        "bottom": 568.5
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Custom",
+          "bottom": 228.5
+        },
+        {
+          "name": "Cancel",
+          "bottom": 551.5
+        },
+        {
+          "name": "Save Deal",
+          "bottom": 551.5
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "dish",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 584
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Add variation group",
+          "bottom": 323
+        },
+        {
+          "name": "Cancel",
+          "bottom": 567
+        },
+        {
+          "name": "Save Dish",
+          "bottom": 567
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "category",
+      "overflow": false,
+      "dialog": {
+        "top": 93.5,
+        "bottom": 506.5
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "\ud83c\udf66",
+          "bottom": 420.5
+        },
+        {
+          "name": "Cancel",
+          "bottom": 489.5
+        },
+        {
+          "name": "Save",
+          "bottom": 489.5
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "staff-add",
+      "overflow": false,
+      "dialog": {
+        "top": 28,
+        "bottom": 572
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "",
+          "bottom": 89
+        },
+        {
+          "name": "Cancel",
+          "bottom": 555
+        },
+        {
+          "name": "Create Staff Account",
+          "bottom": 555
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "name": "staff-reset",
+      "overflow": false,
+      "dialog": {
+        "top": 150.5,
+        "bottom": 449.5
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "",
+          "bottom": 211.5
+        },
+        {
+          "name": "Cancel",
+          "bottom": 432.5
+        },
+        {
+          "name": "Save New PIN",
+          "bottom": 432.5
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "Order Line",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "Dishes & Deals",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "Daily Sales",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "Profit & Loss",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "Staff",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "settings",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "login",
+      "overflow": false,
+      "dialog": null,
+      "dialogOverflow": false,
+      "buttons": [],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "variations",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 651
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "-",
+          "bottom": 633
+        },
+        {
+          "name": "+",
+          "bottom": 633
+        },
+        {
+          "name": "Update itemRs. 990",
+          "bottom": 633
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "receipt",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 651
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Copy Text (ESC/POS)",
+          "bottom": 582
+        },
+        {
+          "name": "Done",
+          "bottom": 638
+        },
+        {
+          "name": "Print Customer Slip",
+          "bottom": 638
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "keypad",
+      "overflow": false,
+      "dialog": {
+        "top": 98.5,
+        "bottom": 568.5
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Backspace",
+          "bottom": 467.5
+        },
+        {
+          "name": "Clear",
+          "bottom": 551.5
+        },
+        {
+          "name": "Use amount",
+          "bottom": 551.5
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "clear-cart",
+      "overflow": false,
+      "dialog": {
+        "top": 244.5,
+        "bottom": 422.5
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Keep order",
+          "bottom": 401.5
+        },
+        {
+          "name": "Clear all items",
+          "bottom": 401.5
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "deal",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 651
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Custom",
+          "bottom": 607
+        },
+        {
+          "name": "Cancel",
+          "bottom": 634
+        },
+        {
+          "name": "Save Deal",
+          "bottom": 634
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "dish",
+      "overflow": false,
+      "dialog": {
+        "top": 16,
+        "bottom": 651
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "Add variation group",
+          "bottom": 805
+        },
+        {
+          "name": "Cancel",
+          "bottom": 634
+        },
+        {
+          "name": "Save Dish",
+          "bottom": 634
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "category",
+      "overflow": false,
+      "dialog": {
+        "top": 127,
+        "bottom": 540
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "\ud83c\udf66",
+          "bottom": 454
+        },
+        {
+          "name": "Cancel",
+          "bottom": 523
+        },
+        {
+          "name": "Save",
+          "bottom": 523
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "staff-add",
+      "overflow": false,
+      "dialog": {
+        "top": 53.5,
+        "bottom": 613.5
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "",
+          "bottom": 114.5
+        },
+        {
+          "name": "Cancel",
+          "bottom": 596.5
+        },
+        {
+          "name": "Create Staff Account",
+          "bottom": 596.5
+        }
+      ],
+      "badInputs": []
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "name": "staff-reset",
+      "overflow": false,
+      "dialog": {
+        "top": 184,
+        "bottom": 483
+      },
+      "dialogOverflow": false,
+      "buttons": [
+        {
+          "name": "",
+          "bottom": 245
+        },
+        {
+          "name": "Cancel",
+          "bottom": 466
+        },
+        {
+          "name": "Save New PIN",
+          "bottom": 466
+        }
+      ],
+      "badInputs": []
+    }
+  ],
+  "supplemental": [
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "payment-Cash",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "payment-Card",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "payment-Scan",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "empty-cart",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "14-rejected-notices-scroll",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "expanded-sidebar",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "role-manager",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "role-cashier",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "settings-save-dock",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "login-pending-banner-no-overlap",
+      "pass": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "check": "checkout-lock",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "payment-Cash",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "payment-Card",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "payment-Scan",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "empty-cart",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "14-rejected-notices-scroll",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "expanded-sidebar",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "role-manager",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "role-cashier",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "settings-save-dock",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "login-pending-banner-no-overlap",
+      "pass": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "check": "checkout-lock",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "payment-Cash",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "payment-Card",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "payment-Scan",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "empty-cart",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "14-rejected-notices-scroll",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "expanded-sidebar",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "role-manager",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "role-cashier",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "settings-save-dock",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "login-pending-banner-no-overlap",
+      "pass": true
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "check": "checkout-lock",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "payment-Cash",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "payment-Card",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "payment-Scan",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "empty-cart",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "14-rejected-notices-scroll",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "expanded-sidebar",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "role-manager",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "role-cashier",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "settings-save-dock",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "login-pending-banner-no-overlap",
+      "pass": true
+    },
+    {
+      "width": 1093,
+      "height": 614,
+      "check": "checkout-lock",
+      "pass": true
+    }
+  ],
+  "post_concurrent_auth_login": [
+    {
+      "width": 1280,
+      "height": 720,
+      "light": false,
+      "violations": [],
+      "signInInside": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "light": true,
+      "violations": [],
+      "signInInside": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "light": false,
+      "violations": [],
+      "signInInside": true
+    },
+    {
+      "width": 1024,
+      "height": 576,
+      "light": true,
+      "violations": [],
+      "signInInside": true
+    }
+  ],
+  "final_validation": {
+    "typecheck": "passed",
+    "tests": 179,
+    "test_files": 26,
+    "production_build": "passed",
+    "electron_config": "passed before concurrent server edits",
+    "concurrency_note": "Concurrent edits to authentication/server files were preserved. The complete test suite and production build were rerun; the updated login received four additional browser accessibility/layout checks."
+  },
+  "session_only_commit_validation": {
+    "scope": "Staged UI/session snapshot, excluding concurrent authentication/server changes",
+    "method": "git checkout-index into an isolated temporary directory",
+    "tests": 152,
+    "test_files": 25,
+    "typecheck": "passed",
+    "production_build": "passed"
+  }
+}
