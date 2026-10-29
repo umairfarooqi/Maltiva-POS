@@ -33,6 +33,17 @@ export async function initDb() {
     )
   `).run();
 
+  // Persisted sessions make logout and account changes effective across restarts.
+  // Tokens issued before this table existed must be replaced by a fresh login.
+  db.exec(`CREATE TABLE IF NOT EXISTS auth_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    scope TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);`);
+
   // 2. Categories Table
   db.prepare(`
     CREATE TABLE IF NOT EXISTS categories (

@@ -9,14 +9,14 @@ import {
   KeyRound,
   Delete,
 } from 'lucide-react';
-import { User } from '../types/pos';
+import { User, LoginStaff } from '../types/pos';
 import { PosApi } from '../services/api';
 import { MaltivaLogo } from './MaltivaLogo';
 
 interface LoginScreenProps {
   notice?: React.ReactNode;
-  onLoginSuccess: (user: User) => void;
-  availableUsers: User[];
+  onLoginSuccess: (user: User, expiresAt?: number) => void;
+  availableUsers: LoginStaff[];
   isOnline: boolean;
 }
 
@@ -28,10 +28,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 }) => {
   const [authMethod, setAuthMethod] = useState<'pin' | 'password'>('pin');
 
-  const activeStaff = availableUsers.filter(u => u.active);
+  const activeStaff = availableUsers;
 
   // Active staff selection
-  const [selectedUser, setSelectedUser] = useState<User | null>(() => {
+  const [selectedUser, setSelectedUser] = useState<LoginStaff | null>(() => {
     return activeStaff.length > 0 ? activeStaff[0] : null;
   });
 
@@ -77,7 +77,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         setIsLoading(false);
         if (res.success && res.user) {
           setFailedAttempts(0);
-          onLoginSuccess(res.user);
+          onLoginSuccess(res.user, res.expiresAt);
         } else {
           setFailedAttempts(prev => prev + 1);
           setErrorMessage(res.error || 'Invalid credentials. Please try again.');
@@ -161,7 +161,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [authMethod, pin, selectedUser, activeStaff, submitAuthentication, isLoading]);
 
-  const handleSelectStaff = (u: User) => {
+  const handleSelectStaff = (u: LoginStaff) => {
     setSelectedUser(u);
     setUsername(u.username);
     setPin('');
@@ -283,13 +283,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-white truncate leading-tight">{u.name}</p>
-                      <span
-                        className={`text-[9px] font-bold uppercase tracking-wider ${
-                          u.role === 'admin' ? 'text-emerald-400' : 'text-teal-400'
-                        }`}
-                      >
-                        {u.role}
-                      </span>
+                      <span className="text-[11px] text-gray-400">@{u.username}</span>
                     </div>
                   </button>
                 );

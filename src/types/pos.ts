@@ -132,6 +132,9 @@ export interface OrderItem {
   bundledProducts?: BundledProduct[];
 }
 
+/** The only account fields exposed before authentication. */
+export type LoginStaff = Pick<User, 'id' | 'name' | 'username' | 'avatar'>;
+
 export interface User {
   id: string;
   name: string;

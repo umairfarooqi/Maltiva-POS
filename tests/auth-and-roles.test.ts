@@ -144,7 +144,7 @@ describe('authentication, admin provisioning and role guards', () => {
     }
 
     // Place an order with a forged cashierId/cashierName/cashierRole using the cashier token
-    const reviewed = await reviewSale(server.url, saleFixture('auth-cashier-sale'));
+    const reviewed = await reviewSale(server.url, saleFixture('auth-cashier-sale'), adminToken);
     const forgedSale = {
       ...reviewed,
       cashierId: 'forged-admin-id',
@@ -209,19 +209,20 @@ describe('authentication, admin provisioning and role guards', () => {
       body: JSON.stringify({ username: 'cashier1', pin: '5555' }),
     });
     expect(unlocked.status).toBe(200);
+    cashierToken = (await unlocked.json()).token;
   });
 
   it('verifies manager/admin PIN for overrides and rejects cashier PINs', async () => {
     const cashierApprove = await fetch(`${server.url}/api/auth/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cashierToken}` },
       body: JSON.stringify({ username: 'cashier1', pin: '5555' }),
     });
     expect(cashierApprove.status).toBe(403);
 
     const managerApprove = await fetch(`${server.url}/api/auth/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cashierToken}` },
       body: JSON.stringify({ username: 'manager1', pin: '2222' }),
     });
     expect(managerApprove.status).toBe(200);
