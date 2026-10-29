@@ -751,6 +751,7 @@ export default function App() {
         }}
         userRole={currentUser.role}
         userName={currentUser.name}
+        userAvatar={currentUser.avatar}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onLogout={handleLogout}

@@ -125,7 +125,12 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               src={product.image}
               alt={product.name}
               referrerPolicy="no-referrer"
-              className="w-12 h-12 rounded-md object-cover border border-pos-border"
+              onError={event => {
+                if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                  event.currentTarget.src = '/placeholder-dish.svg';
+                }
+              }}
+              className="w-12 h-12 aspect-square rounded-xl object-cover border border-pos-border shrink-0"
             />
             <div>
               <span className="text-[11px] font-semibold text-pos-accent uppercase tracking-wider">

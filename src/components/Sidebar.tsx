@@ -28,6 +28,7 @@ interface SidebarProps {
   onSelectTab: (tab: NavTab) => void;
   userRole: UserRole;
   userName: string;
+  userAvatar?: string;
   onLogout: () => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -37,7 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
   userRole,
-  userName: _userName,
+  userName,
+  userAvatar,
   onLogout,
   isMobileOpen = false,
   onCloseMobile,
@@ -66,19 +68,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : navItems
   ).filter(item => !('onlyAdmin' in item) || userRole === 'admin');
 
+  const userInitial = (userName || 'U').charAt(0).toUpperCase();
+
   return (
     <>
       <aside
         className="hidden lg:block shrink-0 h-full transition-[width] duration-200 ease-out"
-        style={{ width: isCollapsed ? 76 : 240 }}
+        style={{ width: isCollapsed ? 72 : 228 }}
       >
         <div
-          className={`h-full w-full bg-pos-chrome border-r border-pos-divider flex flex-col justify-between py-6 select-none ${
-            isExpandedDesktop ? 'px-4' : 'px-2.5'
+          className={`h-full w-full bg-pos-chrome border-r border-pos-divider flex flex-col justify-between py-4 select-none ${
+            isExpandedDesktop ? 'px-3' : 'px-2'
           }`}
         >
           <div>
-            <div className={`flex items-center mb-8 ${isExpandedDesktop ? 'justify-between pl-1' : 'flex-col gap-3'}`}>
+            <div className={`flex items-center mb-5 ${isExpandedDesktop ? 'justify-between pl-1.5' : 'flex-col gap-2.5'}`}>
               <MaltivaLogo
                 size="sm"
                 showSubtitle={false}
@@ -90,14 +94,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setIsCollapsed(prev => !prev)}
                 aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                className="p-1.5 rounded-lg text-pos-muted hover:text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                className="p-2 rounded-lg text-pos-muted hover:text-pos-secondary hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
               </button>
             </div>
 
             {/* Primary Navigation Items */}
-            <nav className="space-y-1.5">
+            <nav className="space-y-1">
               {visibleItems.map(item => {
                 const isActive = activeTab === item.id;
                 const Icon = item.icon;
@@ -107,13 +111,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
                     title={!isExpandedDesktop ? item.label : undefined}
-                    className={`w-full flex items-center rounded-md transition cursor-pointer ${
+                    className={`w-full flex items-center rounded-lg transition cursor-pointer active:scale-[0.98] ${
                       isExpandedDesktop
-                        ? 'gap-3.5 px-3.5 py-3 text-[15px]'
+                        ? 'gap-3 px-3 py-2.5 text-sm'
                         : 'justify-center p-3'
                     } ${
                       isActive
-                        ? 'bg-pos-selected text-pos-accent font-semibold'
+                        ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
                         : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
                     }`}
                   >
@@ -133,19 +137,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </nav>
           </div>
 
-          {/* Bottom Navigation items: Settings & Logout */}
-          <div className="space-y-1.5 pt-6 border-t border-pos-divider">
+          {/* Bottom Navigation items: User Profile, Settings & Logout */}
+          <div className="space-y-1.5 pt-4 border-t border-pos-divider">
+            {/* Active User Badge */}
+            <div
+              title={!isExpandedDesktop ? `${userName} (${userRole})` : undefined}
+              className={`flex items-center rounded-lg bg-pos-inset/70 border border-pos-border/60 mb-2 ${
+                isExpandedDesktop ? 'gap-2.5 px-2.5 py-2' : 'justify-center p-2'
+              }`}
+            >
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={userName}
+                  className="w-8 h-8 rounded-full object-cover border border-pos-border shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-pos-selected border border-pos-accent/30 text-pos-accent flex items-center justify-center text-xs font-bold shrink-0">
+                  {userInitial}
+                </div>
+              )}
+              {isExpandedDesktop && (
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="text-xs font-semibold text-pos-text truncate">{userName}</p>
+                  <p className="text-[10px] font-medium text-pos-accent uppercase tracking-wider mt-0.5">{userRole}</p>
+                </div>
+              )}
+            </div>
+
             {!isCashier && (
               <button
                 onClick={() => handleNavClick('settings')}
                 title={!isExpandedDesktop ? 'Settings' : undefined}
-                className={`w-full flex items-center rounded-md transition cursor-pointer ${
+                className={`w-full flex items-center rounded-lg transition cursor-pointer active:scale-[0.98] ${
                   isExpandedDesktop
-                    ? 'gap-3.5 px-3.5 py-2.5 text-[15px]'
+                    ? 'gap-3 px-3 py-2.5 text-sm'
                     : 'justify-center p-2.5'
                 } ${
                   activeTab === 'settings'
-                    ? 'bg-pos-selected text-pos-accent font-semibold'
+                    ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
                     : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
                 }`}
               >
@@ -165,9 +195,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={onLogout}
               title={!isExpandedDesktop ? 'Logout' : undefined}
-              className={`w-full flex items-center rounded-md text-[15px] font-medium text-pos-secondary hover:text-pos-danger-text hover:bg-pos-danger-bg transition cursor-pointer ${
+              className={`w-full flex items-center rounded-lg text-sm font-medium text-pos-secondary hover:text-pos-danger-text hover:bg-pos-danger-bg transition cursor-pointer active:scale-[0.98] ${
                 isExpandedDesktop
-                  ? 'gap-3.5 px-3.5 py-2.5'
+                  ? 'gap-3 px-3 py-2.5'
                   : 'justify-center p-2.5'
               }`}
             >
@@ -186,16 +216,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* MOBILE / TABLET DRAWER (< lg)                            */}
       {/* ======================================================== */}
       {isMobileOpen && (
-        <Dialog label="Navigation" onClose={() => onCloseMobile?.()} backdropClassName="!p-0 !justify-start" className="w-64 h-full bg-pos-chrome border-r border-pos-border flex flex-col justify-between py-6 px-4">
+        <Dialog label="Navigation" onClose={() => onCloseMobile?.()} backdropClassName="!p-0 !justify-start" className="w-64 h-full bg-pos-chrome border-r border-pos-border flex flex-col justify-between py-5 px-4">
             <div>
               {/* Brand Logo & Close */}
-              <div className="flex items-center justify-between mb-8 pl-1">
+              <div className="flex items-center justify-between mb-6 pl-1">
                 <MaltivaLogo size="sm" showSubtitle={false} collapsed={false} />
                 {onCloseMobile && (
                   <button
                     onClick={onCloseMobile}
                     aria-label="Close navigation"
-                    className="p-1.5 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised cursor-pointer"
+                    className="p-2 text-pos-muted hover:text-pos-secondary rounded-lg hover:bg-pos-raised cursor-pointer"
                   >
                     <X className="w-4 h-4" aria-hidden="true" />
                   </button>
@@ -203,7 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
 
               {/* Navigation Items */}
-              <nav className="space-y-1.5">
+              <nav className="space-y-1">
                 {visibleItems.map(item => {
                   const isActive = activeTab === item.id;
                   const Icon = item.icon;
@@ -212,9 +242,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       key={item.id}
                       onClick={() => handleNavClick(item.id)}
-                      className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-md text-[15px] font-medium transition cursor-pointer ${
+                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-medium transition cursor-pointer ${
                         isActive
-                          ? 'bg-pos-selected text-pos-accent font-semibold'
+                          ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
                           : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
                       }`}
                     >
@@ -231,13 +261,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Bottom Actions */}
-            <div className="space-y-1.5 pt-6 border-t border-pos-divider">
+            <div className="space-y-1.5 pt-4 border-t border-pos-divider">
+              <div className="flex items-center gap-2.5 px-3 py-2 mb-2 rounded-lg bg-pos-inset/70 border border-pos-border/60">
+                {userAvatar ? (
+                  <img
+                    src={userAvatar}
+                    alt={userName}
+                    className="w-8 h-8 rounded-full object-cover border border-pos-border shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-pos-selected border border-pos-accent/30 text-pos-accent flex items-center justify-center text-xs font-bold shrink-0">
+                    {userInitial}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="text-xs font-semibold text-pos-text truncate">{userName}</p>
+                  <p className="text-[10px] font-medium text-pos-accent uppercase tracking-wider mt-0.5">{userRole}</p>
+                </div>
+              </div>
+
               {!isCashier && (
                 <button
                   onClick={() => handleNavClick('settings')}
-                  className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-md text-[15px] font-medium transition cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${
                     activeTab === 'settings'
-                      ? 'bg-pos-selected text-pos-accent font-semibold'
+                      ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
                       : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
                   }`}
                 >
@@ -252,7 +300,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               <button
                 onClick={onLogout}
-                className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-md text-[15px] font-medium text-pos-secondary hover:text-pos-danger-text hover:bg-pos-danger-bg transition cursor-pointer"
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-pos-secondary hover:text-pos-danger-text hover:bg-pos-danger-bg transition cursor-pointer"
               >
                 <LogOut className="w-5 h-5 shrink-0 text-pos-muted" />
                 <span>Logout</span>
