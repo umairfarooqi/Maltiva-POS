@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ThermalReceiptModal } from '../src/components/ThermalReceiptModal';
 import { ProfitLossView } from '../src/components/ProfitLossView';
@@ -70,6 +70,21 @@ const order: Order = {
 };
 
 describe('print output', () => {
+  it('includes customer preparation notes and restores the page after native printing', () => {
+    const withNotes = { ...order, items: order.items.map(item => ({ ...item, notes: 'No onion' })) };
+    const view = render(<ThermalReceiptModal order={withNotes} settings={printerSettings} onClose={() => undefined} />);
+    expect(document.querySelector('#thermal-receipt-print-area')).toHaveTextContent('Note: No onion');
+    const originalStyles = document.head.querySelectorAll('style').length;
+    act(() => window.dispatchEvent(new Event('beforeprint')));
+    expect(document.head.querySelectorAll('style')).toHaveLength(originalStyles + 1);
+    expect(document.head.lastElementChild?.textContent).toContain('size: 58mm');
+    act(() => window.dispatchEvent(new Event('afterprint')));
+    expect(document.head.querySelectorAll('style')).toHaveLength(originalStyles);
+    act(() => window.dispatchEvent(new Event('beforeprint')));
+    view.unmount();
+    expect(document.head.querySelectorAll('style')).toHaveLength(originalStyles);
+  });
+
   it('renders the receipt in thermal-receipt-print-area', () => {
     render(<ThermalReceiptModal order={order} settings={printerSettings} onClose={() => undefined} />);
 

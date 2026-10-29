@@ -64,8 +64,10 @@ function contrast(a: string, b: string) {
 }
 describe('theme contrast', () => {
   it.each(['dark', 'light'])('keeps text, status labels and controls readable in %s', theme => {
-    const block = css.split(theme === 'dark' ? ':root {' : ':root[data-theme="light"], .theme-paper {')[1].split('}')[0];
-    const colors = Object.fromEntries([...block.matchAll(/--pos-([\w-]+): (#[\da-f]+);/g)].map(match => [match[1], match[2]]));
+    const selector = theme === 'dark' ? /:root\s*\{([^}]+)\}/ : /:root\[data-theme="light"\]\s*,\s*\.theme-paper\s*\{([^}]+)\}/;
+    const block = css.match(selector)?.[1];
+    expect(block, `${theme} theme variables`).toBeDefined();
+    const colors = Object.fromEntries([...block!.matchAll(/--pos-([\w-]+): (#[\da-f]+);/g)].map(match => [match[1], match[2]]));
     for (const text of ['text', 'secondary', 'muted', 'accent']) {
       for (const surface of ['surface', 'canvas', 'raised', 'inset']) expect(contrast(colors[text], colors[surface]), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);
     }
