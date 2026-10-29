@@ -98,9 +98,9 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden select-none bg-pos-canvas font-sans">
+    <div className="min-w-0 flex-1 flex flex-col overflow-hidden select-none bg-pos-canvas font-sans">
       {/* Top Sticky Header & Category Strip */}
-      <div className="shrink-0 bg-pos-chrome border-b border-pos-divider px-4 lg:px-6 pt-3.5 pb-3 space-y-3">
+      <div className="shrink-0 bg-pos-chrome border-b border-pos-divider px-3 pt-2 pb-2 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h1 className="text-lg font-bold text-pos-text tracking-tight">
@@ -120,14 +120,14 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Quick search dish..."
                 aria-label="Search menu items"
-                className="w-full h-9 pl-9 pr-8 rounded-lg bg-pos-inset border border-pos-border text-xs text-pos-text placeholder:text-pos-muted focus-visible:border-pos-accent transition"
+                className="w-full h-11 pl-9 pr-12 rounded-lg bg-pos-inset border border-pos-border text-xs text-pos-text placeholder:text-pos-muted focus-visible:border-pos-accent transition"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-pos-muted hover:text-pos-text rounded"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 min-w-11 min-h-11 flex items-center justify-center p-1 text-pos-muted hover:text-pos-text rounded"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -138,14 +138,14 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
               <button
                 onClick={() => scrollCategories('left')}
                 aria-label="Previous menu categories"
-                className="w-9 h-9 rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
+                className="w-11 h-11 rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => scrollCategories('right')}
                 aria-label="Next menu categories"
-                className="w-9 h-9 rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
+                className="w-11 h-11 rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -174,7 +174,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
                 aria-pressed={isSelected}
-                className={`h-10 px-3.5 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${
+                className={`h-11 px-3 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${
                   isSelected
                     ? 'border-pos-accent bg-pos-selected text-pos-accent shadow-xs'
                     : 'border-pos-border bg-pos-surface text-pos-secondary hover:border-pos-control hover:text-pos-text'
@@ -202,19 +202,20 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       </div>
 
       {/* Scrollable Product Grid */}
-      <div className="flex-1 overflow-y-auto p-4 lg:p-5 pb-24 xl:pb-6">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-24 lg:pb-3">
         {filteredProducts.length === 0 ? (
           <div className="py-16 text-center bg-pos-surface rounded-xl border border-dashed border-pos-border">
             <p className="text-sm font-semibold text-pos-secondary">No dishes available</p>
             <p className="text-xs text-pos-muted mt-1">Try another category or search term above.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3.5">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] gap-3">
             {filteredProducts.map(rawProduct => {
               const product = normalizeProduct(rawProduct);
               const qtyInCart = getProductCartQty(product.id);
               const cannotAdd = isLocked || !product.isAvailable || qtyInCart >= product.stockQuantity;
-              const addItem = () => {
+              const addItem = (event?: React.MouseEvent) => {
+                event?.stopPropagation();
                 if (!cannotAdd) {
                   if (product.variations?.length) onOpenVariationModal(product);
                   else onQuickAddToCart(product);
@@ -230,7 +231,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                   key={product.id}
                   onClick={addItem}
                   className={`group h-full bg-pos-surface rounded-xl p-3 border transition-all duration-150 flex flex-col justify-between relative overflow-hidden ${
-                    cannotAdd ? 'opacity-65 cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
+                    cannotAdd ? 'cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
                   } ${
                     qtyInCart > 0
                       ? 'border-pos-accent bg-pos-selected/25 ring-1 ring-pos-accent/40'
@@ -244,7 +245,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
 
                   <div>
                     {/* 1:1 Square Product Image + Info Row */}
-                    <div className="flex items-start gap-3 mb-3">
+                    <div className="flex items-start gap-2 mb-2">
                       <button
                         type="button"
                         disabled={cannotAdd}
@@ -253,7 +254,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                           e.stopPropagation();
                           addItem();
                         }}
-                        className="relative w-20 h-20 aspect-square shrink-0 rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 block disabled:opacity-60"
+                        className="relative w-12 h-12 aspect-square shrink-0 rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 block disabled:opacity-60"
                       >
                         <img
                           src={product.image}
@@ -284,7 +285,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                           )}
                         </div>
 
-                        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-pos-text">
+                        <h3 className="text-sm font-bold leading-snug text-pos-text">
                           <button
                             type="button"
                             disabled={cannotAdd}
@@ -292,12 +293,15 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                               e.stopPropagation();
                               addItem();
                             }}
-                            className="text-left w-full disabled:opacity-60 cursor-pointer"
+                            className="text-left w-full min-h-11 disabled:opacity-60 cursor-pointer"
                           >
-                            {product.name}
+                            <span className="line-clamp-2">{product.name}</span>
                           </button>
                         </h3>
 
+                        <span className="text-base font-black text-pos-text font-mono tracking-tight">
+                          {formatPKR(product.pricePaisa)}
+                        </span>
                         <div className="mt-1 flex flex-wrap items-center gap-1">
                           <ProductStockBadge product={product} />
                           {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && (
@@ -308,12 +312,8 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Bottom Price & Touch Action Bar */}
-                  <div className="mt-auto flex items-center justify-between pt-2.5 border-t border-pos-divider/80">
-                    <span className="text-base font-black text-pos-text font-mono tracking-tight">
-                      {formatPKR(product.pricePaisa)}
-                    </span>
-
+                  {/* Touch quantity controls */}
+                  <div className="mt-auto flex items-center justify-end pt-2 border-t border-pos-divider/80">
                     {qtyInCart === 0 ? (
                       <button
                         type="button"
@@ -323,7 +323,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                           e.stopPropagation();
                           addItem();
                         }}
-                        className="w-9 h-9 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                        className="w-11 h-11 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                       >
                         <Plus className="w-5 h-5" />
                       </button>
@@ -335,9 +335,9 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                         <button
                           disabled={isLocked || plainQty === 0}
                           title={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
-                          onClick={() => onQuickDecrementFromCart(product)}
+                          onClick={event => { event.stopPropagation(); onQuickDecrementFromCart(product); }}
                           aria-label={`Remove one ${product.name}`}
-                          className="w-7 h-7 rounded-md bg-pos-surface text-pos-text hover:bg-pos-raised flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                          className="w-11 h-11 rounded-md bg-pos-surface text-pos-text hover:bg-pos-raised flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                         >
                           <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                         </button>
@@ -348,7 +348,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                           disabled={cannotAdd}
                           onClick={addItem}
                           aria-label={`Add one ${product.name}`}
-                          className="w-7 h-7 rounded-md bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                          className="w-11 h-11 rounded-md bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                         >
                           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                         </button>
@@ -363,7 +363,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       </div>
 
       {totalCartQty > 0 && onOpenMobileCart && (
-        <div className="xl:hidden fixed bottom-4 right-4 z-40">
+        <div className="lg:hidden fixed bottom-4 right-4 z-40">
           <button
             onClick={onOpenMobileCart}
             aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}

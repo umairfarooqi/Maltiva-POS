@@ -724,8 +724,9 @@ export default function App() {
   if (!currentUser) {
     return (
       <>
-      <div className="fixed top-0 inset-x-0 z-50">{pendingBadge}</div>
+
       <LoginScreen
+        notice={pendingBadge}
         onLoginSuccess={handleLoginSuccess}
         availableUsers={allUsers}
         isOnline={isOnline}
@@ -764,6 +765,8 @@ export default function App() {
           cartItemCount={cart.reduce((sum, it) => sum + it.quantity, 0)}
         />
 
+        {(pendingOfflineCount > 0 || recoveryError || saleFeedback || orders.some(order => order.persistenceState === 'rejected')) && (
+          <section aria-label="Sale notifications" tabIndex={0} className="shrink-0 max-h-[20dvh] overflow-y-auto">
         {pendingBadge}
         {recoveryError && <div role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">{recoveryError}</div>}
         {saleFeedback && (
@@ -782,9 +785,11 @@ export default function App() {
             {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
           </div>
         ))}
+          </section>
+        )}
 
         {/* View Body */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="min-h-0 flex-1 flex overflow-hidden">
           {activeTab === 'order_line' && (
             <>
               <OrderLineView

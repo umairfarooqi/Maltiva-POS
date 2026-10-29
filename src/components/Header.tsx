@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenMobileCart}
             aria-label={`Open cart, ${cartItemCount} items`}
-            className="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pos-action text-white font-bold text-xs active:scale-95 transition"
+            className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pos-action text-white font-bold text-xs active:scale-95 transition"
             title="View Cart"
           >
             <ShoppingCart className="w-4 h-4" aria-hidden="true" />

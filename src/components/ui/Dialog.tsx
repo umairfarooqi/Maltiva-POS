@@ -28,7 +28,14 @@ export function Dialog({ children, label, onClose, busy = false, className = '',
     document.body.style.overflow = 'hidden';
     const focusable = () => Array.from(ref.current?.querySelectorAll<HTMLElement>(
       'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]'
-    ) || []).filter(element => !element.hidden && !element.closest('[hidden]'));
+    ) || []).filter(element => {
+      if (element.hidden || element.closest('[hidden], [inert]')) return false;
+      for (let parent: HTMLElement | null = element; parent && parent !== ref.current; parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+      }
+      return true;
+    });
     (focusable()[0] || ref.current)?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (dialogs.at(-1) !== ref.current) return;

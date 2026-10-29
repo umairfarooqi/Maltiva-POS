@@ -88,7 +88,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-pos-canvas select-none">
+    <div className="min-w-0 min-h-0 flex-1 flex flex-col bg-pos-canvas select-none">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
       {/* Top Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
         <div>
@@ -100,16 +101,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <h1 className="text-2xl font-black text-pos-text tracking-tight">Management Console</h1>
           <p className="text-xs text-pos-muted">Configure your store, hardware, and professional business rules.</p>
         </div>
-        <button
-          disabled={isSaving}
-          onClick={handleSave}
-          className="flex items-center gap-2 px-5 py-3 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
-        >
-          {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          <span>{isSaving ? 'Saving...' : saved ? 'Settings Applied!' : 'Apply All Changes'}</span>
-        </button>
+
       </header>
-      {saveError && <p role="alert" className="text-sm text-pos-danger-text">{saveError}</p>}
+
       <section aria-labelledby="appearance-title" className="bg-pos-surface p-5 rounded-lg border border-pos-border">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -143,8 +137,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="text-xs font-bold text-pos-secondary block mb-1.5">Store Name</label>
-              <input
+              <label htmlFor="settingsview-field-1" className="text-xs font-bold text-pos-secondary block mb-1.5">Store Name</label>
+              <input id="settingsview-field-1"
                 type="text"
                 value={formData.storeName}
                 onChange={e => setFormData({ ...formData, storeName: e.target.value })}
@@ -152,10 +146,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs font-bold text-pos-secondary block mb-1.5">Location / Address</label>
+              <label htmlFor="settingsview-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5">Location / Address</label>
               <div className="relative">
                 <MapPin className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <input id="settingsview-field-2"
                   type="text"
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
@@ -164,10 +158,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold text-pos-secondary block mb-1.5">WhatsApp Contact</label>
+              <label htmlFor="settingsview-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5">WhatsApp Contact</label>
               <div className="relative">
                 <Phone className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <input id="settingsview-field-3"
                   type="text"
                   value={formData.whatsApp}
                   onChange={e => setFormData({ ...formData, whatsApp: e.target.value })}
@@ -176,8 +170,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold text-pos-secondary block mb-1.5">Sales Tax %</label>
-              <input
+              <label htmlFor="settingsview-field-4" className="text-xs font-bold text-pos-secondary block mb-1.5">Sales Tax %</label>
+              <input id="settingsview-field-4"
                 type="number"
                 value={formData.taxBp / 100}
                 step="0.01" min="0"
@@ -219,7 +213,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => setFormData({ ...formData, paperWidth: '80mm' })}
+                aria-pressed={formData.paperWidth === '80mm'} onClick={() => setFormData({ ...formData, paperWidth: '80mm' })}
                 className={`py-2.5 px-4 rounded-md border text-xs font-bold transition-colors cursor-pointer ${
                   formData.paperWidth === '80mm'
                     ? 'border-pos-accent bg-pos-selected text-pos-accent'
@@ -229,7 +223,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 80mm Standard
               </button>
               <button
-                onClick={() => setFormData({ ...formData, paperWidth: '58mm' })}
+                aria-pressed={formData.paperWidth === '58mm'} onClick={() => setFormData({ ...formData, paperWidth: '58mm' })}
                 className={`py-2.5 px-4 rounded-md border text-xs font-bold transition-colors cursor-pointer ${
                   formData.paperWidth === '58mm'
                     ? 'border-pos-accent bg-pos-selected text-pos-accent'
@@ -333,10 +327,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-pos-secondary block mb-1.5">Default low-stock threshold</label>
+                <label htmlFor="settingsview-field-5" className="text-xs font-bold text-pos-secondary block mb-1.5">Default low-stock threshold</label>
                 <div className="relative">
                   <BellRing className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
+                  <input id="settingsview-field-5"
                     type="number"
                     min="0"
                     step="1"
@@ -386,8 +380,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </footer>
 
+      </div>
+      <div className="shrink-0 flex flex-wrap items-center justify-end gap-3 border-t border-pos-border bg-pos-chrome p-3">
+        {saveError && <p role="alert" className="flex-1 text-sm text-pos-danger-text">{saveError}</p>}
+        <button
+          disabled={isSaving}
+          onClick={handleSave}
+          className="flex items-center gap-2 px-5 py-3 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
+        >
+          {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+          <span>{isSaving ? 'Saving...' : saved ? 'Settings Applied!' : 'Apply All Changes'}</span>
+        </button>
+      </div>
       {isWipeSalesDialogOpen && (
-        <Dialog role="alertdialog" label="Clear cached sales?" onClose={() => setIsWipeSalesDialogOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 border border-pos-border text-center">            <div className="w-12 h-12 rounded-md bg-pos-danger-bg text-pos-danger-text flex items-center justify-center mx-auto mb-4">
+        <Dialog role="alertdialog" label="Clear cached sales?" onClose={() => setIsWipeSalesDialogOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 border border-pos-border text-center">
+            <div className="w-12 h-12 rounded-md bg-pos-danger-bg text-pos-danger-text flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <h2 id="wipe-sales-title" className="text-lg font-bold text-pos-text mb-2">

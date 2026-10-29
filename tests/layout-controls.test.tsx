@@ -28,6 +28,27 @@ const product: Product = {
 };
 
 describe('layout controls', () => {
+  it('shows managers only the navigation destinations they can use', () => {
+    render(<Sidebar activeTab="order_line" onSelectTab={vi.fn()} userRole="manager" userName="Manager" onLogout={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Dishes & Deals' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Daily Sales' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Profit & Loss' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Staff' })).not.toBeInTheDocument();
+  });
+
+  it('changes a selected product quantity once per tap without bubbling to the card', async () => {
+    const user = userEvent.setup(); const add = vi.fn(); const decrement = vi.fn();
+    render(<OrderLineView products={[product]} categories={[]} cart={[{
+      cartItemId: 'selected', product, quantity: 1, selectedVariations: [],
+      unitPricePaisa: 500, unitCostPaisa: 200, totalPricePaisa: 500, totalCostPaisa: 200,
+    }]} onQuickAddToCart={add} onQuickDecrementFromCart={decrement} onOpenVariationModal={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Add one Test Dish' }));
+    expect(add).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Remove one Test Dish' }));
+    expect(decrement).toHaveBeenCalledTimes(1);
+    expect(add).toHaveBeenCalledTimes(1);
+  });
+
   it('defaults payment to cash and submits the selected method', async () => {
     const user = userEvent.setup();
     const onPlaceOrder = vi.fn();
@@ -188,7 +209,7 @@ describe('layout controls', () => {
 
     const productGrid = screen.getByRole('heading', { name: 'Test Dish' }).closest('div.grid');
 
-    expect(productGrid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]');
+    expect(productGrid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))]');
   });
 
   it('removes decorative emoji from category labels', () => {

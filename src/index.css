@@ -329,3 +329,42 @@
 .receipt-content :where(div, span, p) {
   min-width: 0;
 }
+
+/* Direct touch scrolling remains available in each independently scrolling panel. */
+@media (any-pointer: coarse) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  .category-actions { display: flex; }
+}
+
+@media screen and (any-pointer: coarse) {
+  :where(button, input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  :where(label:has(input[type="checkbox"]), label:has(input[type="radio"])) { min-height: 44px; }
+}
+/* Native selects must be allowed to shrink around long option labels. */
+.pos-editor :where(input, select, textarea), .pos-editor .grid > div { min-width: 0; max-width: 100%; }
+
+@media screen and (min-width: 1024px) and (max-height: 720px) {
+  .customer-confirmation { min-height: 100%; padding-block: 16px; }
+  .customer-confirmation > svg { width: 32px; height: 32px; margin-bottom: 12px; }
+  .customer-confirmation > h1 { font-size: 36px; line-height: 40px; }
+  .customer-confirmation > p { margin-top: 12px; font-size: 16px; line-height: 24px; }
+  .customer-confirmation > p.text-7xl { font-size: 64px; line-height: 1; }
+  main:has(> .customer-confirmation) { padding: 16px; }
+}
+
+/* Authentication keeps its existing dark branding independently of the POS theme. */
+.login-screen {
+  --pos-text: #f3f6f8;
+  --pos-muted: #98a4b0;
+  --pos-focus: #52dec6;
+  color-scheme: dark;
+}
+
+.login-notice {
+  --pos-surface: #161b20;
+  --pos-border: #262e37;
+  --pos-success-text: #8ce0b1;
+}

@@ -7,13 +7,30 @@ import { INITIAL_PRODUCTS, INITIAL_USERS, INITIAL_CATEGORIES } from '../src/data
 
 afterEach(cleanup);
 const product = { ...INITIAL_PRODUCTS[0], name: 'Test product', stockQuantity: 2, minStockThreshold: 5 };
-function renderManagement() {
+function renderManagement(onSaveProduct = vi.fn()) {
   return render(<ManageDishesView products={[product]} categories={INITIAL_CATEGORIES} currentUser={INITIAL_USERS[0]}
-    onSaveProduct={vi.fn()} onDeleteProduct={vi.fn()} onSaveCategory={vi.fn()}
+    onSaveProduct={onSaveProduct} onDeleteProduct={vi.fn()} onSaveCategory={vi.fn()}
     onUpdateCategory={vi.fn()} onDeleteCategory={vi.fn()} onAdjustStock={vi.fn()} />);
 }
 
 describe('product management feedback and keyboard navigation', () => {
+  it('keeps the dish editor open while prices are cleared and rejects invalid precision on save', async () => {
+    const user = userEvent.setup(); const save = vi.fn();
+    renderManagement(save);
+    await user.click(screen.getByRole('button', { name: 'Add New Dish' }));
+    await user.type(screen.getByLabelText('Dish Name'), 'Price draft');
+    const price = screen.getByLabelText('Selling Price (PKR)');
+    await user.clear(price);
+    expect(screen.getByRole('dialog', { name: 'Dish editor' })).toBeVisible();
+    expect(screen.getByText('Enter valid prices')).toBeVisible();
+    await user.type(price, '123.456');
+    await user.click(screen.getByRole('button', { name: 'Save Dish' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('at most two decimal places');
+    expect(save).not.toHaveBeenCalled();
+    await user.clear(price); await user.type(price, '850');
+    expect(screen.queryByText('Enter valid prices')).not.toBeInTheDocument();
+  });
+
   it.each(['grid', 'list'])('supports keyboard actions and restores focus in %s view', async view => {
     const user = userEvent.setup();
     renderManagement();
