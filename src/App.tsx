@@ -271,7 +271,7 @@ export default function App() {
 
   const confirmLogout = () => {
     setIsLogoutConfirmOpen(false);
-    PosStorage.clearSession();
+    void PosApi.logout();
     setCurrentUser(null);
     setCart([]);
     checkoutAttempt.current = undefined;
@@ -709,11 +709,9 @@ export default function App() {
     setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
 
-  const handleAdminRegistered = (newAdmin: User) => {
-    const updated = [newAdmin, ...allUsers];
-    setAllUsers(updated);
-    PosStorage.setUsers(updated);
-    setCurrentUser(newAdmin);
+  const handleResetUserPin = async (userId: string, pin: string, password?: string) => {
+    const updated = await PosApi.resetUserPin(userId, pin, password);
+    setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
 
   const pendingBadge = (pendingOfflineCount > 0 || recoveryError) ? (
@@ -734,7 +732,6 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
         availableUsers={allUsers}
         isOnline={isOnline}
-        onAdminRegistered={handleAdminRegistered}
       />
       </>
     );
@@ -824,7 +821,7 @@ export default function App() {
             </>
           )}
 
-          {activeTab === 'manage_dishes' && currentUser.role === 'admin' && (
+          {activeTab === 'manage_dishes' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <ManageDishesView
               products={products}
               categories={categories}
@@ -839,7 +836,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'dashboard' && currentUser.role === 'admin' && (
+          {activeTab === 'dashboard' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <DashboardView
               orders={orders}
               products={products}
@@ -849,7 +846,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'profit_loss' && currentUser.role === 'admin' && (
+          {activeTab === 'profit_loss' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <ProfitLossView
               orders={orders}
               products={products}
@@ -864,10 +861,11 @@ export default function App() {
               currentUser={currentUser}
               onAddUser={handleAddUser}
               onToggleUserActive={handleToggleUserActive}
+              onResetUserPin={handleResetUserPin}
             />
           )}
 
-          {activeTab === 'settings' && currentUser.role === 'admin' && (
+          {activeTab === 'settings' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <SettingsView
               settings={printerSettings}
               onSaveSettings={handleSaveSettings}

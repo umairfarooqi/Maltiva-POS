@@ -69,7 +69,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
   let body: any;
   try {
     response = await fetch('/api/orders', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey! },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey!, ...authHeaders() },
       body: JSON.stringify(order), signal: controller.signal,
     });
     try { body = await response.json(); } catch (error) {
@@ -101,7 +101,7 @@ let replay: Promise<{ syncedCount: number; rejectedCount: number; pendingCount: 
 async function persistProduct(url: string, method: string, product: Product): Promise<Product> {
   let response: Response;
   try {
-    response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+    response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(product), signal: AbortSignal.timeout(5000) });
   } catch { throw new Error('Menu changes need the local server. Keep this form and retry when it is available.'); }
   const body = await response.json();
@@ -112,13 +112,13 @@ async function persistProduct(url: string, method: string, product: Product): Pr
 
 export const PosApi = {
   async saveMoneySettings(settings: PrinterSettings): Promise<void> {
-    const response = await fetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    const response = await fetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error('Tax settings could not be saved on the server. Retry when it is available.');
   },
   async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string }> {
     try {
-      const response = await fetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const response = await fetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
       const body = await response.json();
       if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.' };
@@ -144,8 +144,9 @@ export const PosApi = {
   }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const headers = authHeaders();
     try {
-      const res = await fetch('/api/data', { signal: controller.signal });
+      const res = await fetch('/api/data', { ...(Object.keys(headers).length ? { headers } : {}), signal: controller.signal });
 
       if (res.ok) {
         const data = await res.json();
@@ -248,7 +249,8 @@ export const PosApi = {
   },
 
   async deleteProduct(productId: string, _isOnline: boolean): Promise<boolean> {
-    const response = await fetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE' });
+    const headers = authHeaders();
+    const response = await fetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
     if (!response.ok) throw new Error('Product could not be deleted. Retry when the server is available.');
     optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().filter(p => p.id !== productId)));
     return true;
@@ -257,7 +259,7 @@ export const PosApi = {
   // Category CRUD
   async createCategory(name: string, icon: string, _isOnline: boolean): Promise<Category> {
     const category = { id: `cat-${crypto.randomUUID()}`, name: name.trim(), icon, itemCount: 0, order: 99 };
-    const response = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(category) });
+    const response = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
     if (!response.ok) throw new Error('Category could not be saved on the server. Retry when it is available.');
     const saved = { ...category, ...await response.json() };
     if (!saved.id) throw new Error('Server did not confirm the category.');
@@ -266,7 +268,7 @@ export const PosApi = {
   },
 
   async updateCategory(category: Category, _isOnline: boolean): Promise<Category> {
-    const response = await fetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(category) });
+    const response = await fetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
     if (!response.ok) throw new Error('Category could not be updated on the server. Retry when it is available.');
     const saved = { ...category, ...await response.json() };
     optionalCache(() => {
@@ -279,7 +281,8 @@ export const PosApi = {
   async deleteCategory(categoryId: string, _isOnline: boolean): Promise<boolean> {
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return false;
     {
-      const res = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
+      const headers = authHeaders();
+      const res = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
       if (!res.ok) {
         let message = 'Delete failed';
         try {
@@ -319,12 +322,12 @@ export const PosApi = {
     reason: string,
     type: 'restock' | 'adjustment' | 'waste',
     user: User,
-    isOnline: boolean
+    _isOnline: boolean
   ): Promise<{ product: Product; log: InventoryLog }> {
     const signature = JSON.stringify({ productId, changeAmount, reason, type, userId: user.id });
     const operationId = stockAdjustmentKeys.get(signature) || crypto.randomUUID();
     stockAdjustmentKeys.set(signature, operationId);
-    const response = await fetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const response = await fetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name }) });
     if (!response.ok) throw new Error('Stock adjustment could not be confirmed. Keep this form open and retry.');
     const result = await response.json();
@@ -338,29 +341,6 @@ export const PosApi = {
   },
 
   // AUTHENTICATION & LOGIN (server is the only source of truth; credentials never live in the browser)
-  async authStatus(): Promise<{ needsSetup: boolean } | null> {
-    try {
-      const res = await fetch('/api/auth/status', { signal: AbortSignal.timeout(3000) });
-      return res.ok ? await res.json() : null;
-    } catch { return null; }
-  },
-
-  async registerAdmin(input: { name: string; username: string; password: string; pin: string }):
-    Promise<{ success: boolean; user?: User; error?: string }> {
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
-      });
-      const data = await res.json();
-      if (res.ok && data.user) {
-        if (data.token) PosStorage.setToken(data.token);
-        PosStorage.setSession(data.user);
-        return { success: true, user: data.user };
-      }
-      return { success: false, error: data.error || 'Registration failed.' };
-    } catch { return { success: false, error: 'Cannot reach the POS server. Start it and retry.' }; }
-  },
-
   async login(
     username: string,
     passwordOrPin: string,
@@ -370,7 +350,7 @@ export const PosApi = {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim().toLowerCase(), password: passwordOrPin.trim() }),
+        body: JSON.stringify({ username: username.trim().toLowerCase(), password: passwordOrPin.trim(), pin: passwordOrPin.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.user) {
@@ -384,39 +364,25 @@ export const PosApi = {
     }
   },
 
-  async forgotPassword(
-    identifier: string,
-    _isOnline?: boolean
-  ): Promise<{ success: boolean; data?: any; error?: string }> {
+  async logout(): Promise<void> {
+    const headers = authHeaders();
+    PosStorage.clearSession();
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim().toLowerCase() }),
-      });
-      const data = await res.json();
-      return res.ok ? { success: true, data } : { success: false, error: data.error || 'User not found' };
-    } catch {
-      return { success: false, error: 'Cannot reach the POS server. Start it and retry.' };
-    }
+      await fetch('/api/auth/logout', { method: 'POST', headers });
+    } catch { /* clear local session regardless of network */ }
   },
 
-  async resetPassword(
-    username: string,
-    newPassword: string,
-    verificationCode: string,
-    _isOnline?: boolean
-  ): Promise<{ success: boolean; message?: string; error?: string }> {
+  async approveOverride(username: string, pin: string): Promise<{ approved: boolean; approvalToken?: string; approver?: User; error?: string }> {
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim().toLowerCase(), newPassword, verificationCode }),
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ username: username.trim().toLowerCase(), pin: pin.trim() }),
       });
       const data = await res.json();
-      return res.ok ? { success: true, message: data.message } : { success: false, error: data.error || 'Password reset failed' };
+      return res.ok ? { approved: true, approvalToken: data.approvalToken, approver: data.approver } : { approved: false, error: data.error || 'Manager approval failed.' };
     } catch {
-      return { success: false, error: 'Cannot reach the POS server. Start it and retry.' };
+      return { approved: false, error: 'Cannot reach the POS server.' };
     }
   },
 
@@ -445,5 +411,15 @@ export const PosApi = {
     if (!res.ok) throw new Error(body.error || 'Could not update the staff account.');
     return body;
   },
-};
 
+  async resetUserPin(id: string, pin: string, password?: string): Promise<User> {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}/reset-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ pin, ...(password ? { password } : {}) }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || 'Could not reset staff PIN.');
+    return body;
+  },
+};
