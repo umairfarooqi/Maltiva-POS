@@ -10,3 +10,9 @@ coverage/
 !.env.example
 
 .superpowers/phase1/
+*.db-shm
+*.db-wal
+*.bak
+*.bak-shm
+*.bak-wal
+*.before-money-v2.db
