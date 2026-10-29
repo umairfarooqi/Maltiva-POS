@@ -709,7 +709,7 @@ These decisions override anything earlier in this document that conflicts with t
 
 ### 16.6 Implementation order (one commit per phase, each with lifecycle tests)
 1. Sale persistence and recovery (fix the stock log query, transaction, pending outbox, merge bootstrap).
-2. Authoritative money, payments and permissions, delivered in scoped steps. **Implemented: 2A, prices and totals, integer paisa storage, and tax-exclusive profit** (section 16.8). **Next: 2B**, full payment rules, server-derived identity, hashed credentials, sessions and route guards; server-issued numbering also remains outstanding. Completing 2A does not complete phase 2.
+2. Authoritative money, payments and permissions, delivered in scoped steps. **Implemented: 2A, prices and totals, integer paisa storage, and tax-exclusive profit** (section 16.8). Subsequent work adds [API authentication and server-derived identity](plans/2026-10-30-api-authentication.md), [revocable sessions](plans/2026-10-30-session-lifecycle.md), and [server-issued numbering](plans/2026-10-30-server-order-numbering.md). Full payment rules, canonical account lockout and security audit events remain outstanding. These scoped changes do not complete phase 2.
 3. Shifts and cash reconciliation, Z-report.
 4. Kitchen to pickup flow, void and refund with manager approval.
 5. Printing queue and durable settings (phone, address, footer, tax).

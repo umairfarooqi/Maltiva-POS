@@ -90,6 +90,7 @@ export interface Order {
   cashTenderedPaisa?: number;
   changeDuePaisa?: number;
   orderNumber: string;
+  businessDate?: string | null;
   tokenNumber: number;
   customerName?: string;
   tableName?: string;

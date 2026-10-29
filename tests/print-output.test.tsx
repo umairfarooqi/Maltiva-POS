@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ThermalReceiptModal } from '../src/components/ThermalReceiptModal';
 import { ProfitLossView } from '../src/components/ProfitLossView';
 import { Order, PrinterSettings, Product } from '../src/types/pos';
+import { receiptText } from '../src/utils/receiptText';
 
 const printerSettings: PrinterSettings = {
   storeName: 'Maltiva Crust',
@@ -70,6 +71,18 @@ const order: Order = {
 };
 
 describe('print output', () => {
+  it.each(['pending', 'draft', 'rejected'] as const)('does not print a guessed pickup token from a %s recovery snapshot', persistenceState => {
+    const provisional = { ...order, persistenceState, tokenNumber: 31, synced: false };
+    render(<ThermalReceiptModal order={provisional} settings={printerSettings} onClose={() => undefined} />);
+    const printArea = document.querySelector('#thermal-receipt-print-area');
+    expect(printArea).toHaveTextContent('Awaiting save');
+    expect(printArea).not.toHaveTextContent('#31');
+    const text = receiptText(provisional, printerSettings, '58mm', 'both');
+    expect(text).toContain('TOKEN #: Awaiting save');
+    expect(text).toContain(`REFERENCE: ${order.orderNumber}`);
+    expect(text).not.toContain('TOKEN #: 31');
+  });
+
   it('includes customer preparation notes and restores the page after native printing', () => {
     const withNotes = { ...order, items: order.items.map(item => ({ ...item, notes: 'No onion' })) };
     const view = render(<ThermalReceiptModal order={withNotes} settings={printerSettings} onClose={() => undefined} />);

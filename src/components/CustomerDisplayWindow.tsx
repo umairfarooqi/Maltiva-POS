@@ -39,8 +39,8 @@ function validDisplayState(value: CustomerDisplayState): boolean {
 export const CustomerDisplayWindow: React.FC = () => {
   const [displayState, setDisplayState] = useState<CustomerDisplayState>({
     cart: [],
-    orderNumber: '#F0001',
-    tokenNumber: 1,
+    orderNumber: 'New order',
+    tokenNumber: 0,
     subtotalPaisa: 0,
     taxPaisa: 0,
     totalPaisa: 0,
@@ -192,7 +192,7 @@ export const CustomerDisplayWindow: React.FC = () => {
             ) : (
               <p className="mt-6 text-lg sm:text-xl text-pos-secondary">{draft ? 'This is a preview. Your order has not been placed yet.' : rejected ? 'Your order could not be confirmed. We’ll help you at the counter.' : 'Please wait while we confirm your order. Our cashier will help you.'}</p>
             )}
-            <p className="mt-8 text-base text-pos-muted">{lastOrder.orderNumber} · {formatPKR(lastOrder.totalPaisa)}</p>
+            <p className="mt-8 text-base text-pos-muted break-all">{lastOrder.orderNumber} · {formatPKR(lastOrder.totalPaisa)}</p>
           </section>
         ) : null}
       </main>

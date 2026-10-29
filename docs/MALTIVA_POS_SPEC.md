@@ -1,6 +1,6 @@
 # Maltiva Crust POS: Functional Spec, Data Model, APIs and Build Plan
 
-> Current implementation order and review decisions are maintained in [MALTIVA_POS_SPEC (1).md](<MALTIVA_POS_SPEC (1).md>), sections 16.6–16.8. This file retains the original baseline. Prices and totals, integer paisa storage, and tax-exclusive profit are implemented; see the [Phase 2A completion record](plans/2026-10-05-authoritative-money-and-profit.md). Security, full payments and server numbering remain outstanding.
+> Current implementation order and review decisions are maintained in [MALTIVA_POS_SPEC (1).md](<MALTIVA_POS_SPEC (1).md>), sections 16.6–16.8. This file retains the original baseline. Prices and totals, integer paisa storage, and tax-exclusive profit are implemented; see the [Phase 2A completion record](plans/2026-10-05-authoritative-money-and-profit.md). Subsequent work adds [API authentication](plans/2026-10-30-api-authentication.md), [revocable sessions](plans/2026-10-30-session-lifecycle.md), and [server-issued order/token numbers](plans/2026-10-30-server-order-numbering.md). Full payments and remaining security work are outstanding.
 
 Audience: the developer who will build or fix the system.
 Primary use: takeaway-first fast-food counter (token based), with optional dine-in and delivery.

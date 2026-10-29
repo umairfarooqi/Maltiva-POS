@@ -3,6 +3,7 @@ import { X, Printer, Copy, Check, Scissors } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 import { Order, PrinterSettings } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { assignedPickupToken } from '../utils/orderReference';
 import { receiptText } from '../utils/receiptText';
 import { prepareReceiptPrint, printReceipt } from '../utils/printReceipt';
 
@@ -45,6 +46,9 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   }, [paperWidth, order?.id]);
 
   if (!order) return null;
+  const assignedToken = assignedPickupToken(order);
+  const tokenLabel = assignedToken === null ? 'Awaiting save' : `#${assignedToken}`;
+  const referenceLabel = assignedToken === null ? 'Reference' : 'Order';
 
   const isPending = order.persistenceState === 'pending';
   const isDraft = order.persistenceState === 'draft';
@@ -88,7 +92,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                   Takeaway Thermal Printer
                 </h3>
                 <p className="text-[11px] text-pos-muted">
-                  Order {order.orderNumber} • Token #{order.tokenNumber}
+                  {referenceLabel} <span className="break-all">{order.orderNumber}</span> • Token {tokenLabel}
                 </p>
               </div>
             </div>
@@ -195,10 +199,10 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                   Takeaway Pickup Token
                 </span>
                 <span className="text-2xl font-black text-pos-text tracking-tight">
-                  #{order.tokenNumber || order.orderNumber.replace('#F', '')}
+                  {tokenLabel}
                 </span>
                 <p className="text-[10px] text-pos-muted font-mono mt-0.5">
-                  Order {order.orderNumber} • {formattedDate} {formattedTime}
+                  {referenceLabel} <span className="break-all">{order.orderNumber}</span> • {formattedDate} {formattedTime}
                 </p>
                 <p className="text-[10px] text-pos-muted">
                   Cashier: {order.cashierName}
@@ -302,10 +306,10 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 </p>
                 <div className="my-2 py-2 bg-pos-raised rounded-md border border-pos-control">
                   <span className="text-3xl font-black text-pos-text tracking-tight block">
-                    TOKEN #{order.tokenNumber || order.orderNumber.replace('#F', '')}
+                    TOKEN {tokenLabel}
                   </span>
                   <p className="text-[11px] font-bold text-pos-secondary font-mono mt-0.5">
-                    Order {order.orderNumber} • {formattedTime}
+                    {referenceLabel} <span className="break-all">{order.orderNumber}</span> • {formattedTime}
                   </p>
                   <p className="text-[10px] text-pos-muted">
                     Cashier: {order.cashierName}
