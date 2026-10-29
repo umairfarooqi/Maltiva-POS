@@ -4,6 +4,7 @@ import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
 import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pricing';
 import { integer } from './src/shared/money';
+import { allocateOrderNumbers } from './src/services/orderNumbering';
 import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
@@ -422,17 +423,18 @@ async function startServer() {
     if (input.moneySchemaVersion !== 2 || input.pricingFingerprint !== quote.pricingFingerprint) {
       problem('Prices need review. Review the current total and retry this sale.', 409);
     }
-    if (!input.id || !input.orderNumber) problem('Sale identity is required');
+    if (typeof input.id !== 'string' || !input.id.trim() || input.id.length > 200) problem('Sale identity is required');
     if (!['cash', 'card', 'scan', 'online'].includes(input.paymentMethod)) problem('Choose one supported payment method');
     const tenderedPaisa = input.paymentMethod === 'cash' ? integer(input.cashTenderedPaisa, 'Cash tender') : null;
     if (tenderedPaisa !== null && tenderedPaisa < quote.totalPaisa) problem('Cash tender must cover the server total');
     if (input.paymentMethod !== 'cash' && input.cashTenderedPaisa != null) problem('Only cash may carry tender');
     const createdAt = new Date().toISOString();
+    const numbers = allocateOrderNumbers(db, new Date(createdAt));
     // Identity always comes from the authenticated session, never request fields.
     const cashierId = caller.id;
     const cashierName = caller.name;
     const cashierRole = caller.role;
-    const order = { ...input, ...quote, cashierId, cashierName, cashierRole, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
+    const order = { ...input, ...quote, ...numbers, cashierId, cashierName, cashierRole, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
       changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa };
     insertMapped('orders', order);
     for (const item of quote.items) {
@@ -444,7 +446,7 @@ async function startServer() {
         .run(randomUUID(), item.productId, -item.quantity, input.id, cashierId, createdAt);
       db.prepare(`INSERT INTO inventory_logs (id,productId,productName,previousStock,changeAmount,newStock,type,reason,userId,userName,timestamp)
         VALUES (?,?,?,?,?,?,'sale',?,?,?,?)`).run(randomUUID(), item.productId, item.productName, prod.stockQuantity, -item.quantity,
-          prod.stockQuantity - item.quantity, `Order ${input.orderNumber}`, cashierId, cashierName, createdAt);
+          prod.stockQuantity - item.quantity, `Order ${order.orderNumber}`, cashierId, cashierName, createdAt);
     }
     insertMapped('payments', { id: randomUUID(), order_id: input.id, method: input.paymentMethod,
       amountPaisa: quote.totalPaisa, tenderedPaisa, created_at: createdAt });
@@ -455,7 +457,7 @@ async function startServer() {
     if (typeof key !== 'string' || !key.trim() || key.length > 200) { res.status(400).json({error: 'An idempotency key is required'}); return; }
     const caller = (req as any).caller;
     try {
-      const savedOrder = createOrder(req.body, key, caller);
+      const savedOrder = createOrder.immediate(req.body, key, caller);
       res.status(201).json({ success: true, order: caller?.role === 'cashier' ? stripOrderCostAndProfit(savedOrder) : savedOrder });
     }
     catch (error: any) {

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { migrateMoney } from './moneyMigration';
+import { initOrderNumbering } from './orderNumbering';
 
 const DB_DIR = process.env.MALTIVA_POS_DB_DIR || process.cwd();
 const DB_PATH = path.join(DB_DIR, 'maltiva_pos.db');
@@ -194,6 +195,7 @@ export async function initDb() {
   `).run();
 
   await migrateMoney(db);
+  initOrderNumbering(db);
   console.log('Database Vault Ready.');
 }
 

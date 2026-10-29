@@ -1,5 +1,6 @@
 import type { Order, PrinterSettings } from '../types/pos';
 import { formatPKR } from './formatCurrency';
+import { assignedPickupToken } from './orderReference';
 
 export function receiptText(order: Order, settings: PrinterSettings, paperWidth: '58mm' | '80mm', slip: 'both' | 'customer' | 'kitchen'): string {
   const columns = paperWidth === '58mm' ? 32 : 42;
@@ -31,7 +32,9 @@ export function receiptText(order: Order, settings: PrinterSettings, paperWidth:
   const date = new Date(order.createdAt);
   const dateText = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  const token = order.tokenNumber || order.orderNumber.replace('#F', '');
+  const assignedToken = assignedPickupToken(order);
+  const token = assignedToken ?? 'Awaiting save';
+  const referenceLabel = assignedToken === null ? 'REFERENCE' : 'ORDER';
   const status = order.persistenceState === 'pending' ? 'PENDING — awaiting server save'
     : order.persistenceState === 'draft' ? 'DRAFT — unpaid preview'
     : order.persistenceState === 'rejected' ? 'REJECTED — unpaid' : '';
@@ -51,7 +54,7 @@ export function receiptText(order: Order, settings: PrinterSettings, paperWidth:
     if (settings.whatsApp) center(`WhatsApp: ${settings.whatsApp}`);
     rule();
     add(`TOKEN #: ${token} [TAKEAWAY]`);
-    add(`ORDER: ${order.orderNumber}`);
+    add(`${referenceLabel}: ${order.orderNumber}`);
     add(`DATE: ${dateText} ${time}`);
     add(`CASHIER: ${order.cashierName}`);
     rule(); row('QTY ITEM', 'AMOUNT'); rule();
@@ -71,7 +74,7 @@ export function receiptText(order: Order, settings: PrinterSettings, paperWidth:
     if (status) add(status);
     center('*** KITCHEN SLIP - TAKEAWAY ***');
     center(`TOKEN #: ${token}`);
-    add(`ORDER: ${order.orderNumber} | TIME: ${time}`);
+    add(`${referenceLabel}: ${order.orderNumber} | TIME: ${time}`);
     add(`CASHIER: ${order.cashierName}`);
     rule(); add('QTY PREPARATION ITEM'); rule();
     order.items.forEach(item => { add(`[ ] ${item.quantity}x ${item.productName.toUpperCase()}`); details(item, true); });

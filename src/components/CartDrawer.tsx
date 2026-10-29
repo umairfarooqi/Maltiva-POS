@@ -74,7 +74,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-pos-text tracking-tight">
-                Order {orderNumber}
+                {orderNumber ? `Order ${orderNumber}` : 'New order'}
               </h2>
               <span className="text-[10px] font-black font-mono bg-pos-selected text-pos-accent border border-pos-accent/30 px-2 py-0.5 rounded-full">
                 {totalCount} {totalCount === 1 ? 'Item' : 'Items'}

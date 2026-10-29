@@ -40,7 +40,8 @@ beforeEach(async () => {
       const order = JSON.parse(init!.body as string); requests.push(order);
       if (outcome === 'pending') throw new TypeError('Server stopped');
       if (outcome === 'rejected') return json({ error: 'Please review this sale' }, 500);
-      const saved = { ...order, synced: true }; committed.push(saved);
+      const saved = { ...order, orderNumber: `#F20261030-${String(committed.length + 1).padStart(4, '0')}`,
+        tokenNumber: committed.length + 1, businessDate: '2026-10-30', synced: true }; committed.push(saved);
       return json({ order: saved }, 201);
     }
     throw new Error(`Unexpected URL ${url}`);
@@ -146,7 +147,11 @@ describe('phase 1 cashier decisions', () => {
     await checkout();
     await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'), { timeout: 5000 });
     expect(screen.getByText('Cart is empty')).toBeVisible();
-    expect(PosStorage.getOrders()[0]).toMatchObject({ persistenceState: 'saved' });
+    expect(PosStorage.getOrders()[0]).toMatchObject({ persistenceState: 'saved', orderNumber: '#F20261030-0001', tokenNumber: 1 });
+    expect(requests[0].orderNumber).toBe(`PENDING-${requests[0].id}`);
+    expect(requests[0].tokenNumber).toBe(0);
+    expect(screen.getByRole('dialog', { name: 'Receipt preview' })).toHaveTextContent('#F20261030-0001');
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('pos_customer_display_state')!).lastPlacedOrder).toMatchObject({ orderNumber: '#F20261030-0001', tokenNumber: 1 }));
     await waitFor(() => expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument();
   });

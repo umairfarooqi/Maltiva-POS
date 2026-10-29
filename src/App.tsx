@@ -85,9 +85,6 @@ export default function App() {
     const attempt = initialDraft.current?.attempt;
     return attempt?.persistenceState === 'rejected' ? { success: false, state: 'rejected', order: attempt, error: attempt.rejectionReason } : null;
   });
-  const [orderSequence, setOrderSequence] = useState<number>(() => {
-    return PosStorage.getOrders().length + 31;
-  });
   const [isProcessingOrder, setIsProcessingOrder] = useState<boolean>(checkoutRecoveryPending.current);
 
   // Modals & Drawers
@@ -198,7 +195,6 @@ export default function App() {
       PosStorage.clearDraft();
       setCart([]);
       setPaymentMethod('cash');
-      setOrderSequence(previous => previous + 1);
       setCustomerConfirmation(recovered);
       setSaleFeedback({ success: recovered.persistenceState === 'saved', state: recovered.persistenceState, order: recovered });
     } else if (recovered?.persistenceState === 'rejected') {
@@ -228,8 +224,8 @@ export default function App() {
     const displayPayload = {
       settings: printerSettings,
       cart: visibleCart,
-      orderNumber: `#F00${orderSequence}`,
-      tokenNumber: orderSequence % 100 || orderSequence,
+      orderNumber: 'New order',
+      tokenNumber: 0,
       subtotalPaisa,
       taxPaisa,
       totalPaisa,
@@ -248,7 +244,7 @@ export default function App() {
       localStorage.setItem('pos_customer_display_state', serializedPayload);
     } catch { /* Broadcast remains available when browser storage is blocked. */ }
     try { customerDisplayChannel.current?.postMessage(displayPayload); } catch { /* Storage is the fallback channel. */ }
-  }, [cart, orderSequence, customerConfirmation, printerSettings, currentUser?.id]);
+  }, [cart, customerConfirmation, printerSettings, currentUser?.id]);
 
   useEffect(() => { if (cart.length > 0) setCustomerConfirmation(null); }, [cart]);
 
@@ -528,19 +524,18 @@ export default function App() {
     const { totalCostPaisa, profitPaisa } = totals;
     const profitMarginPercent = totals.marginBp / 100;
 
-    const orderNum = `#F00${orderSequence}`;
-    const tokenNum = orderSequence % 100 || orderSequence;
+    const attemptId = checkoutAttempt.current?.id || crypto.randomUUID();
 
     let newOrder: Order = checkoutAttempt.current || {
       moneySchemaVersion: 2,
       netRevenuePaisa: totals.netRevenuePaisa,
       taxBp: printerSettings.taxBp, taxInclusive: printerSettings.taxInclusive,
-      id: crypto.randomUUID(),
+      id: attemptId,
       idempotencyKey: crypto.randomUUID(),
       cashTenderedPaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa : undefined,
       changeDuePaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa - totalPaisa : 0,
-      orderNumber: orderNum,
-      tokenNumber: tokenNum,
+      orderNumber: `PENDING-${attemptId}`,
+      tokenNumber: 0,
       customerName: 'Takeaway Customer',
       status: 'in_kitchen',
       orderType: 'take_away',
@@ -633,7 +628,6 @@ export default function App() {
       PosStorage.clearDraft();
       setCart([]);
       setPaymentMethod('cash');
-      setOrderSequence(prev => prev + 1);
       setIsMobileCartOpen(false);
       setReceiptModalOrder(result.order);
       setCustomerConfirmation(result.order);
@@ -686,8 +680,8 @@ export default function App() {
       moneySchemaVersion: 2, netRevenuePaisa: totals.netRevenuePaisa,
       id: sample ? 'test-slip' : 'preview-cart',
       persistenceState: 'draft',
-      orderNumber: sample ? 'TEST SLIP - NOT A SALE' : `#F00${orderSequence}`,
-      tokenNumber: orderSequence % 100 || orderSequence,
+      orderNumber: sample ? 'TEST SLIP - NOT A SALE' : 'DRAFT - NOT A SALE',
+      tokenNumber: 0,
       customerName: currentUser?.name || 'Walk-in Customer',
       status: 'in_kitchen',
       orderType: 'take_away',
@@ -912,8 +906,8 @@ export default function App() {
               <CartDrawer
                 error={cartError}
                 cart={cart}
-                orderNumber={`#F00${orderSequence}`}
-                tokenNumber={orderSequence % 100 || orderSequence}
+                orderNumber=""
+                tokenNumber={0}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onRemoveItem={handleRemoveCartItem}
                 onEditItem={item => { if (!orderInFlight.current) { setEditingCartItem(item); setVariationModalProduct(item.product); } }}
