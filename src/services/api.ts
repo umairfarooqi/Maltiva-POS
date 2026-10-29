@@ -102,7 +102,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
 
 let replay: Promise<{ syncedCount: number; rejectedCount: number; pendingCount: number; reachable: boolean }> | null = null;
 
-async function persistProduct(url: string, method: string, product: Product): Promise<Product> {
+async function persistProduct(url: string, method: string, product: Omit<Product, 'stockQuantity'>): Promise<Product> {
   let response: Response;
   try {
     response = await sessionFetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -275,7 +275,8 @@ export const PosApi = {
 
   async updateProduct(product: Product, _isOnline: boolean): Promise<Product> {
     const normalized = normalizeProduct(product);
-    const updated = await persistProduct(`/api/products/${normalized.id}`, 'PUT', normalized);
+    const { stockQuantity: _stock, ...catalog } = normalized;
+    const updated = await persistProduct(`/api/products/${normalized.id}`, 'PUT', catalog);
     optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === updated.id ? updated : p)));
     return updated;
   },
