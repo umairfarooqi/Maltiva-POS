@@ -37,56 +37,57 @@
 }
 
 :root {
-  --pos-canvas: #121416;
-  --pos-chrome: #181b1e;
-  --pos-surface: #1d2125;
-  --pos-raised: #2c3238;
-  --pos-inset: #171b1f;
-  --pos-text: #eef1f4;
-  --pos-secondary: #bdc5cd;
-  --pos-muted: #98a3ae;
-  --pos-border: #343c44;
-  --pos-control: #606c78;
-  --pos-divider: #2c333a;
+  --pos-canvas: #0b0e11;
+  --pos-chrome: #101418;
+  --pos-surface: #161b20;
+  --pos-raised: #20272f;
+  --pos-inset: #12161b;
+  --pos-text: #f3f6f8;
+  --pos-secondary: #c4ced8;
+  --pos-muted: #98a4b0;
+  --pos-border: #262e37;
+  --pos-control: #606d7a;
+  --pos-divider: #1f262e;
   --pos-action: #00836e;
   --pos-action-hover: #007462;
-  --pos-accent: #5dd6bf;
-  --pos-selected: #193b35;
-  --pos-strong: #343c44;
-  --pos-success-bg: #18382b;
+  --pos-accent: #52dec6;
+  --pos-selected: #13352f;
+  --pos-strong: #2c353f;
+  --pos-success-bg: #143327;
   --pos-success-text: #8ce0b1;
-  --pos-success-border: #366448;
-  --pos-warning-bg: #3b2d18;
-  --pos-warning-text: #f1ca80;
-  --pos-warning-border: #70532a;
-  --pos-danger-bg: #3d2229;
-  --pos-danger-text: #f3a6b7;
-  --pos-danger-border: #75414c;
+  --pos-success-border: #2f5b42;
+  --pos-warning-bg: #362814;
+  --pos-warning-text: #f3cb7e;
+  --pos-warning-border: #684c24;
+  --pos-danger-bg: #381e25;
+  --pos-danger-text: #f5a8b8;
+  --pos-danger-border: #6c3a45;
   --pos-danger-action: #be123c;
   --pos-danger-hover: #9f1239;
-  --pos-info-bg: #1d3045;
-  --pos-info-text: #9dc9f5;
-  --pos-info-border: #3e5d7c;
-  --pos-reserved-bg: #302641;
-  --pos-reserved-text: #cdb2ef;
-  --pos-reserved-border: #61477b;
+  --pos-info-bg: #182b3f;
+  --pos-info-text: #9ecbf7;
+  --pos-info-border: #365472;
+  --pos-reserved-bg: #2b213b;
+  --pos-reserved-text: #cfb4f0;
+  --pos-reserved-border: #583f72;
   --pos-focus: var(--pos-accent);
-  --pos-radius-control: 0.375rem;
-  --pos-radius-panel: 0.5rem;
+  --pos-radius-control: 0.5rem;
+  --pos-radius-panel: 0.625rem;
 }
 
-:root[data-theme="light"], .theme-paper {
-  --pos-canvas: #f4f6f5;
-  --pos-chrome: #f8fafa;
+:root[data-theme="light"],
+.theme-paper {
+  --pos-canvas: #f1f4f6;
+  --pos-chrome: #f8fafb;
   --pos-surface: #ffffff;
-  --pos-raised: #f1f5f9;
-  --pos-inset: #f8fafc;
-  --pos-text: #18211f;
-  --pos-secondary: #52605c;
-  --pos-muted: #5f6e82;
-  --pos-border: #d9e0df;
-  --pos-control: #7b8998;
-  --pos-divider: #e2e8f0;
+  --pos-raised: #eef2f6;
+  --pos-inset: #f4f7f9;
+  --pos-text: #111820;
+  --pos-secondary: #43515e;
+  --pos-muted: #586776;
+  --pos-border: #dce3e8;
+  --pos-control: #748291;
+  --pos-divider: #e5ebf0;
   --pos-action: #00836e;
   --pos-action-hover: #007462;
   --pos-accent: #007462;
@@ -113,6 +114,7 @@
 }
 
 @layer base {
+
   *,
   *::before,
   *::after {
@@ -131,7 +133,9 @@
     outline: 2px solid var(--pos-focus);
     outline-offset: 2px;
   }
-  input[type='checkbox'], input[type='radio'] {
+
+  input[type='checkbox'],
+  input[type='radio'] {
     accent-color: var(--pos-action);
   }
 }
@@ -141,13 +145,16 @@
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--pos-control);
   border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--pos-muted);
 }
@@ -161,6 +168,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -176,12 +184,14 @@
   body * {
     visibility: hidden !important;
   }
+
   #thermal-receipt-print-area,
   #thermal-receipt-print-area *,
   #profit-loss-print-area,
   #profit-loss-print-area * {
     visibility: visible !important;
   }
+
   #thermal-receipt-print-area {
     position: absolute !important;
     left: 0;
@@ -250,51 +260,61 @@
   }
 }
 
-::selection { background: var(--pos-selected); color: var(--pos-accent); }
-.theme-switch-thumb { background-color: #ffffff; }
+::selection {
+  background: var(--pos-selected);
+  color: var(--pos-accent);
+}
+
+.theme-switch-thumb {
+  background-color: #ffffff;
+}
 
 @media print {
-  :root, #thermal-receipt-print-area, #profit-loss-print-area {
-  --pos-canvas: #f4f6f5;
-  --pos-chrome: #f8fafa;
-  --pos-surface: #ffffff;
-  --pos-raised: #f1f5f9;
-  --pos-inset: #f8fafc;
-  --pos-text: #18211f;
-  --pos-secondary: #52605c;
-  --pos-muted: #5f6e82;
-  --pos-border: #d9e0df;
-  --pos-control: #7b8998;
-  --pos-divider: #e2e8f0;
-  --pos-action: #00836e;
-  --pos-action-hover: #007462;
-  --pos-accent: #007462;
-  --pos-selected: #e6f7f5;
-  --pos-strong: #1e293b;
-  --pos-success-bg: #ecfdf5;
-  --pos-success-text: #166534;
-  --pos-success-border: #86efac;
-  --pos-warning-bg: #fffbeb;
-  --pos-warning-text: #92400e;
-  --pos-warning-border: #fcd34d;
-  --pos-danger-bg: #fff1f2;
-  --pos-danger-text: #9f1239;
-  --pos-danger-border: #fda4af;
-  --pos-danger-action: #be123c;
-  --pos-danger-hover: #9f1239;
-  --pos-info-bg: #eff6ff;
-  --pos-info-text: #1d4ed8;
-  --pos-info-border: #93c5fd;
-  --pos-reserved-bg: #faf5ff;
-  --pos-reserved-text: #7e22ce;
-  --pos-reserved-border: #d8b4fe;
+
+  :root,
+  #thermal-receipt-print-area,
+  #profit-loss-print-area {
+    --pos-canvas: #f4f6f5;
+    --pos-chrome: #f8fafa;
+    --pos-surface: #ffffff;
+    --pos-raised: #f1f5f9;
+    --pos-inset: #f8fafc;
+    --pos-text: #18211f;
+    --pos-secondary: #52605c;
+    --pos-muted: #5f6e82;
+    --pos-border: #d9e0df;
+    --pos-control: #7b8998;
+    --pos-divider: #e2e8f0;
+    --pos-action: #00836e;
+    --pos-action-hover: #007462;
+    --pos-accent: #007462;
+    --pos-selected: #e6f7f5;
+    --pos-strong: #1e293b;
+    --pos-success-bg: #ecfdf5;
+    --pos-success-text: #166534;
+    --pos-success-border: #86efac;
+    --pos-warning-bg: #fffbeb;
+    --pos-warning-text: #92400e;
+    --pos-warning-border: #fcd34d;
+    --pos-danger-bg: #fff1f2;
+    --pos-danger-text: #9f1239;
+    --pos-danger-border: #fda4af;
+    --pos-danger-action: #be123c;
+    --pos-danger-hover: #9f1239;
+    --pos-info-bg: #eff6ff;
+    --pos-info-text: #1d4ed8;
+    --pos-info-border: #93c5fd;
+    --pos-reserved-bg: #faf5ff;
+    --pos-reserved-text: #7e22ce;
+    --pos-reserved-border: #d8b4fe;
     color-scheme: light !important;
   }
 }
 
 /* Portal ancestors must not clip the print-only receipt. */
 @media print {
-  body > div:has(#thermal-receipt-print-area),
+
+  body>div:has(#thermal-receipt-print-area),
   [data-pos-dialog]:has(#thermal-receipt-print-area),
   [data-pos-dialog] *:has(#thermal-receipt-print-area) {
     position: static !important;

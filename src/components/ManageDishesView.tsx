@@ -230,7 +230,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setFormCostPrice('320');
     setFormStock('25');
     setFormMinThreshold(String(defaultLowStockThreshold));
-    setFormImage('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80');
+    setFormImage('');
     setFormDescription('');
     setFormVariations([]);
     setFormGroups([]);
@@ -279,7 +279,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setDealCostPrice('850');
     setDealStock('35');
     setDealMinThreshold(String(defaultLowStockThreshold));
-    setDealImage('https://images.unsplash.com/photo-1544025162-d76694265947?w=300&auto=format&fit=crop&q=80');
+    setDealImage('');
     setDealDescription('');
     setDealBundledItems([]);
     setSelectedProductToAdd('');
@@ -341,7 +341,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     const finalImage =
       formImage.trim() ||
       editingProduct?.image ||
-      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop&q=80';
+      '';
 
     if (submitting.current) return;
     submitting.current = true; setIsSaving(true);
@@ -383,7 +383,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     const finalImage =
       dealImage.trim() ||
       editingDeal?.image ||
-      'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&auto=format&fit=crop&q=80';
+      '';
 
     if (submitting.current) return;
     submitting.current = true; setIsSaving(true);
@@ -660,12 +660,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
         <div className="flex-1 overflow-y-auto p-1 pb-3 scrollbar-none">
           {categoryProducts.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-pos-surface rounded-lg border border-dashed border-pos-control">
+            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-pos-surface rounded-xl border border-dashed border-pos-border">
               <Package className="w-12 h-12 text-pos-border mb-3" />
               <p className="text-sm font-semibold text-pos-secondary">No dishes found in this category</p>
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-3.5">
               {categoryProducts.map(rawProduct => {
                 const product = normalizeProduct(rawProduct);
                 const safePrice = Number(product.pricePaisa) || 0;
@@ -676,67 +676,73 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 return (
                   <div
                     key={product.id}
-                    className="bg-pos-surface rounded-md p-2 border border-pos-border hover:border-pos-control transition-colors group relative cursor-pointer flex flex-col"
+                    className="bg-pos-surface rounded-xl p-3 border border-pos-border hover:border-pos-control transition-colors group relative cursor-pointer flex flex-col justify-between"
                   >
-                    <div className="relative mb-2 flex items-center justify-center">
-                      <button type="button" aria-label={`Edit product image for ${product.name}`} onClick={() => openEditDishModal(product)} className="w-12 h-12 rounded-full overflow-hidden bg-pos-inset ring-1 ring-pos-divider">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          onError={event => {
-                            if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
-                              event.currentTarget.src = '/placeholder-dish.svg';
-                            }
-                          }}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                      </button>
-                      {product.isDeal && (
-                        <span className="absolute top-0 left-0 z-10 rounded-full border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[8px] font-black uppercase text-pos-warning-text">
-                          Deal
-                        </span>
-                      )}
-                      <div className="absolute top-0 right-0 z-20">
+                    <div>
+                      <div className="flex items-start justify-between gap-2.5 mb-2.5">
                         <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            toggleProductMenu(e, product.id);
-                          }}
-                          aria-label={`Actions for ${product.name}`}
-                          aria-haspopup="menu"
-                          aria-expanded={openMenuProductId === product.id}
-                          className="p-1.5 rounded-full bg-pos-surface text-pos-muted hover:text-pos-text transition cursor-pointer z-10"
+                          type="button"
+                          aria-label={`Edit product image for ${product.name}`}
+                          onClick={() => openEditDishModal(product)}
+                          className="w-14 h-14 aspect-square rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 flex items-center justify-center shrink-0"
                         >
-                          <MoreVertical className="w-4 h-4" />
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            onError={event => {
+                              if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                                event.currentTarget.src = '/placeholder-dish.svg';
+                              }
+                            }}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                          />
                         </button>
 
+                        <div className="flex items-center gap-1">
+                          {product.isDeal && (
+                            <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text">
+                              Deal
+                            </span>
+                          )}
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              toggleProductMenu(e, product.id);
+                            }}
+                            aria-label={`Actions for ${product.name}`}
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuProductId === product.id}
+                            className="p-1.5 rounded-lg bg-pos-inset text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
 
+                      <div className="mb-3 space-y-1">
+                        {!product.isDeal && (
+                          <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
+                            {product.categoryName}
+                          </span>
+                        )}
+                        <h3 className="min-h-8 line-clamp-2 text-xs font-bold leading-snug text-pos-text">
+                          <button type="button" className="text-left w-full" onClick={() => openEditDishModal(product)}>{product.name}</button>
+                        </h3>
+                        <ProductStockBadge product={product} />
                       </div>
                     </div>
 
-                    <div className="mb-2 space-y-1">
-                      {!product.isDeal && (
-                        <span className="mb-1 inline-flex max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-pos-selected px-1.5 py-0.5 text-[8px] font-bold uppercase text-pos-accent ring-1 ring-pos-success-border">
-                          {product.categoryName}
-                        </span>
-                      )}
-                      <h3 className="min-h-7 line-clamp-2 text-[11px] font-semibold leading-[14px] text-pos-text">
-                        <button type="button" className="text-left" onClick={() => openEditDishModal(product)}>{product.name}</button>
-                      </h3>
-                      <ProductStockBadge product={product} />
-                    </div>
-
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-pos-divider">
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider">
                       <div className="flex flex-col">
-                        <span className="text-[10px] text-pos-secondary">Selling Price</span>
-                        <span className="text-xs font-bold text-pos-text">
+                        <span className="text-[10px] text-pos-muted">Price</span>
+                        <span className="text-xs font-bold font-mono text-pos-text">
                           {formatPKR(safePrice)}
                         </span>
                       </div>
                       <div className="flex flex-col text-right">
-                        <span className="text-[10px] text-pos-secondary">Margin</span>
+                        <span className="text-[10px] text-pos-muted">Margin</span>
                         <span
-                          className={`text-xs font-bold ${
+                          className={`text-xs font-bold font-mono ${
                             margin > 40 ? 'text-pos-success-text' : 'text-pos-warning-text'
                           }`}
                         >
@@ -749,17 +755,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               })}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {categoryProducts.map(rawProduct => {
                 const product = normalizeProduct(rawProduct);
                 const safePrice = Number(product.pricePaisa) || 0;
                 return (
                   <div
                     key={product.id}
-                    className="bg-pos-surface p-3 sm:p-4 rounded-lg border border-pos-border flex flex-wrap items-center justify-between gap-3 group hover:border-pos-control transition cursor-pointer"
+                    className="bg-pos-surface p-3 sm:p-3.5 rounded-xl border border-pos-border flex flex-wrap items-center justify-between gap-3 group hover:border-pos-control transition cursor-pointer"
                   >
                     <div className="flex flex-1 basis-full min-w-0 items-center gap-3 sm:basis-0">
-                      <div className="shrink-0 w-12 h-12 rounded-md overflow-hidden bg-pos-inset">
+                      <div className="shrink-0 w-12 h-12 aspect-square rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 flex items-center justify-center">
                         <img
                           src={product.image}
                           alt={product.name}
@@ -776,19 +782,19 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                           <h3 className="break-words [overflow-wrap:anywhere] text-sm font-bold text-pos-text"><button type="button" className="text-left" onClick={() => openEditDishModal(product)}>{product.name}</button></h3>
                           {product.isDeal && <span className="rounded border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[10px] font-bold uppercase text-pos-warning-text">Deal</span>}
                         </div>
-                        <span className="text-xs text-pos-secondary">{product.categoryName}</span>
+                        <span className="text-xs text-pos-muted">{product.categoryName}</span>
                         <div><ProductStockBadge product={product} /></div>
                       </div>
                     </div>
                     <div className="flex w-full shrink-0 items-center justify-end gap-4 border-t border-pos-divider pt-2 sm:w-auto sm:border-0 sm:pt-0 sm:gap-6">
                       <div className="text-right">
                         <span className="block text-[10px] text-pos-muted">Margin</span>
-                        <span className="text-xs font-semibold text-pos-secondary">{safePrice > 0 ? (((safePrice - (Number(product.costPricePaisa) || 0)) / safePrice) * 100).toFixed(0) : 0}%</span>
+                        <span className="text-xs font-semibold font-mono text-pos-secondary">{safePrice > 0 ? (((safePrice - (Number(product.costPricePaisa) || 0)) / safePrice) * 100).toFixed(0) : 0}%</span>
                       </div>
-                      <span className="text-sm font-bold text-pos-text">
+                      <span className="text-sm font-bold font-mono text-pos-text">
                         {formatPKR(safePrice)}
                       </span>
-                      <button onClick={e => toggleProductMenu(e, product.id)} aria-label={`Actions for ${product.name}`} aria-haspopup="menu" aria-expanded={openMenuProductId === product.id} className="p-2 text-pos-muted hover:text-pos-text transition">
+                      <button onClick={e => toggleProductMenu(e, product.id)} aria-label={`Actions for ${product.name}`} aria-haspopup="menu" aria-expanded={openMenuProductId === product.id} className="p-2 rounded-lg text-pos-muted hover:text-pos-text hover:bg-pos-raised transition">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Printer, Power, X, Banknote, CreditCard, ScanLine } from 'lucide-react';
+import { Trash2, Printer, Power, X, Banknote, CreditCard, ScanLine, ShoppingBag } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 import { CartItem, PaymentMethod } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
@@ -66,159 +66,220 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const drawerContent = (
     <div className="w-full xl:w-96 h-full bg-pos-surface flex flex-col justify-between select-none border-l border-pos-border font-sans">
-      <div className="flex-1 overflow-y-auto p-5 pb-4">
-        {/* HEADER */}
-        <div className="flex items-center justify-between mb-6">
+      {/* STICKY HEADER */}
+      <div className="shrink-0 px-5 py-3.5 bg-pos-chrome border-b border-pos-divider flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <div>
-            <h2 className="text-lg font-bold text-pos-text tracking-tight">
-              Order {orderNumber}
-            </h2>
-            <p className="text-[11px] text-pos-muted font-medium uppercase tracking-wider">
-              Current Transaction
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-pos-text tracking-tight">
+                Order {orderNumber}
+              </h2>
+              <span className="text-[10px] font-black font-mono bg-pos-selected text-pos-accent border border-pos-accent/30 px-2 py-0.5 rounded-full">
+                {totalCount} {totalCount === 1 ? 'Item' : 'Items'}
+              </span>
+            </div>
+            <p className="text-[11px] text-pos-muted font-medium">
+              Takeaway Ticket
             </p>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setConfirmClear(true)}
-              disabled={cart.length === 0 || isProcessing}
-              className="p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-md hover:bg-pos-danger-bg cursor-pointer"
-              title="Clear Order"
-              aria-label="Clear order"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-            {isMobileOpen && onCloseMobile && (
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={onCloseMobile}
-                className="p-2 text-pos-muted hover:text-pos-text transition rounded-md hover:bg-pos-raised cursor-pointer"
-                title="Close order drawer"
-                aria-label="Close order drawer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="border-b border-pos-divider mb-6" />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setConfirmClear(true)}
+            disabled={cart.length === 0 || isProcessing}
+            className="p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-lg hover:bg-pos-danger-bg cursor-pointer active:scale-95"
+            title="Clear Order"
+            aria-label="Clear order"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          {isMobileOpen && onCloseMobile && (
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={onCloseMobile}
+              className="p-2 text-pos-muted hover:text-pos-text transition rounded-lg hover:bg-pos-raised cursor-pointer"
+              title="Close order drawer"
+              aria-label="Close order drawer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      </div>
 
-        {error && isMobileOpen && <p role="alert" className="text-sm text-pos-danger-text mb-4">{error}</p>}
-        {/* ORDERED ITEMS */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-pos-muted uppercase tracking-wider">
-              Ordered Items
-            </h3>
-            <span className="text-[10px] font-black bg-pos-raised text-pos-secondary px-2 py-0.5 rounded">
-              {totalCount} Items
-            </span>
-          </div>
+      {/* SCROLLABLE RECEIPT ITEMS */}
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        {error && isMobileOpen && <p role="alert" className="text-sm text-pos-danger-text mb-3">{error}</p>}
 
-          {cart.length === 0 ? (
-            <div className="py-10 text-center bg-pos-inset rounded-lg border border-dashed border-pos-control">
-              <p className="text-xs font-medium text-pos-muted">Cart is empty</p>
+        {cart.length === 0 ? (
+          <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center px-4 py-8">
+            <div className="w-11 h-11 rounded-full bg-pos-inset border border-pos-border flex items-center justify-center text-pos-muted mb-2.5">
+              <ShoppingBag className="w-5 h-5" />
             </div>
-          ) : (
-            <div className="space-y-4">
-              {cart.map(item => (
-                <div
-                  key={item.cartItemId}
-                  className="flex items-start justify-between gap-3 group"
-                >
-                  <div className="flex-1 pr-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xs font-bold text-pos-muted">{item.quantity}x</span>
-                      <span className="text-sm font-semibold text-pos-secondary break-words leading-tight">
+            <p className="text-xs font-semibold text-pos-secondary">Cart is empty</p>
+            <p className="text-[11px] text-pos-muted mt-0.5">Tap any dish on the menu to add it here</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-pos-divider">
+            {cart.map(item => (
+              <div
+                key={item.cartItemId}
+                className="py-3 first:pt-1 last:pb-1 space-y-2 group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xs font-extrabold font-mono text-pos-accent">{item.quantity}x</span>
+                      <span className="text-sm font-bold text-pos-text break-words leading-snug">
                         {item.product.name}
                       </span>
                     </div>
                     {item.product.isDeal && (
-                      <span className="text-[10px] text-pos-warning-text font-medium">Combo Deal</span>
+                      <span className="inline-block mt-0.5 text-[10px] text-pos-warning-text font-semibold uppercase tracking-wide">Combo Deal</span>
                     )}
-                    {item.selectedVariations.length > 0 && <p className="text-xs text-pos-muted mt-1">{item.selectedVariations.map(v => v.optionName).join(', ')}</p>}
-                    {item.notes && <p className="text-xs text-pos-secondary mt-1 break-words">Note: {item.notes}</p>}
-                    <div className="flex flex-wrap items-center gap-1 mt-2">
-                      <button type="button" disabled={isProcessing} aria-label={`Decrease quantity of ${item.product.name}`} onClick={() => onUpdateQuantity(item.cartItemId, -1)} className="w-9 h-9 rounded-md border border-pos-control disabled:opacity-40">-</button>
-                      <span className="px-2 text-sm" aria-label="Quantity">{item.quantity}</span>
-                      <button type="button" disabled={isProcessing} aria-label={`Increase quantity of ${item.product.name}`} onClick={() => onUpdateQuantity(item.cartItemId, 1)} className="w-9 h-9 rounded-md border border-pos-control disabled:opacity-40">+</button>
-                      {onEditItem && <button type="button" disabled={isProcessing} aria-label={`Edit ${item.product.name}`} onClick={() => onEditItem(item)} className="p-2 text-xs text-pos-accent disabled:opacity-40">Edit</button>}
-                      <button type="button" disabled={isProcessing} aria-label={`Remove ${item.product.name}`} onClick={() => onRemoveItem(item.cartItemId)} className="p-2 text-xs text-pos-danger-text disabled:opacity-40">Remove</button>
-                    </div>
+                    {item.selectedVariations.length > 0 && (
+                      <p className="text-xs text-pos-muted mt-0.5 leading-snug">
+                        {item.selectedVariations.map(v => v.optionName).join(', ')}
+                      </p>
+                    )}
+                    {item.notes && (
+                      <p className="text-xs text-pos-secondary mt-0.5 italic break-words">
+                        Note: {item.notes}
+                      </p>
+                    )}
                   </div>
-                  <span className="text-sm font-bold text-pos-text shrink-0">
+                  <span className="text-sm font-bold font-mono text-pos-text shrink-0">
                     {formatPKR(item.totalPricePaisa)}
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-        {isProcessing && <p role="status" className="text-sm text-pos-warning-text mt-4">Checkout is locked while the sale is being confirmed. Wait for the result before changing this order.</p>}
+                {/* Compact Touch Row for Item Actions */}
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                  <div className="inline-flex items-center gap-1 bg-pos-inset rounded-lg p-0.5 border border-pos-border">
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      aria-label={`Decrease quantity of ${item.product.name}`}
+                      onClick={() => onUpdateQuantity(item.cartItemId, -1)}
+                      className="w-8 h-8 rounded-md bg-pos-surface hover:bg-pos-raised text-pos-text font-bold text-sm flex items-center justify-center transition disabled:opacity-40 cursor-pointer active:scale-95"
+                    >
+                      -
+                    </button>
+                    <span className="px-2 text-xs font-bold font-mono text-pos-text min-w-[24px] text-center" aria-label="Quantity">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      aria-label={`Increase quantity of ${item.product.name}`}
+                      onClick={() => onUpdateQuantity(item.cartItemId, 1)}
+                      className="w-8 h-8 rounded-md bg-pos-surface hover:bg-pos-raised text-pos-accent font-bold text-sm flex items-center justify-center transition disabled:opacity-40 cursor-pointer active:scale-95"
+                    >
+                      +
+                    </button>
+                  </div>
 
-        {/* PAYMENT SUMMARY */}
-        <div className="mt-6 p-4 rounded-lg bg-pos-inset border border-pos-border space-y-3">
-          <h3 className="text-xs font-bold text-pos-muted uppercase tracking-wider mb-3">
-            Payment Summary
-          </h3>
+                  <div className="flex items-center gap-1">
+                    {onEditItem && (
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        aria-label={`Edit ${item.product.name}`}
+                        onClick={() => onEditItem(item)}
+                        className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-pos-accent hover:bg-pos-selected transition disabled:opacity-40 cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      aria-label={`Remove ${item.product.name}`}
+                      onClick={() => onRemoveItem(item.cartItemId)}
+                      className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-pos-danger-text hover:bg-pos-danger-bg transition disabled:opacity-40 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
+        {isProcessing && (
+          <p role="status" className="text-xs font-medium text-pos-warning-text mt-3 p-2.5 rounded-lg bg-pos-warning-bg border border-pos-warning-border">
+            Checkout is locked while the sale is being confirmed. Wait for the result before changing this order.
+          </p>
+        )}
+      </div>
+
+      {/* UNIFIED BOTTOM CHECKOUT DOCK */}
+      <div className="shrink-0 p-4 bg-pos-chrome border-t border-pos-border space-y-3">
+        {/* Payment Summary */}
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-pos-muted">Subtotal</span>
-            <span className="font-semibold text-pos-secondary">{formatPKR(subtotalPaisa)}</span>
+            <span className="font-semibold font-mono text-pos-secondary">{formatPKR(subtotalPaisa)}</span>
           </div>
 
           {taxBp > 0 && (
             <div className="flex items-center justify-between text-xs">
               <span className="text-pos-muted">Tax {taxInclusive ? 'included' : ''} ({taxBp / 100}%)</span>
-              <span className="font-semibold text-pos-secondary">{formatPKR(taxPaisa)}</span>
+              <span className="font-semibold font-mono text-pos-secondary">{formatPKR(taxPaisa)}</span>
             </div>
           )}
 
-          <div className="pt-3 border-t border-pos-border flex items-center justify-between">
+          <div className="pt-2 border-t border-pos-divider flex items-baseline justify-between">
             <span className="text-sm font-bold text-pos-text">Total Payable</span>
-            <span className="text-xl font-black text-pos-accent">{formatPKR(totalPayable)}</span>
+            <span className="text-xl font-black font-mono text-pos-accent tracking-tight">{formatPKR(totalPayable)}</span>
           </div>
-
-          {cart.length > 0 && paymentMethod === 'cash' && (
-            <div className="mt-4 rounded-md border border-pos-success-border bg-pos-success-bg/60 p-3 space-y-3">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-pos-success-text" htmlFor="cash-tendered">
-                Cash Tendered
-              </label>
-              <input
-                disabled={isProcessing}
-                id="cash-tendered"
-                type="number"
-                min="0"
-                step="0.01"
-                value={tenderText}
-                onChange={event => {
-                  setTenderText(event.target.value);
-                  try { setCashTendered(parseRupees(event.target.value)); setInvalidTender(false); }
-                  catch { setInvalidTender(true); }
-                }}
-                className="w-full rounded-md border border-pos-success-border bg-pos-surface px-3 py-2 text-sm font-bold text-pos-text focus-visible:border-pos-accent"
-              />
-              <div className="flex items-center justify-between rounded-md border border-pos-success-border bg-pos-surface px-3 py-2 text-xs font-medium text-pos-secondary">
-                <span>Change Due</span>
-                <span className="font-black text-pos-accent">{formatPKR(changeDuePaisa)}</span>
-              </div>
-              {!cashPaymentValid && (
-                <p className="text-xs font-semibold text-pos-danger-text">Tender must cover the total amount.</p>
-              )}
-            </div>
-          )}
         </div>
 
-      </div>
+        {/* Cash Tendered & Change Due (compact 2-column row when cart has items) */}
+        {cart.length > 0 && paymentMethod === 'cash' && (
+          <div className="rounded-lg border border-pos-border bg-pos-surface p-2.5 space-y-2">
+            <div className="grid grid-cols-2 gap-2.5 items-center">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1" htmlFor="cash-tendered">
+                  Cash Tendered
+                </label>
+                <input
+                  disabled={isProcessing}
+                  id="cash-tendered"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={tenderText}
+                  onChange={event => {
+                    setTenderText(event.target.value);
+                    try { setCashTendered(parseRupees(event.target.value)); setInvalidTender(false); }
+                    catch { setInvalidTender(true); }
+                  }}
+                  className="w-full h-9 rounded-md border border-pos-control bg-pos-inset px-2.5 text-sm font-bold font-mono text-pos-text focus-visible:border-pos-accent"
+                />
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1">
+                  Change Due
+                </span>
+                <div className="h-9 flex items-center justify-between rounded-md border border-pos-border bg-pos-inset px-2.5 text-sm font-black font-mono text-pos-accent">
+                  <span>{formatPKR(changeDuePaisa)}</span>
+                </div>
+              </div>
+            </div>
+            {!cashPaymentValid && (
+              <p className="text-xs font-semibold text-pos-danger-text">Tender must cover the total amount.</p>
+            )}
+          </div>
+        )}
 
-      {/* BOTTOM ACTIONS */}
-      <div className="shrink-0 p-4 bg-pos-surface border-t border-pos-border">
-        <div className="mb-3 rounded-lg border border-pos-border p-3 space-y-2">
-          <h3 className="text-xs font-bold text-pos-secondary">Payment Method</h3>
-          <div className="grid grid-cols-3 gap-2">
+        {/* Payment Method Selector */}
+        <div className="space-y-1.5">
+          <h3 className="sr-only">Payment Method</h3>
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-lg bg-pos-inset border border-pos-border">
             {paymentMethods.map(({ value, label, Icon }) => (
               <button
                 key={value}
@@ -226,24 +287,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 disabled={isProcessing}
                 aria-pressed={paymentMethod === value}
                 onClick={() => onSelectPaymentMethod(value)}
-                className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-2 text-xs font-semibold transition cursor-pointer ${
+                className={`h-9 flex items-center justify-center gap-1.5 rounded-md text-xs font-bold transition cursor-pointer active:scale-95 ${
                   paymentMethod === value
-                    ? 'border-pos-accent bg-pos-selected text-pos-accent'
-                    : 'border-pos-border text-pos-muted hover:bg-pos-inset'
+                    ? 'bg-pos-selected text-pos-accent border border-pos-accent/60'
+                    : ' border border-transparent text-pos-secondary hover:text-pos-text hover:bg-pos-surface/60'
                 }`}
               >
-                <Icon className="w-4 h-4" aria-hidden="true" />
+                <Icon className="w-3.5 h-3.5" aria-hidden="true" />
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 pt-0.5">
           <button
             type="button"
             disabled={isProcessing || cart.length === 0}
             onClick={onOpenPrintModal}
-            className="px-4 py-3 rounded-md border border-pos-control hover:bg-pos-inset text-pos-secondary text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+            className="h-11 px-3.5 rounded-lg border border-pos-border bg-pos-surface hover:bg-pos-raised text-pos-secondary hover:text-pos-text text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 active:scale-95"
           >
             <Printer className="w-4 h-4" />
             <span>Print</span>
@@ -253,9 +316,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             type="button"
             onClick={() => onPlaceOrder(cashTenderedPaisa, paymentMethod)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
-            className="flex-1 py-3 rounded-md bg-pos-action hover:bg-pos-action-hover text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
+            className="h-11 flex-1 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
           >
-            <Power className="w-3.5 h-3.5" />
+            <Power className="w-4 h-4" />
             <span>{isProcessing ? 'Processing...' : `Complete Order (${paymentMethod === 'scan' ? 'Scan' : paymentMethod === 'card' ? 'Card' : 'Cash'})`}</span>
           </button>
         </div>
@@ -274,12 +337,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           {drawerContent}
         </Dialog>
       )}
-      {confirmClear && <Dialog label="Clear current order?" onClose={() => setConfirmClear(false)} className="w-full max-w-sm rounded-lg border border-pos-border bg-pos-surface p-5">
+      {confirmClear && <Dialog label="Clear current order?" onClose={() => setConfirmClear(false)} className="w-full max-w-sm rounded-xl border border-pos-border bg-pos-surface p-5">
         <h2 className="font-bold text-pos-text">Clear current order?</h2>
         <p className="text-sm text-pos-muted mt-2">This removes every item and its instructions from this order.</p>
         <div className="flex justify-end gap-3 mt-5">
-          <button onClick={() => setConfirmClear(false)} className="p-2 text-pos-secondary">Keep order</button>
-          <button disabled={isProcessing} onClick={() => { onClearCart(); setConfirmClear(false); }} className="p-2 rounded-md bg-pos-danger-bg text-pos-danger-text">Clear all items</button>
+          <button onClick={() => setConfirmClear(false)} className="px-3 py-2 rounded-lg text-xs font-semibold text-pos-secondary hover:bg-pos-raised">Keep order</button>
+          <button disabled={isProcessing} onClick={() => { onClearCart(); setConfirmClear(false); }} className="px-3.5 py-2 rounded-lg text-xs font-bold bg-pos-danger-bg text-pos-danger-text border border-pos-danger-border">Clear all items</button>
         </div>
       </Dialog>}
     </>
