@@ -44,26 +44,37 @@ function authSecret(): string {
   return secret;
 }
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
-function signToken(userId: string, ttlMs = TOKEN_TTL_MS, scope = 'session'): string {
-  const payload = Buffer.from(JSON.stringify({ sub: userId, scope, exp: Date.now() + ttlMs })).toString('base64url');
-  return `${payload}.${createHmac('sha256', authSecret()).update(payload).digest('base64url')}`;
+function signToken(userId: string, ttlMs = TOKEN_TTL_MS, scope = 'session'): { token: string; expiresAt: number } {
+  const sid = randomUUID();
+  const exp = Date.now() + ttlMs;
+  db.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(Date.now());
+  db.prepare('INSERT INTO auth_sessions (id,user_id,scope,expires_at,created_at) VALUES (?,?,?,?,?)')
+    .run(sid, userId, scope, exp, new Date().toISOString());
+  const payload = Buffer.from(JSON.stringify({ sub: userId, scope, sid, exp })).toString('base64url');
+  return { token: `${payload}.${createHmac('sha256', authSecret()).update(payload).digest('base64url')}`, expiresAt: exp };
 }
 function userFromToken(header?: string, expectedScope = 'session'): any | null {
   const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
-  const [payload, sig] = token.split('.');
-  if (!payload || !sig) return null;
+  const [payload, sig, extra] = token.split('.');
+  if (!payload || !sig || extra !== undefined) return null;
   const expected = createHmac('sha256', authSecret()).update(payload).digest('base64url');
-  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  const suppliedSignature = Buffer.from(sig);
+  const expectedSignature = Buffer.from(expected);
+  if (suppliedSignature.length !== expectedSignature.length || !timingSafeEqual(suppliedSignature, expectedSignature)) return null;
   try {
-    const { sub, exp, scope } = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (!sub || exp < Date.now() || (scope || 'session') !== expectedScope) return null;
-    return db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(sub) || null;
+    const { sub, exp, scope, sid } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (!sub || !sid || !Number.isSafeInteger(exp) || exp <= Date.now() || scope !== expectedScope) return null;
+    const session = db.prepare('SELECT id FROM auth_sessions WHERE id=? AND user_id=? AND scope=? AND expires_at=?')
+      .get(sid, sub, scope, exp);
+    if (!session) return null;
+    const user = db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(sub) as any;
+    return user ? { ...user, authSessionId: sid, authExpiresAt: exp } : null;
   } catch { return null; }
 }
 
 /** Strips credentials before a user record leaves the server. */
 function publicUser(u: any): User {
-  const { password: _p, pin: _n, securityAnswer: _a, ...rest } = u;
+  const { password: _p, pin: _n, securityAnswer: _a, authSessionId: _sid, authExpiresAt: _exp, ...rest } = u;
   return { ...rest, active: Boolean(u.active) } as User;
 }
 
@@ -87,7 +98,13 @@ function stripOrderCostAndProfit(o: any) {
   const { totalCostPaisa: _tc, profitPaisa: _pr, profitMarginPercent: _pm, marginBp: _mb, lineCosts: _lc, ...rest } = o;
   return {
     ...rest,
-    items: Array.isArray(o.items) ? o.items.map(({ unitCostPaisa: _uc, totalCostPaisa: _itc, ...item }: any) => item) : [],
+    items: Array.isArray(o.items) ? o.items.map(({ unitCostPaisa: _uc, totalCostPaisa: _itc, ...item }: any) => ({
+      ...item,
+      selectedVariations: Array.isArray(item.selectedVariations)
+        ? item.selectedVariations.map(({ costDeltaPaisa: _cost, ...option }: any) => option) : [],
+      bundledProducts: Array.isArray(item.bundledProducts)
+        ? item.bundledProducts.map(({ rawCostPaisa: _cost, ...bundle }: any) => bundle) : [],
+    })) : [],
   };
 }
 
@@ -194,7 +211,7 @@ async function startServer() {
   // Role authorization middlewares
   const requireAdmin = (req: Request, res: Response, next: any) => {
     const caller = userFromToken(req.get('Authorization'));
-    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
+    if (!caller) { res.status(401).json({ code: 'SESSION_INVALID', error: 'Please sign in again.' }); return; }
     if (caller.role !== 'admin') { res.status(403).json({ error: 'Administrator access required.' }); return; }
     (req as any).caller = caller;
     next();
@@ -202,31 +219,29 @@ async function startServer() {
 
   const requireStrictRole = (roles: string[]) => (req: Request, res: Response, next: any) => {
     const caller = userFromToken(req.get('Authorization'));
-    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
+    if (!caller) { res.status(401).json({ code: 'SESSION_INVALID', error: 'Please sign in again.' }); return; }
     if (!roles.includes(caller.role)) { res.status(403).json({ error: 'Insufficient permissions for this action.' }); return; }
     (req as any).caller = caller;
     next();
   };
 
-  const guardRoleWhenAuthenticated = (roles: string[]) => (req: Request, res: Response, next: any) => {
-    const header = req.get('Authorization');
-    if (!header) { next(); return; }
-    const caller = userFromToken(header);
-    if (!caller) { res.status(401).json({ error: 'Please sign in again.' }); return; }
-    if (!roles.includes(caller.role)) { res.status(403).json({ error: 'Insufficient permissions for this action.' }); return; }
-    (req as any).caller = caller;
-    next();
-  };
+  // Deny API access by default, including new routes added below. Only these
+  // explicit method/path pairs are public; no financial data is needed to log in.
+  app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    const publicRoute = (req.method === 'GET' && ['/health', '/auth/staff'].includes(req.path)) ||
+      (req.method === 'POST' && req.path === '/auth/login');
+    if (publicRoute) { next(); return; }
+    requireStrictRole(['admin', 'manager', 'cashier'])(req, res, next);
+  });
+
+  app.get('/api/auth/staff', (_req, res) => {
+    res.json(db.prepare('SELECT id, name, username, avatar FROM users WHERE active = 1 ORDER BY name').all());
+  });
 
   // Health check
   app.get('/api/health', (req: Request, res: Response) => {
-    const orderCount = db.prepare('SELECT count(*) as count FROM orders').get() as { count: number };
-    res.json({
-      status: 'ok',
-      db: 'SQLite Professional',
-      activeOrders: orderCount.count,
-      timestamp: new Date().toISOString(),
-    });
+    res.json({ status: 'ok' });
   });
 
   // Full Initial Data Sync
@@ -266,7 +281,7 @@ async function startServer() {
       products: isCashier ? validProducts.map(stripProductCost) : validProducts,
       orders: isCashier ? orders.map(stripOrderCostAndProfit) : orders,
       tables,
-      users,
+      users: caller.role === 'admin' ? users : [],
       printerSettings,
       inventoryLogs,
       isOnline: true,
@@ -282,13 +297,13 @@ async function startServer() {
     res.json(isCashier ? validProducts.map(stripProductCost) : validProducts);
   });
 
-  app.post('/api/products', guardRoleWhenAuthenticated(['admin', 'manager']), (req, res) => {
+  app.post('/api/products', requireStrictRole(['admin', 'manager']), (req, res) => {
     const data = req.body; validateProduct(data);
     const id = data.id || `prod-${Date.now()}`;
     insertMapped('products', { ...data, id, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts) });
     res.status(201).json(loadProduct(db, id));
   });
-  app.put('/api/products/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req, res) => {
+  app.put('/api/products/:id', requireStrictRole(['admin', 'manager']), (req, res) => {
     const data = req.body; validateProduct(data);
     const row = mappedValues('products', { ...data, variations: stringifyJson(data.variations), bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString() });
     delete row.id;
@@ -296,15 +311,15 @@ async function startServer() {
     res.json(loadProduct(db, req.params.id));
   });
 
-  app.delete('/api/products/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
+  app.delete('/api/products/:id', requireStrictRole(['admin', 'manager']), (req: Request, res: Response) => {
     db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
     res.json({ success: true });
   });
 
-  const adjustInventory = db.transaction((data: any, caller?: any) => {
+  const adjustInventory = db.transaction((data: any, caller: any) => {
     const { operationId, productId, changeAmount, reason, type } = data;
-    const userId = caller ? caller.id : data.userId;
-    const userName = caller ? caller.name : data.userName;
+    const userId = caller.id;
+    const userName = caller.name;
     if (typeof operationId !== 'string' || !operationId || !['restock', 'adjustment', 'waste'].includes(type)) problem('Invalid stock operation');
     const existing = db.prepare('SELECT * FROM inventory_logs WHERE id=?').get(operationId) as InventoryLog | undefined;
     if (existing) {
@@ -325,20 +340,20 @@ async function startServer() {
     db.prepare('INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,?,?,?,?)').run(operationId, productId, changeAmount, type, operationId, userId, timestamp);
     return { product: loadProduct(db, productId), log };
   });
-  app.post('/api/inventory/adjust', guardRoleWhenAuthenticated(['admin', 'manager']), (req, res) => {
+  app.post('/api/inventory/adjust', requireStrictRole(['admin', 'manager']), (req, res) => {
     try { res.json(adjustInventory(req.body, (req as any).caller)); }
     catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
   });
 
   // CATEGORIES CRUD
-  app.post('/api/categories', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
+  app.post('/api/categories', requireStrictRole(['admin', 'manager']), (req: Request, res: Response) => {
     const { name, icon, id: requestedId } = req.body;
     const id = requestedId || `cat-${Date.now()}`;
     db.prepare('INSERT INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)').run(id, name, icon, 0);
     res.status(201).json({ id, name, icon, itemCount: 0, order: 0 });
   });
 
-  app.put('/api/categories/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
+  app.put('/api/categories/:id', requireStrictRole(['admin', 'manager']), (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, icon } = req.body;
     db.prepare('UPDATE categories SET name = ?, icon = ? WHERE id = ?').run(name, icon, id);
@@ -349,7 +364,7 @@ async function startServer() {
     res.json(updatedCategory);
   });
 
-  app.delete('/api/categories/:id', guardRoleWhenAuthenticated(['admin', 'manager']), (req: Request, res: Response) => {
+  app.delete('/api/categories/:id', requireStrictRole(['admin', 'manager']), (req: Request, res: Response) => {
     const fallbackId = 'cat-uncategorized';
     const fallbackName = 'Uncategorized';
     if (req.params.id === fallbackId) {
@@ -400,7 +415,7 @@ async function startServer() {
     }
     catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
   });
-  const createOrder = db.transaction((input: any, key: string, caller?: any) => {
+  const createOrder = db.transaction((input: any, key: string, caller: any) => {
     const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
     if (existing) return loadOrder(existing.id)!;
     const quote = quoteSale(db, input);
@@ -413,10 +428,10 @@ async function startServer() {
     if (tenderedPaisa !== null && tenderedPaisa < quote.totalPaisa) problem('Cash tender must cover the server total');
     if (input.paymentMethod !== 'cash' && input.cashTenderedPaisa != null) problem('Only cash may carry tender');
     const createdAt = new Date().toISOString();
-    // Derive cashier identity from the authenticated token whenever present (Spec Section 14)
-    const cashierId = caller ? caller.id : input.cashierId;
-    const cashierName = caller ? caller.name : input.cashierName;
-    const cashierRole = caller ? caller.role : input.cashierRole;
+    // Identity always comes from the authenticated session, never request fields.
+    const cashierId = caller.id;
+    const cashierName = caller.name;
+    const cashierRole = caller.role;
     const order = { ...input, ...quote, cashierId, cashierName, cashierRole, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
       changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa };
     insertMapped('orders', order);
@@ -435,7 +450,7 @@ async function startServer() {
       amountPaisa: quote.totalPaisa, tenderedPaisa, created_at: createdAt });
     return loadOrder(input.id)!;
   });
-  app.post('/api/orders', guardRoleWhenAuthenticated(['admin', 'manager', 'cashier']), (req, res) => {
+  app.post('/api/orders', requireStrictRole(['admin', 'manager', 'cashier']), (req, res) => {
     const key = req.get('Idempotency-Key') || req.body?.idempotencyKey;
     if (typeof key !== 'string' || !key.trim() || key.length > 200) { res.status(400).json({error: 'An idempotency key is required'}); return; }
     const caller = (req as any).caller;
@@ -484,14 +499,21 @@ async function startServer() {
           isHashed(user.pin) ? user.pin : hashSecret(user.pin || secret),
           isHashed(user.securityAnswer) ? user.securityAnswer : hashSecret(user.securityAnswer || user.pin || secret), user.id);
       }
-      res.json({ success: true, user: publicUser(user), token: signToken(user.id) });
+      const session = signToken(user.id);
+      res.json({ success: true, user: publicUser(user), ...session });
     } else {
       recordFailure(username);
       res.status(401).json({ error: 'Invalid credentials' });
     }
   });
 
-  app.post('/api/auth/logout', (_req: Request, res: Response) => {
+  app.get('/api/auth/session', (req: Request, res: Response) => {
+    const caller = (req as any).caller;
+    res.set('Cache-Control', 'no-store').json({ user: publicUser(caller), expiresAt: caller.authExpiresAt });
+  });
+
+  app.post('/api/auth/logout', (req: Request, res: Response) => {
+    db.prepare('DELETE FROM auth_sessions WHERE id=?').run((req as any).caller.authSessionId);
     res.json({ success: true });
   });
 
@@ -515,7 +537,7 @@ async function startServer() {
     res.json({
       approved: true,
       approver: publicUser(user),
-      approvalToken: signToken(user.id, 5 * 60_000, 'override'),
+      approvalToken: signToken(user.id, 5 * 60_000, 'override').token,
     });
   });
 
@@ -556,9 +578,14 @@ async function startServer() {
     if (invalid) { res.status(400).json({ error: invalid }); return; }
     const nextPin = b.pin ? hashSecret(b.pin) : target.pin;
     const nextSecurityAnswer = b.pin ? nextPin : target.securityAnswer;
-    db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
-      b.name ? String(b.name).trim() : target.name, nextRole, nextActive ? 1 : 0,
-      b.password ? hashSecret(b.password) : target.password, nextPin, nextSecurityAnswer, target.id);
+    db.transaction(() => {
+      db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
+        b.name ? String(b.name).trim() : target.name, nextRole, nextActive ? 1 : 0,
+        b.password ? hashSecret(b.password) : target.password, nextPin, nextSecurityAnswer, target.id);
+      if (b.pin || b.password || nextRole !== target.role || nextActive !== Boolean(target.active)) {
+        db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(target.id);
+      }
+    })();
     if (b.pin || b.password || nextActive) {
       clearFailures(String(target.username).toLowerCase());
       clearFailures(`approve:${String(target.username).toLowerCase()}`);
@@ -581,9 +608,11 @@ async function startServer() {
     }
     const nextPin = hashSecret(b.pin);
     const nextPassword = b.password ? hashSecret(b.password) : target.password;
-    db.prepare('UPDATE users SET pin = ?, password = ?, securityAnswer = ? WHERE id = ?').run(
-      nextPin, nextPassword, nextPin, target.id
-    );
+    db.transaction(() => {
+      db.prepare('UPDATE users SET pin = ?, password = ?, securityAnswer = ? WHERE id = ?').run(
+        nextPin, nextPassword, nextPin, target.id);
+      db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(target.id);
+    })();
     clearFailures(String(target.username).toLowerCase());
     clearFailures(`approve:${String(target.username).toLowerCase()}`);
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
@@ -606,7 +635,7 @@ async function startServer() {
     });
   });
 
-  app.put('/api/settings/printer', guardRoleWhenAuthenticated(['admin']), (req: Request, res: Response) => {
+  app.put('/api/settings/printer', requireStrictRole(['admin']), (req: Request, res: Response) => {
     const data = req.body;
     if (data.taxInclusive !== undefined && typeof data.taxInclusive !== 'boolean') problem('Tax mode must be a boolean');
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');

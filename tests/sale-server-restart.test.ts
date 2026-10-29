@@ -13,13 +13,14 @@ beforeEach(async () => {
   localStorage.clear(); PosStorage.setOrders([]);
   await new Promise<void>(resolve => { const request = indexedDB.deleteDatabase('maltiva-pos-pending-sales'); request.onsuccess = () => resolve(); });
   server = await isolatedServer();
+  PosStorage.setToken(server.token);
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => realFetch(url.startsWith('http') ? url : `${server.url}${url}`, init));
 }, 15000);
 afterEach(async () => { vi.unstubAllGlobals(); await server?.cleanup(); });
 
 describe('phase 1 actual server restart', () => {
   it('a stopped server leaves a durable sale that syncs exactly once after restart and client reload', async () => {
-    const reviewed = await reviewSale(server.url, saleFixture('restart'));
+    const reviewed = await reviewSale(server.url, saleFixture('restart'), server.token);
     await server.stop();
     const result = await PosApi.placeOrder(reviewed, true);
     expect(result.state).toBe('pending');
@@ -28,6 +29,9 @@ describe('phase 1 actual server restart', () => {
     const recoveredApi = (await import('../src/services/api')).PosApi;
     expect((await recoveredApi.fetchInitialData()).orders).toMatchObject([{ id: 'sale-restart', persistenceState: 'pending' }]);
     await server.start();
+    // Logged-out recovery remains durable; authenticate before replaying it.
+    expect(await recoveredApi.syncOfflineQueue()).toMatchObject({ syncedCount: 0, pendingCount: 1 });
+    PosStorage.setToken(server.token);
     await Promise.all([recoveredApi.syncOfflineQueue(), recoveredApi.syncOfflineQueue()]);
     await recoveredApi.syncOfflineQueue();
     expect(await PendingOutbox.list()).toEqual([]);
@@ -49,7 +53,7 @@ describe('phase 1 actual server restart', () => {
       }
       return response;
     });
-    const reviewed = await reviewSale(server.url, saleFixture('lost-response'));
+    const reviewed = await reviewSale(server.url, saleFixture('lost-response'), server.token);
     expect((await PosApi.placeOrder(reviewed, true)).state).toBe('pending');
     await server.stop(); await server.start();
     vi.stubGlobal('fetch', (url: string, init?: RequestInit) => realFetch(`${server.url}${url}`, init));

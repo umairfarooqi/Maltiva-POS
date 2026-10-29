@@ -1,6 +1,7 @@
-import { Order, Product, Category, TableItem, User, InventoryLog, PrinterSettings } from '../types/pos';
+import { Order, Product, Category, TableItem, User, LoginStaff, InventoryLog, PrinterSettings } from '../types/pos';
 import { PosStorage } from './storage';
 import { PendingOutbox } from './pendingOutbox';
+import { sessionFetch, endSession, queueSessionRevocation, flushSessionRevocations } from './session';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from '../utils/normalizeProduct';
 
 export type SaleResult = { success: boolean; state: 'saved' | 'pending' | 'rejected'; order: Order; error?: string };
@@ -68,7 +69,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
   let response: Response;
   let body: any;
   try {
-    response = await fetch('/api/orders', {
+    response = await sessionFetch('/api/orders', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey!, ...authHeaders() },
       body: JSON.stringify(order), signal: controller.signal,
     });
@@ -78,7 +79,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
       body = {};
     }
   } catch (error) {
-    if (error instanceof TypeError || (error as any)?.name === 'AbortError') {
+    if (error instanceof TypeError || (error as any)?.name === 'AbortError' || (error as any)?.name === 'SessionChangedError') {
       return pendingResult(order);
     }
     throw error;
@@ -90,6 +91,9 @@ async function sendSale(order: Order): Promise<SaleResult> {
     }
     return pendingResult(order);
   }
+  // A session failure says nothing about whether an earlier attempt committed.
+  // Keep the durable intent pending so signing in can safely replay the same key.
+  if (response.status === 401 || response.status === 403) return pendingResult(order);
   const error = typeof body?.error === 'string' ? body.error : body?.error?.message ||
     `Server rejected the sale (HTTP ${response.status}). Retry or review this cart.`;
   const rejected = await PendingOutbox.reject(order, error);
@@ -101,7 +105,7 @@ let replay: Promise<{ syncedCount: number; rejectedCount: number; pendingCount: 
 async function persistProduct(url: string, method: string, product: Product): Promise<Product> {
   let response: Response;
   try {
-    response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    response = await sessionFetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(product), signal: AbortSignal.timeout(5000) });
   } catch { throw new Error('Menu changes need the local server. Keep this form and retry when it is available.'); }
   const body = await response.json();
@@ -111,14 +115,38 @@ async function persistProduct(url: string, method: string, product: Product): Pr
 }
 
 export const PosApi = {
+  async getSession(): Promise<{ user: User; expiresAt: number }> {
+    await flushSessionRevocations();
+    const token = PosStorage.getToken();
+    if (!token) throw new Error('Please sign in again.');
+    const response = await sessionFetch('/api/auth/session', {
+      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000), cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Please sign in again.');
+    const data = await response.json();
+    if (!data.user?.id || !Number.isSafeInteger(data.expiresAt) || data.expiresAt <= Date.now()) {
+      endSession(token);
+      throw new Error('Please sign in again.');
+    }
+    if (PosStorage.getToken() !== token) throw new Error('The active session changed.');
+    PosStorage.setSession(data.user);
+    return data;
+  },
+  async fetchLoginStaff(): Promise<LoginStaff[]> {
+    const response = await sessionFetch('/api/auth/staff', { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error('Could not load staff for sign-in.');
+    const staff = await response.json();
+    if (!Array.isArray(staff)) throw new Error('Invalid staff list.');
+    return staff;
+  },
   async saveMoneySettings(settings: PrinterSettings): Promise<void> {
-    const response = await fetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    const response = await sessionFetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error('Tax settings could not be saved on the server. Retry when it is available.');
   },
   async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string }> {
     try {
-      const response = await fetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      const response = await sessionFetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
       const body = await response.json();
       if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.' };
@@ -146,7 +174,7 @@ export const PosApi = {
     const timeoutId = setTimeout(() => controller.abort(), 2500);
     const headers = authHeaders();
     try {
-      const res = await fetch('/api/data', { ...(Object.keys(headers).length ? { headers } : {}), signal: controller.signal });
+      const res = await sessionFetch('/api/data', { ...(Object.keys(headers).length ? { headers } : {}), signal: controller.signal });
 
       if (res.ok) {
         const data = await res.json();
@@ -207,22 +235,26 @@ export const PosApi = {
   async syncOfflineQueue(): Promise<{ syncedCount: number; rejectedCount: number; pendingCount: number; reachable: boolean }> {
     if (replay) return replay;
     replay = (async () => {
+      const replayToken = PosStorage.getToken();
       let syncedCount = 0;
       let rejectedCount = 0;
       let reachable = false;
       const queue = await PendingOutbox.list();
       // Read server status in bounded batches. Only a POST acknowledgment (201) clears a recovery copy.
       for (let offset = 0; offset < Math.max(1, queue.length); offset += 100) {
+        if (PosStorage.getToken() !== replayToken) return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable: false };
         const batch = queue.slice(offset, offset + 100);
         const query = new URLSearchParams();
         batch.forEach(order => query.append('key', order.idempotencyKey!));
         try {
-          const response = await fetch(`/api/orders/pending-status?${query}`, { signal: AbortSignal.timeout(5000) });
+          const response = await sessionFetch(`/api/orders/pending-status?${query}`, { headers: authHeaders(), signal: AbortSignal.timeout(5000) });
           reachable = true;
+          if (!response.ok) return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable };
           if (response.ok) await response.json();
         } catch { return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable: false }; }
       }
       for (const order of await PendingOutbox.list()) {
+        if (PosStorage.getToken() !== replayToken) break;
         const result = await submitSale(order);
         if (result.state === 'saved') syncedCount++;
         if (result.state === 'rejected') { rejectedCount++; try { cacheOrder(result.order); } catch { /* rejection remains durable in IndexedDB */ } }
@@ -250,7 +282,7 @@ export const PosApi = {
 
   async deleteProduct(productId: string, _isOnline: boolean): Promise<boolean> {
     const headers = authHeaders();
-    const response = await fetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
+    const response = await sessionFetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
     if (!response.ok) throw new Error('Product could not be deleted. Retry when the server is available.');
     optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().filter(p => p.id !== productId)));
     return true;
@@ -259,7 +291,7 @@ export const PosApi = {
   // Category CRUD
   async createCategory(name: string, icon: string, _isOnline: boolean): Promise<Category> {
     const category = { id: `cat-${crypto.randomUUID()}`, name: name.trim(), icon, itemCount: 0, order: 99 };
-    const response = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
+    const response = await sessionFetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
     if (!response.ok) throw new Error('Category could not be saved on the server. Retry when it is available.');
     const saved = { ...category, ...await response.json() };
     if (!saved.id) throw new Error('Server did not confirm the category.');
@@ -268,7 +300,7 @@ export const PosApi = {
   },
 
   async updateCategory(category: Category, _isOnline: boolean): Promise<Category> {
-    const response = await fetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
+    const response = await sessionFetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
     if (!response.ok) throw new Error('Category could not be updated on the server. Retry when it is available.');
     const saved = { ...category, ...await response.json() };
     optionalCache(() => {
@@ -282,7 +314,7 @@ export const PosApi = {
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return false;
     {
       const headers = authHeaders();
-      const res = await fetch(`/api/categories/${categoryId}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
+      const res = await sessionFetch(`/api/categories/${categoryId}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
       if (!res.ok) {
         let message = 'Delete failed';
         try {
@@ -327,7 +359,7 @@ export const PosApi = {
     const signature = JSON.stringify({ productId, changeAmount, reason, type, userId: user.id });
     const operationId = stockAdjustmentKeys.get(signature) || crypto.randomUUID();
     stockAdjustmentKeys.set(signature, operationId);
-    const response = await fetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    const response = await sessionFetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name }) });
     if (!response.ok) throw new Error('Stock adjustment could not be confirmed. Keep this form open and retry.');
     const result = await response.json();
@@ -345,18 +377,21 @@ export const PosApi = {
     username: string,
     passwordOrPin: string,
     _isOnline?: boolean
-  ): Promise<{ success: boolean; user?: User; error?: string }> {
+  ): Promise<{ success: boolean; user?: User; expiresAt?: number; error?: string }> {
     try {
-      const res = await fetch('/api/auth/login', {
+      await flushSessionRevocations();
+      const previousToken = PosStorage.getToken();
+      const res = await sessionFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim().toLowerCase(), password: passwordOrPin.trim(), pin: passwordOrPin.trim() }),
       });
       const data = await res.json();
-      if (res.ok && data.user) {
-        if (data.token) PosStorage.setToken(data.token);
+      if (PosStorage.getToken() !== previousToken) return { success: false, error: 'The session changed in another window. Please retry.' };
+      if (res.ok && data.user && data.token && Number.isSafeInteger(data.expiresAt) && data.expiresAt > Date.now()) {
+        PosStorage.setToken(data.token);
         PosStorage.setSession(data.user);
-        return { success: true, user: data.user };
+        return { success: true, user: data.user, expiresAt: data.expiresAt };
       }
       return { success: false, error: data.error || 'Invalid credentials' };
     } catch {
@@ -365,16 +400,21 @@ export const PosApi = {
   },
 
   async logout(): Promise<void> {
-    const headers = authHeaders();
-    PosStorage.clearSession();
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', headers });
-    } catch { /* clear local session regardless of network */ }
+    const token = PosStorage.getToken();
+    let queued = false;
+    try { if (token) { queueSessionRevocation(token); queued = true; } }
+    catch { /* Storage failure must never prevent the local terminal locking. */ }
+    finally { endSession(token, 'You have been logged out.'); }
+    if (token && !queued) {
+      try { await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) }); }
+      catch { /* Local lock still takes effect when storage and server are unavailable. */ }
+    }
+    await flushSessionRevocations();
   },
 
   async approveOverride(username: string, pin: string): Promise<{ approved: boolean; approvalToken?: string; approver?: User; error?: string }> {
     try {
-      const res = await fetch('/api/auth/approve', {
+      const res = await sessionFetch('/api/auth/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ username: username.trim().toLowerCase(), pin: pin.trim() }),
@@ -388,14 +428,14 @@ export const PosApi = {
 
   // USER MANAGEMENT (admin token required by the server)
   async listUsers(): Promise<User[]> {
-    const res = await fetch('/api/users', { headers: authHeaders() });
+    const res = await sessionFetch('/api/users', { headers: authHeaders() });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || 'Could not load staff accounts.');
     return body;
   },
 
   async createUser(input: Partial<User> & { password: string; pin: string }): Promise<User> {
-    const res = await fetch('/api/users', {
+    const res = await sessionFetch('/api/users', {
       method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(input),
     });
     const body = await res.json();
@@ -404,7 +444,7 @@ export const PosApi = {
   },
 
   async updateUser(id: string, changes: Partial<User> & { password?: string; pin?: string }): Promise<User> {
-    const res = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+    const res = await sessionFetch(`/api/users/${encodeURIComponent(id)}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(changes),
     });
     const body = await res.json();
@@ -413,7 +453,7 @@ export const PosApi = {
   },
 
   async resetUserPin(id: string, pin: string, password?: string): Promise<User> {
-    const res = await fetch(`/api/users/${encodeURIComponent(id)}/reset-pin`, {
+    const res = await sessionFetch(`/api/users/${encodeURIComponent(id)}/reset-pin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ pin, ...(password ? { password } : {}) }),

@@ -18,12 +18,14 @@ import { CustomerDisplayWindow } from './components/CustomerDisplayWindow';
 import { PosApi, SaleResult } from './services/api';
 import { PendingOutbox } from './services/pendingOutbox';
 import { PosStorage } from './services/storage';
+import { SESSION_ENDED, endSession, flushSessionRevocations } from './services/session';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from './utils/normalizeProduct';
 import {
   Product,
   Category,
   Order,
   User,
+  LoginStaff,
   CartItem,
   PrinterSettings,
   PaymentMethod,
@@ -43,11 +45,16 @@ export default function App() {
 
   // Authentication & Role Session Gateway
   // App opens directly to Login Screen unless already actively logged in
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    return PosStorage.getSession();
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [sessionChecking, setSessionChecking] = useState(() => Boolean(PosStorage.getToken()));
+  const [sessionNotice, setSessionNotice] = useState('');
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+  const sessionGeneration = useRef(0);
+  const verifiedToken = useRef<string | null>(null);
+  const verifySession = useRef<() => Promise<void>>(async () => {});
 
   const [allUsers, setAllUsers] = useState<User[]>(PosStorage.getUsers());
+  const [loginStaff, setLoginStaff] = useState<LoginStaff[]>([]);
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<NavTab>('order_line');
@@ -100,6 +107,81 @@ export default function App() {
   const customerDisplayChannel = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
+    let active = true;
+    let checkNumber = 0;
+    const lock = (message: string) => {
+      sessionGeneration.current++;
+      verifiedToken.current = null;
+      setCurrentUser(null);
+      setSessionExpiresAt(null);
+      setSessionChecking(false);
+      setSessionNotice(message);
+      setActiveTab('order_line');
+      setAllUsers([]);
+      setReceiptModalOrder(null);
+      setVariationModalProduct(null);
+      setEditingCartItem(undefined);
+      setCustomerConfirmation(null);
+      setIsLogoutConfirmOpen(false);
+      setIsMobileSidebarOpen(false);
+      setIsMobileCartOpen(false);
+      // The basket and its recovery identity survive an expired/switched session.
+      checkoutRecoveryPending.current = Boolean(checkoutAttempt.current);
+    };
+    const validate = async () => {
+      const number = ++checkNumber;
+      void flushSessionRevocations();
+      const token = PosStorage.getToken();
+      if (!token) { if (active) setSessionChecking(false); return; }
+      try {
+        const session = await PosApi.getSession();
+        if (!active || number !== checkNumber || PosStorage.getToken() !== token) return;
+        verifiedToken.current = token;
+        setCurrentUser(session.user);
+        setSessionExpiresAt(session.expiresAt);
+        setSessionNotice('');
+      } catch {
+        if (active && number === checkNumber && PosStorage.getToken() === token) {
+          setSessionNotice('Cannot check your session. Start the POS server and retry.');
+        }
+      } finally { if (active && number === checkNumber) setSessionChecking(false); }
+    };
+    verifySession.current = validate;
+    const ended = (event: Event) => { checkNumber++; lock((event as CustomEvent<string>).detail || 'Please sign in again.'); };
+    const changed = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== 'tasty_pos_auth_token') return;
+      checkNumber++;
+      lock('The session changed in another window. Draft and pending sales are retained.');
+      if (PosStorage.getToken()) { setSessionChecking(true); void validate(); }
+    };
+    const visible = () => { if (document.visibilityState === 'visible') void validate(); };
+    window.addEventListener(SESSION_ENDED, ended);
+    window.addEventListener('storage', changed);
+    window.addEventListener('online', validate);
+    window.addEventListener('focus', validate);
+    document.addEventListener('visibilitychange', visible);
+    void validate();
+    const timer = window.setInterval(validate, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener(SESSION_ENDED, ended);
+      window.removeEventListener('storage', changed);
+      window.removeEventListener('online', validate);
+      window.removeEventListener('focus', validate);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionExpiresAt) return;
+    const token = PosStorage.getToken();
+    const timer = window.setTimeout(() => endSession(token, 'Your session expired. Please sign in again. Draft and pending sales are retained.'),
+      Math.max(0, sessionExpiresAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [sessionExpiresAt]);
+
+  useEffect(() => {
     if (activeTab === 'staff' && currentUser?.role === 'admin') void refreshStaff();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentUser?.id]);
@@ -139,18 +221,19 @@ export default function App() {
 
   // Sync state with Customer Display on Secondary Screen
   useEffect(() => {
-    const totals = computeTotals(cart, printerSettings);
+    const visibleCart = currentUser ? cart : [];
+    const totals = computeTotals(visibleCart, printerSettings);
     const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
 
     const displayPayload = {
       settings: printerSettings,
-      cart,
+      cart: visibleCart,
       orderNumber: `#F00${orderSequence}`,
       tokenNumber: orderSequence % 100 || orderSequence,
       subtotalPaisa,
       taxPaisa,
       totalPaisa,
-      lastPlacedOrder: customerConfirmation
+      lastPlacedOrder: currentUser && customerConfirmation
         ? {
             orderNumber: customerConfirmation.orderNumber,
             tokenNumber: customerConfirmation.tokenNumber,
@@ -165,7 +248,7 @@ export default function App() {
       localStorage.setItem('pos_customer_display_state', serializedPayload);
     } catch { /* Broadcast remains available when browser storage is blocked. */ }
     try { customerDisplayChannel.current?.postMessage(displayPayload); } catch { /* Storage is the fallback channel. */ }
-  }, [cart, orderSequence, customerConfirmation, printerSettings]);
+  }, [cart, orderSequence, customerConfirmation, printerSettings, currentUser?.id]);
 
   useEffect(() => { if (cart.length > 0) setCustomerConfirmation(null); }, [cart]);
 
@@ -200,7 +283,10 @@ export default function App() {
     window.addEventListener('pos-outbox-changed', updateCount);
     window.addEventListener('storage', onStorage);
     void updateCount();
-    PosApi.fetchInitialData().then(data => {
+    if (!currentUser) {
+      PosApi.fetchLoginStaff().then(staff => { if (active) setLoginStaff(staff); })
+        .catch(() => { if (active) setIsOnline(false); });
+    } else PosApi.fetchInitialData().then(data => {
       if (!active) return;
       reconcileCheckoutDraft(data.orders);
       setCategories(data.categories);
@@ -220,20 +306,25 @@ export default function App() {
       window.removeEventListener('pos-outbox-changed', updateCount);
       window.removeEventListener('storage', onStorage);
     };
-  }, []);
+  }, [currentUser?.id]);
 
   const handleManualSync = async () => {
+    if (!currentUser || !verifiedToken.current || PosStorage.getToken() !== verifiedToken.current) { void flushSessionRevocations(); return; }
+    const generation = sessionGeneration.current;
     try {
       if (checkoutRecoveryPending.current) {
         const data = await PosApi.fetchInitialData();
+        if (generation !== sessionGeneration.current) return;
         reconcileCheckoutDraft(data.orders);
       }
       const res = await PosApi.syncOfflineQueue();
+      if (generation !== sessionGeneration.current) return;
       setPendingOfflineCount(res.pendingCount);
       setIsOnline(res.reachable);
       setOrders(PosStorage.getOrders());
       if (res.syncedCount > 0 || res.rejectedCount > 0) {
         const data = await PosApi.fetchInitialData();
+        if (generation !== sessionGeneration.current) return;
         setProducts(data.products.map(normalizeProduct));
         setOrders(data.orders);
         setCustomerConfirmation(previous => previous ? data.orders.find(order => order.id === previous.id) || previous : null);
@@ -254,9 +345,14 @@ export default function App() {
   };
 
   // Login handler
-  const handleLoginSuccess = (user: User) => {
+  const handleLoginSuccess = (user: User, expiresAt?: number) => {
+    sessionGeneration.current++;
+    verifiedToken.current = PosStorage.getToken();
     setCurrentUser(user);
+    setSessionExpiresAt(expiresAt ?? null);
+    setSessionNotice('');
     PosStorage.setSession(user);
+    void verifySession.current();
     if (user.role === 'cashier') {
       setActiveTab('order_line'); // Cashier locked exclusively to Order Line
     }
@@ -271,11 +367,6 @@ export default function App() {
   const confirmLogout = () => {
     setIsLogoutConfirmOpen(false);
     void PosApi.logout();
-    setCurrentUser(null);
-    setCart([]);
-    checkoutAttempt.current = undefined;
-    PosStorage.clearDraft();
-    setCustomerConfirmation(null);
     setSaleFeedback(null);
     setIsMobileSidebarOpen(false);
     setIsMobileCartOpen(false);
@@ -421,7 +512,11 @@ export default function App() {
   // Place Takeaway Order & Generate 2 Slips
   const handlePlaceOrder = async (cashTenderedPaisa: number, selectedPaymentMethod: PaymentMethod) => {
     if (cart.length === 0 || orderInFlight.current || !currentUser) return;
+    if (PosStorage.getToken() !== verifiedToken.current) return;
     if (cart.some(item => !canAddQuantity(item.product, 0))) return;
+    const generation = sessionGeneration.current;
+    const checkoutToken = PosStorage.getToken();
+    const sessionChanged = () => generation !== sessionGeneration.current || PosStorage.getToken() !== checkoutToken;
 
     const totals = computeTotals(cart, printerSettings);
     const { subtotalPaisa, taxPaisa, totalPaisa } = totals;
@@ -486,8 +581,10 @@ export default function App() {
     try {
       PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: newOrder });
       const pricing = await PosApi.quoteOrder(newOrder);
+      if (sessionChanged()) return;
       if (pricing.error) {
         const rejected = await PendingOutbox.reject(newOrder, pricing.error);
+        if (sessionChanged()) return;
         checkoutAttempt.current = rejected;
         PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: rejected });
         setSaleFeedback({ success: false, state: 'rejected', order: rejected, error: pricing.error });
@@ -511,6 +608,7 @@ export default function App() {
           setPrinterSettings(previous => ({ ...previous, taxBp: quote.taxBp, taxInclusive: quote.taxInclusive }));
           const reason = `Prices changed. Current total: ${formatPKR(quote.totalPaisa)}. Review the basket and cash tender, then complete the order.`;
           const rejected = await PendingOutbox.reject(newOrder, reason);
+          if (sessionChanged()) return;
           checkoutAttempt.current = rejected;
           PosStorage.setDraft({ cart: reviewedCart, paymentMethod: selectedPaymentMethod, attempt: rejected });
           setSaleFeedback({ success: false, state: 'rejected', order: rejected, error: reason });
@@ -519,14 +617,17 @@ export default function App() {
       }
       PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: newOrder });
       const result = await PosApi.placeOrder(newOrder, isOnline);
+      if (sessionChanged()) return;
       if (result.state === 'rejected') {
         setSaleFeedback(result);
         checkoutAttempt.current = result.order;
         PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: result.order });
         return;
       }
+      const pendingCount = (await PendingOutbox.list()).length;
+      if (sessionChanged()) return;
       setOrders(PosStorage.getOrders());
-      setPendingOfflineCount((await PendingOutbox.list()).length);
+      setPendingOfflineCount(pendingCount);
       setSaleFeedback(result);
       checkoutAttempt.current = undefined;
       PosStorage.clearDraft();
@@ -539,6 +640,7 @@ export default function App() {
       if (result.state === 'saved') {
         // Refresh stock from the transaction that was acknowledged, without resubmitting it.
         const data = await PosApi.fetchInitialData();
+        if (sessionChanged()) return;
         setProducts(data.products.map(normalizeProduct));
         setOrders(data.orders);
       }
@@ -721,14 +823,19 @@ export default function App() {
   ) : null;
 
   // IF NOT LOGGED IN: DISPLAY AUTHENTICATION GATEWAY
+  if (sessionChecking && !currentUser) {
+    return <div role="status" className="min-h-screen flex items-center justify-center bg-pos-canvas text-pos-text">Checking session...</div>;
+  }
   if (!currentUser) {
     return (
       <>
 
       <LoginScreen
-        notice={pendingBadge}
+        notice={<>{sessionNotice && <div role="status" className="p-3 text-sm text-pos-text">{sessionNotice}
+          {PosStorage.getToken() && <button type="button" onClick={() => { setSessionChecking(true); void verifySession.current(); }} className="ml-3 underline">Retry session check</button>}
+        </div>}{pendingBadge}</>}
         onLoginSuccess={handleLoginSuccess}
-        availableUsers={allUsers}
+        availableUsers={loginStaff}
         isOnline={isOnline}
       />
       </>

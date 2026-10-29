@@ -33,6 +33,30 @@ describe('phase 1 durable sale recovery', () => {
   beforeEach(async () => { localStorage.clear(); await resetOutbox(); PosStorage.setOrders([]); PosStorage.setProducts(structuredClone(INITIAL_PRODUCTS)); });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+  it.each([401, 403])('keeps a submitted sale pending on HTTP %s and replays its original key after sign-in', async status => {
+    const order = saleFixture(`auth-${status}`);
+    PosStorage.setToken('expired-session');
+    const transport = vi.fn(async (_url: string, _init?: RequestInit) => json({ error: 'Please sign in again.' }, status));
+    vi.stubGlobal('fetch', transport);
+    expect((await PosApi.placeOrder(order, true)).state).toBe('pending');
+    expect(await PendingOutbox.rejected()).toEqual([]);
+    expect((await PendingOutbox.list())[0].idempotencyKey).toBe(order.idempotencyKey);
+    transport.mockClear();
+    expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 0, rejectedCount: 0, pendingCount: 1 });
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(transport.mock.calls[0][1]).toMatchObject({ headers: status === 401 ? {} : { Authorization: 'Bearer expired-session' } });
+    expect(PosStorage.getToken()).toBe(status === 401 ? null : 'expired-session');
+    PosStorage.setToken('renewed-session');
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({ Authorization: 'Bearer renewed-session' });
+      if (url.startsWith('/api/orders/pending-status')) return json({ savedOrders: [], pendingKeys: [order.idempotencyKey] });
+      expect(init?.headers).toMatchObject({ 'Idempotency-Key': order.idempotencyKey });
+      return json({ order: { ...order, persistenceState: 'saved', synced: true } }, 201);
+    });
+    expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 1, pendingCount: 0 });
+    expect(await PendingOutbox.list()).toEqual([]);
+  });
+
   it('shows saved only after 201 and records the same recovery key sent to the server', async () => {
     const order = saleFixture('saved');
     vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {

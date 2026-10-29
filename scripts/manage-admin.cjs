@@ -73,12 +73,16 @@ const pinHash = hashSecret(pin);
 const passwordHash = hashSecret(password);
 const existing = db.prepare('SELECT id, username FROM users WHERE lower(username) = ?').get(username);
 
+db.transaction(() => {
 if (existing) {
   db.prepare(`
     UPDATE users
     SET name = ?, email = ?, password = ?, pin = ?, role = 'admin', active = 1, branch = ?, securityAnswer = ?
     WHERE id = ?
   `).run(name, email, passwordHash, pinHash, branch, pinHash, existing.id);
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='auth_sessions'").get()) {
+    db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(existing.id);
+  }
   console.log(`Updated existing administrator account "${username}" (active=1, PIN and password reset).`);
 } else {
   const id = `user-${randomUUID()}`;
@@ -88,6 +92,7 @@ if (existing) {
   `).run(id, name, username, email, passwordHash, pinHash, branch, pinHash);
   console.log(`Created administrator account "${username}" (${name}).`);
 }
+})();
 
 db.pragma('wal_checkpoint(TRUNCATE)');
 db.close();

@@ -54,6 +54,16 @@ export async function isolatedServer() {
     child = undefined;
   }
   try { await start(); } catch (error) { await stop(); await rm(dir, { recursive: true, force: true }); throw error; }
-  return { url, dbPath: path.join(dir, 'maltiva_pos.db'), start, stop,
+  // Lifecycle tests authenticate explicitly; security tests continue using raw
+  // fetch so missing/invalid credentials can never be supplied implicitly.
+  const login = await hostFetch(`${url}/api/auth/login`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: 'fixture-only-secret' }) });
+  const { token } = await login.json() as { token: string };
+  if (!login.ok || !token) { await stop(); await rm(dir, { recursive: true, force: true }); throw new Error('Fixture login failed'); }
+  const headers = { Authorization: `Bearer ${token}` };
+  const request = (route: string, init: RequestInit = {}) => hostFetch(`${url}${route}`, {
+    ...init, headers: { ...headers, ...Object.fromEntries(new Headers(init.headers)) },
+  });
+  return { url, token, headers, request, dbPath: path.join(dir, 'maltiva_pos.db'), start, stop,
     async cleanup() { await stop(); await rm(dir, { recursive: true, force: true }); } };
 }

@@ -11,8 +11,8 @@ describe('phase 1 atomic sale lifecycle', () => {
   afterAll(async () => { db?.close(); await server?.cleanup(); });
   const count = (table: string, orderId: string) => db.prepare(`SELECT count(*) AS n FROM ${table} WHERE ${table === 'orders' ? 'id' : table === 'order_items' ? 'orderId' : table === 'stock_movements' ? 'ref' : 'order_id'} = ?`).get(orderId).n;
   async function submit(order: ReturnType<typeof saleFixture>) {
-    order = await reviewSale(server.url, order);
-    return fetch(`${server.url}/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey }, body: JSON.stringify(order) });
+    order = await reviewSale(server.url, order, server.token);
+    return server.request(`/api/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey }, body: JSON.stringify(order) });
   }
   it('returns 201 and persists order, items, payment, stock movement and complete bootstrap snapshots', async () => {
     const order = saleFixture('valid');
@@ -24,7 +24,7 @@ describe('phase 1 atomic sale lifecycle', () => {
     expect(count('stock_movements', order.id)).toBe(1);
     expect(db.prepare('SELECT amount_paisa, tendered_paisa FROM payments WHERE order_id = ?').get(order.id)).toEqual({ amount_paisa: 99000, tendered_paisa: 100000 });
     expect(db.prepare('SELECT stockQuantity FROM products WHERE id = ?').get(order.items[0].productId).stockQuantity).toBe(998);
-    const bootstrap = await (await fetch(`${server.url}/api/data`)).json();
+    const bootstrap = await (await server.request(`/api/data`)).json();
     expect(bootstrap.tables).toEqual([]);
     expect(bootstrap.orders.find((saved: any) => saved.id === order.id).items[0]).toMatchObject({ notes: 'No onion', quantity: 1, unitPricePaisa: 99000 });
   });
@@ -51,7 +51,7 @@ describe('phase 1 atomic sale lifecycle', () => {
     } finally { db.exec('DROP TRIGGER fail_step'); }
   });
   it('reports which browser outbox keys have already committed', async () => {
-    const response = await fetch(`${server.url}/api/orders/pending-status?key=key-valid&key=never-sent`);
+    const response = await server.request(`/api/orders/pending-status?key=key-valid&key=never-sent`);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ pendingKeys: ['never-sent'], savedOrders: [{ id: 'sale-valid', idempotencyKey: 'key-valid' }] });
   });

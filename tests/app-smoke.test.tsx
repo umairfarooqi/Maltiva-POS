@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App';
@@ -31,7 +31,10 @@ const cashierUser: User = {
 
 describe('App login screen and staff PIN reset', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.spyOn(PosStorage, 'getSession').mockReturnValue(null);
+    vi.spyOn(PosApi, 'fetchLoginStaff').mockResolvedValue([]);
+    vi.spyOn(PosApi, 'getSession').mockResolvedValue({ user: currentUser, expiresAt: Date.now() + 3600000 });
     vi.spyOn(PosApi, 'fetchInitialData').mockResolvedValue({
       categories: [],
       products: [],
@@ -62,14 +65,32 @@ describe('App login screen and staff PIN reset', () => {
     expect(screen.getByText(/Contact Admin for PIN reset/i)).toBeVisible();
   });
 
+  it('loads only public staff before login and fetches private bootstrap after successful login', async () => {
+    const user = userEvent.setup();
+    vi.mocked(PosApi.fetchLoginStaff).mockResolvedValue([
+      { id: currentUser.id, name: currentUser.name, username: currentUser.username, avatar: currentUser.avatar },
+    ]);
+    vi.spyOn(PosApi, 'login').mockResolvedValue({ success: true, user: currentUser });
+    vi.spyOn(PosApi, 'syncOfflineQueue').mockResolvedValue({ syncedCount: 0, rejectedCount: 0, pendingCount: 0, reachable: true });
+    render(<App />);
+    await screen.findByRole('button', { name: /Admin @admin/ });
+    expect(PosApi.fetchInitialData).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Password' }));
+    await user.type(screen.getByLabelText('Password / PIN'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Sign In to Terminal' }));
+    await waitFor(() => expect(PosApi.fetchInitialData).toHaveBeenCalledOnce());
+    expect(screen.queryByRole('heading', { name: 'Terminal Login' })).not.toBeInTheDocument();
+  });
+
   it('requires confirmation before logging out', async () => {
     const user = userEvent.setup();
     vi.spyOn(PosStorage, 'getSession').mockReturnValue(currentUser);
+    PosStorage.setToken('smoke-session');
     const clearSession = vi.spyOn(PosStorage, 'clearSession').mockImplementation(() => {});
 
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Logout' }));
+    await user.click(await screen.findByRole('button', { name: 'Logout' }));
     expect(screen.getByRole('alertdialog', { name: 'Log out?' })).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));

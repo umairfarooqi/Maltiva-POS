@@ -17,8 +17,8 @@ export function saleFixture(suffix = '1'): Order & { idempotencyKey: string; cas
     createdAt: '2026-10-04T10:00:00.000Z', synced: false,
   };
 }
-export async function reviewSale(url: string, order: ReturnType<typeof saleFixture>) {
-  const response = await fetch(`${url}/api/orders/quote`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(order) });
+export async function reviewSale(url: string, order: ReturnType<typeof saleFixture>, token: string) {
+  const response = await fetch(`${url}/api/orders/quote`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(order) });
   if (!response.ok) throw new Error(`Quote failed: ${await response.text()}`);
   return { ...order, ...await response.json() } as ReturnType<typeof saleFixture>;
 }

@@ -1,11 +1,12 @@
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor, within, cleanup } from '@testing-library/react';
+import { act, render, screen, waitFor, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App';
 import { PosStorage } from '../src/services/storage';
 import { PendingOutbox } from '../src/services/pendingOutbox';
 import { PosApi } from '../src/services/api';
+import { endSession } from '../src/services/session';
 import { INITIAL_PRODUCTS, INITIAL_USERS, INITIAL_PRINTER_SETTINGS, INITIAL_CATEGORIES } from '../src/data/initialData';
 import { ThermalReceiptModal } from '../src/components/ThermalReceiptModal';
 import { SettingsView } from '../src/components/SettingsView';
@@ -21,7 +22,10 @@ beforeEach(async () => {
   await new Promise<void>(resolve => { const request = indexedDB.deleteDatabase('maltiva-pos-pending-sales'); request.onsuccess = () => resolve(); });
   outcome = 'saved'; requests = []; committed = [];
   PosStorage.setSession(INITIAL_USERS[0]); PosStorage.setOrders([]); PosStorage.setProducts(structuredClone(INITIAL_PRODUCTS));
+  PosStorage.setToken('checkout-test-session');
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+    if (url === '/api/auth/session') return json({ user: INITIAL_USERS[0], expiresAt: Date.now() + 3600000 });
+    if (url === '/api/auth/staff') return json(INITIAL_USERS.map(({ id, name, username, avatar }) => ({ id, name, username, avatar })));
     if (url === '/api/orders/quote') {
       if (outcome === 'pending') throw new TypeError('Server stopped');
       const order = JSON.parse(init!.body as string);
@@ -53,6 +57,30 @@ async function checkout() {
 }
 
 describe('phase 1 cashier decisions', () => {
+  it('retains the sale key and draft when the session ends before an acknowledgment arrives', async () => {
+    const originalFetch = globalThis.fetch;
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    let started!: () => void;
+    const submitted = new Promise<void>(resolve => { started = resolve; });
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/orders') { started(); await held; }
+      return originalFetch(url, init);
+    });
+    const user = userEvent.setup(); render(<App />);
+    await user.click(await screen.findByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    await user.click(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
+    await submitted;
+    const key = PosStorage.getDraft()!.attempt!.idempotencyKey;
+    act(() => endSession('checkout-test-session'));
+    expect(await screen.findByRole('heading', { name: 'Terminal Login' })).toBeVisible();
+    release();
+    await waitFor(() => expect(requests).toHaveLength(1));
+    await waitFor(async () => expect((await PendingOutbox.list())[0]?.idempotencyKey).toBe(key));
+    expect(PosStorage.getDraft()!.attempt!.idempotencyKey).toBe(key);
+    expect(PosStorage.getDraft()!.cart).toHaveLength(1);
+    expect(screen.queryByRole('dialog', { name: 'Receipt preview' })).not.toBeInTheDocument();
+  });
   it('keeps noted copies separate, preserves the edited line ID and sends kitchen notes', async () => {
     const user = userEvent.setup(); render(<App />);
     await screen.findByText(INITIAL_PRODUCTS[0].name);
