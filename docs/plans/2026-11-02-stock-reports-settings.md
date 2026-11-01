@@ -1,0 +1,10 @@
+# Stock, reports and settings fixes
+
+Scope: the verified stock, report and settings/menu findings in the deep POS audit. Preserve the existing uncommitted session/privacy work; no live database operations, printing, commits or pushes.
+
+1. Share catalog ownership across lightweight reads, bootstrap and menu/stock/settings mutations. An old bootstrap can retain complete history but must use the current catalog for its cache and return value, including offline fallback. Refresh lightweight stock on the existing five-second sync heartbeat, online notifications and manual sync; coalesce overlapping syncs and avoid catalog commits during checkout.
+2. Scope P&L order counts and payment revenue to the same historical item/category snapshots as the financial KPIs. Label payment revenue as excluding tax. Exclude cancelled rows from the profit API. Export UTF-8 CSV through Blob downloads with CSV escaping, text-only spreadsheet formula protection and exact signed money.
+3. Follow the explicit permission matrix: store profile, tax and printer settings remain admin-only. Managers receive read-only controls and an explanation; local appearance stays available. Correct the staff description and permission error. Support accepted zero prices consistently across server catalogs, client bootstrap/catalog and persisted cache; retain server pricing, stock deductions and costs on zero-total sales.
+4. Add regression tests for each finding, then verify full automated checks and a fresh production build against a disposable database, including remote stock changes, account switches, reversed responses, CSV download, zero-price checkout and a large history.
+
+Future work remains in [the loading plan](2026-11-01-faster-pos-loading.md): server-side date-range aggregates and paginated report detail before smaller checkout startup loading. Do not truncate the source used for financial totals. Polling is eventual refresh, not a cross-terminal transaction lock; the server remains authoritative for checkout stock.

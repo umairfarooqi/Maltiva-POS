@@ -19,7 +19,8 @@ import { CustomerDisplayWindow } from './components/CustomerDisplayWindow';
 import { PosApi, SaleResult, mergeRecoveryState } from './services/api';
 import { PendingOutbox } from './services/pendingOutbox';
 import { PosStorage } from './services/storage';
-import { SESSION_ENDED, endSession, flushSessionRevocations } from './services/session';
+import { checkoutCart, checkoutData } from './services/clientPrivacy';
+import { captureSession, SESSION_ENDED, endSession, flushSessionRevocations } from './services/session';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from './utils/normalizeProduct';
 import {
   Product,
@@ -64,7 +65,10 @@ export default function App() {
   const [reportRetry, setReportRetry] = useState(0);
   const [reportReadyKey, setReportReadyKey] = useState('');
   const catalogRefreshPending = useRef(false);
+  const catalogReadyRef = useRef(false);
+  const [catalogReady, setCatalogReady] = useState(false);
   const catalogRefreshRequest = useRef(0);
+  const syncOwner = useRef<symbol | null>(null);
 
   // Core Data Store
   const [categories, setCategories] = useState<Category[]>(() => PosStorage.getCategories());
@@ -123,6 +127,16 @@ export default function App() {
       setSessionNotice(message);
       setActiveTab('order_line');
       setAllUsers([]);
+      setCatalogReady(false); catalogReadyRef.current = false;
+      setProducts(previous => checkoutData(previous).map(normalizeProduct));
+      setOrders([]);
+      setSaleFeedback(null);
+      if (checkoutAttempt.current) checkoutAttempt.current = checkoutData(checkoutAttempt.current);
+      setCart(previous => {
+        const safe = checkoutCart({ cart: previous }).cart;
+        attemptCart.current = JSON.stringify(safe);
+        return safe;
+      });
       setReceiptModalOrder(null);
       setVariationModalProduct(null);
       setEditingCartItem(undefined);
@@ -231,7 +245,7 @@ export default function App() {
 
     const displayPayload = {
       settings: printerSettings,
-      cart: visibleCart,
+      cart: checkoutData(visibleCart),
       orderNumber: 'New order',
       tokenNumber: 0,
       subtotalPaisa,
@@ -258,7 +272,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      if (customerConfirmation) localStorage.setItem('pos_customer_confirmation', JSON.stringify(customerConfirmation));
+      if (customerConfirmation) localStorage.setItem('pos_customer_confirmation', JSON.stringify(checkoutData(customerConfirmation)));
       else localStorage.removeItem('pos_customer_confirmation');
     } catch { /* Confirmation remains available in this window. */ }
   }, [customerConfirmation]);
@@ -277,7 +291,8 @@ export default function App() {
     let active = true;
     let countRequest = 0;
     const generation = sessionGeneration.current;
-    const ownsRequest = () => active && generation === sessionGeneration.current;
+    const owner = captureSession();
+    const ownsRequest = () => active && generation === sessionGeneration.current && owner.isCurrent();
     const updateCount = async () => {
       const request = ++countRequest;
       try {
@@ -301,8 +316,9 @@ export default function App() {
       setProducts(data.products.map(normalizeProduct));
       setOrders(data.orders);
       setAllUsers(data.users);
-      setPrinterSettings(data.printerSettings);
+      setPrinterSettings(previous => JSON.stringify(previous) === JSON.stringify(data.printerSettings) ? previous : data.printerSettings);
       setIsOnline(data.isOnline);
+      if (data.isOnline) { catalogReadyRef.current = true; setCatalogReady(true); }
       sync();
     }).catch(() => { if (ownsRequest()) setRecoveryError('Could not load recovery data. Keep this window open and retry sync.'); });
     // Local server recovery does not depend on browser internet connectivity events.
@@ -321,39 +337,55 @@ export default function App() {
     let active = true;
     const generation = sessionGeneration.current;
     const key = `${currentUser.id}:${activeTab}:${generation}`;
+    const owner = captureSession();
     setReportLoading(true); setReportError('');
-    PosApi.fetchInitialData(() => active && generation === sessionGeneration.current).then(data => {
-      if (!active || generation !== sessionGeneration.current) return;
+    PosApi.fetchInitialData(() => active && generation === sessionGeneration.current && owner.isCurrent()).then(data => {
+      if (!active || generation !== sessionGeneration.current || !owner.isCurrent()) return;
       if (!data.isOnline) throw new Error('Reports need the local POS server to confirm complete sales. Reconnect and retry.');
       setOrders(data.orders);
       setReportReadyKey(key);
-    }).catch(error => { if (active && generation === sessionGeneration.current) setReportError((error as Error).message || 'Could not load complete report data. Retry.'); })
-      .finally(() => { if (active && generation === sessionGeneration.current) setReportLoading(false); });
+    }).catch(error => { if (active && generation === sessionGeneration.current && owner.isCurrent()) setReportError((error as Error).message || 'Could not load complete report data. Retry.'); })
+      .finally(() => { if (active && generation === sessionGeneration.current && owner.isCurrent()) setReportLoading(false); });
     return () => { active = false; };
   }, [activeTab, currentUser?.id, reportRetry]);
 
   const refreshCatalog = async (generation: number) => {
     const request = ++catalogRefreshRequest.current;
-    const ownsRequest = () => generation === sessionGeneration.current && request === catalogRefreshRequest.current && !orderInFlight.current;
+    const owner = captureSession();
+    const ownsRequest = () => owner.isCurrent() && generation === sessionGeneration.current && request === catalogRefreshRequest.current && !orderInFlight.current;
     const data = await PosApi.fetchCatalog(ownsRequest);
     if (!ownsRequest()) return;
-    setProducts(data.products.map(normalizeProduct)); setCategories(data.categories); setPrinterSettings(data.printerSettings);
+    setProducts(data.products.map(normalizeProduct)); setCategories(data.categories); setPrinterSettings(previous => JSON.stringify(previous) === JSON.stringify(data.printerSettings) ? previous : data.printerSettings);
     catalogRefreshPending.current = false;
   };
 
   const handleManualSync = async () => {
     if (!currentUser || !verifiedToken.current || PosStorage.getToken() !== verifiedToken.current) { void flushSessionRevocations(); return; }
+    if (syncOwner.current || orderInFlight.current && !checkoutRecoveryPending.current) return;
+    const sync = Symbol(); syncOwner.current = sync;
     const generation = sessionGeneration.current;
+    const owner = captureSession();
     try {
-      if (checkoutRecoveryPending.current) {
-        const data = await PosApi.fetchInitialData(() => generation === sessionGeneration.current);
-        if (generation !== sessionGeneration.current) return;
+      if (checkoutRecoveryPending.current || !catalogReadyRef.current) {
+        const data = await PosApi.fetchInitialData(() => generation === sessionGeneration.current && owner.isCurrent());
+        if (generation !== sessionGeneration.current || !owner.isCurrent()) return;
         reconcileCheckoutDraft(data.orders);
+        if (data.isOnline) {
+          setProducts(data.products.map(normalizeProduct)); setCategories(data.categories);
+          setAllUsers(data.users); setPrinterSettings(previous => JSON.stringify(previous) === JSON.stringify(data.printerSettings) ? previous : data.printerSettings); catalogReadyRef.current = true; setCatalogReady(true);
+        }
       }
       const res = await PosApi.syncOfflineQueue();
-      if (generation !== sessionGeneration.current) return;
+      if (generation !== sessionGeneration.current || !owner.isCurrent()) return;
       const recoveredOrders = await PosApi.loadRecoveryOrders();
-      if (generation !== sessionGeneration.current) return;
+      if (generation !== sessionGeneration.current || !owner.isCurrent()) return;
+      // This sync may have started before checkout became uncertain. Reconcile a
+      // known result before clearing its warning, even if the flag changed mid-sync.
+      const attempt = checkoutAttempt.current;
+      if (checkoutRecoveryPending.current && attempt && recoveredOrders.some(order =>
+        (order.idempotencyKey || order.id) === (attempt.idempotencyKey || attempt.id))) {
+        reconcileCheckoutDraft(recoveredOrders);
+      }
       setPendingOfflineCount(recoveredOrders.filter(order => order.persistenceState === 'pending' || !order.persistenceState).length);
       setIsOnline(res.reachable);
       setOrders(previous => mergeRecoveryState(previous, recoveredOrders));
@@ -372,10 +404,11 @@ export default function App() {
           return previous;
         });
       }
-      if (res.reachable && catalogRefreshPending.current) await refreshCatalog(generation);
-      if (generation !== sessionGeneration.current) return;
-      setRecoveryError('');
-    } catch { if (generation === sessionGeneration.current) setRecoveryError('Sync could not finish. Pending sales are retained; retry sync.'); }
+      if (res.reachable && !orderInFlight.current) await refreshCatalog(generation);
+      if (generation !== sessionGeneration.current || !owner.isCurrent()) return;
+      if (!checkoutRecoveryPending.current) setRecoveryError('');
+    } catch (error) { if (generation === sessionGeneration.current && owner.isCurrent() && (error as Error)?.name !== 'SupersededRequestError') setRecoveryError('Sync could not finish. Pending sales are retained; retry sync.'); }
+    finally { if (syncOwner.current === sync) syncOwner.current = null; }
   };
 
   // Login handler
@@ -471,7 +504,7 @@ export default function App() {
           ...existing,
           quantity,
           totalPricePaisa: quantity * existing.unitPricePaisa,
-          totalCostPaisa: quantity * existing.unitCostPaisa,
+          totalCostPaisa: quantity * (existing.unitCostPaisa || 0),
         };
       } else {
         updated.splice(existingIdx, 1);
@@ -489,7 +522,7 @@ export default function App() {
     if (orderInFlight.current) return;
     if (!canAddQuantity(product, quantity, editingCartItem?.cartItemId)) return false;
     const deltaPrice = selectedVariations.reduce((sum, v) => sum + v.priceDeltaPaisa, 0);
-    const deltaCost = selectedVariations.reduce((sum, v) => sum + v.costDeltaPaisa, 0);
+    const deltaCost = selectedVariations.reduce((sum, v) => sum + (v.costDeltaPaisa || 0), 0);
 
     const unitPricePaisa = product.pricePaisa + deltaPrice;
     const unitCostPaisa = (product.costPricePaisa || 0) + deltaCost;
@@ -525,7 +558,7 @@ export default function App() {
             ...item,
             quantity,
             totalPricePaisa: quantity * item.unitPricePaisa,
-            totalCostPaisa: quantity * item.unitCostPaisa,
+            totalCostPaisa: quantity * (item.unitCostPaisa || 0),
           };
         })
         .filter(Boolean) as CartItem[]
@@ -770,47 +803,60 @@ export default function App() {
 
   // Admin CRUD Handlers
   const handleSaveProduct = async (productData: Partial<Product>) => {
+    const owner = captureSession();
     if (productData.id) {
       const existing = products.find(p => p.id === productData.id);
       const merged = normalizeProduct({ ...(existing || {}), ...productData });
       const updated = await PosApi.updateProduct(merged, isOnline);
+      owner.assertCurrent();
       const normalizedUpdated = normalizeProduct(updated);
       setProducts(prev => prev.map(product => product.id === normalizedUpdated.id ? normalizedUpdated : product));
     } else {
       const created = normalizeProduct(productData);
       const savedProduct = await PosApi.createProduct(created, isOnline);
+      owner.assertCurrent();
       const normalizedSaved = normalizeProduct(savedProduct);
       setProducts(prev => [normalizedSaved, ...prev.filter(product => product.id !== created.id && product.id !== normalizedSaved.id)]);
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
+    const owner = captureSession();
     await PosApi.deleteProduct(productId, isOnline);
+    owner.assertCurrent();
     setProducts(prev => prev.filter(p => p.id !== productId));
   };
 
   const handleSaveCategory = async (name: string, icon: string) => {
+    const owner = captureSession();
     const created = await PosApi.createCategory(name, icon, isOnline);
+    owner.assertCurrent();
     setCategories(prev => [...prev, created]);
   };
 
   const handleUpdateCategory = async (category: Category) => {
+    const owner = captureSession();
     const updated = await PosApi.updateCategory(category, isOnline);
+    owner.assertCurrent();
     setCategories(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+    owner.assertCurrent();
     setProducts(prev => prev.map(product =>
       product.categoryId === updated.id ? { ...product, categoryName: updated.name } : product
     ));
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
+    const owner = captureSession();
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return;
     await PosApi.deleteCategory(categoryId, isOnline);
+    owner.assertCurrent();
     setCategories(prev => {
       const next = prev.filter(category => category.id !== categoryId);
       return next.some(category => category.id === DEFAULT_UNCATEGORIZED_CATEGORY.id)
         ? next
         : [...next, DEFAULT_UNCATEGORIZED_CATEGORY];
     });
+    owner.assertCurrent();
     setProducts(prev => prev.map(product =>
       product.categoryId === categoryId
         ? normalizeProduct({
@@ -828,33 +874,44 @@ export default function App() {
     reason: string,
     type: 'restock' | 'adjustment' | 'waste'
   ) => {
+    const owner = captureSession();
     if (!currentUser) return;
     const res = await PosApi.adjustStock(productId, changeAmount, reason, type, currentUser, isOnline);
+    owner.assertCurrent();
     setProducts(prev => prev.map(p => (p.id === productId ? normalizeProduct(res.product) : p)));
   };
 
   const handleSaveSettings = async (newSettings: PrinterSettings) => {
+    const owner = captureSession();
     await PosApi.saveMoneySettings(newSettings);
+    owner.assertCurrent();
     setPrinterSettings(newSettings);
     PosStorage.setPrinterSettings(newSettings);
   };
 
   const refreshStaff = async () => {
-    try { setAllUsers(await PosApi.listUsers()); } catch { /* session may have expired; list reloads on next open */ }
+    const owner = captureSession();
+    try { const users = await PosApi.listUsers(); owner.assertCurrent(); setAllUsers(users); } catch { /* session may have expired; list reloads on next open */ }
   };
 
   const handleAddUser = async (input: Partial<User> & { password: string; pin: string }) => {
+    const owner = captureSession();
     const created = await PosApi.createUser(input);
+    owner.assertCurrent();
     setAllUsers(prev => [...prev, created]);
   };
 
   const handleToggleUserActive = async (userId: string, active: boolean) => {
+    const owner = captureSession();
     const updated = await PosApi.updateUser(userId, { active });
+    owner.assertCurrent();
     setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
 
   const handleResetUserPin = async (userId: string, pin: string, password?: string) => {
+    const owner = captureSession();
     const updated = await PosApi.resetUserPin(userId, pin, password);
+    owner.assertCurrent();
     setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
 
@@ -991,7 +1048,8 @@ export default function App() {
           )}
 
           {activeTab === 'receipts' && <ReceiptsView onOpenReceipt={setReceiptModalOrder} onBack={() => setActiveTab('order_line')} />}
-          {activeTab === 'manage_dishes' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+          {activeTab === 'manage_dishes' && !catalogReady && <div role="status" className="p-4">Loading current menu… <button type="button" onClick={() => void handleManualSync()} className="underline">Retry menu loading</button></div>}
+          {activeTab === 'manage_dishes' && catalogReady && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <ManageDishesView
               products={products}
               categories={categories}

@@ -1,0 +1,17 @@
+{
+  "integrity": "ok",
+  "orders": 102,
+  "payments": 102,
+  "duplicateKeys": 0,
+  "totals": {
+    "sales": 10098000,
+    "cost": 5610000,
+    "profit": 4488000
+  },
+  "latest": {
+    "orderNumber": "#F20261102-0102",
+    "status": "completed",
+    "total_paisa": 99000,
+    "change_due_paisa": 1000
+  }
+}

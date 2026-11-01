@@ -16,6 +16,7 @@ async function read(url: string, signal: AbortSignal) {
     response = await sessionFetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]) });
     body = await response.json();
   } catch (error) {
+    if ((error as Error).name === 'SessionChangedError') throw new DOMException('Receipt request cancelled.', 'AbortError');
     if (error instanceof TypeError || (error as Error).name === 'TimeoutError') throw new Error('Receipt lookup needs the local POS server. Keep your cart and retry.');
     throw error;
   }

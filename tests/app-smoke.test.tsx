@@ -36,6 +36,7 @@ describe('App login screen and staff PIN reset', () => {
     localStorage.clear();
     vi.spyOn(PosStorage, 'getSession').mockReturnValue(null);
     vi.spyOn(PosApi, 'fetchLoginStaff').mockResolvedValue([]);
+    vi.spyOn(PosApi, 'fetchCatalog').mockResolvedValue({ categories: [], products: [], printerSettings: PosStorage.getPrinterSettings() });
     vi.spyOn(PosApi, 'getSession').mockResolvedValue({ user: currentUser, expiresAt: Date.now() + 3600000 });
     vi.spyOn(PosApi, 'fetchInitialData').mockResolvedValue({
       categories: [],

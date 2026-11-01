@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { checkoutData } from '../src/services/clientPrivacy';
 import { PosApi, mergeRecoveryState } from '../src/services/api';
 import { PosStorage } from '../src/services/storage';
 import { PendingOutbox } from '../src/services/pendingOutbox';
@@ -19,7 +20,7 @@ describe('catalog refresh safety', () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(catalog))); vi.stubGlobal('fetch', fetcher);
     const result = await PosApi.fetchCatalog();
     expect(result.products).toHaveLength(INITIAL_PRODUCTS.length);
-    expect(PosStorage.getOrders()).toMatchObject([{ id: saved.id }]); expect(PosStorage.getUsers()).toEqual(INITIAL_USERS);
+    expect(PosStorage.getOrders()).toMatchObject([{ id: saved.id }]); expect(PosStorage.getUsers()).toEqual(checkoutData(INITIAL_USERS));
     expect(writes).not.toHaveBeenCalled(); expect(fetcher.mock.calls[0][0]).toBe('/api/data?scope=catalog');
   });
   it('rejects unexpected scope responses rather than clearing the cache', async () => {
@@ -123,4 +124,38 @@ describe('request ownership regressions', () => {
     current = false; resume(new Response(JSON.stringify(catalog))); await rejected;
     expect(write).not.toHaveBeenCalled();
   });
+});
+
+for (const offline of [false, true]) it(`keeps newest catalog through old full bootstrap ${offline ? 'fallback' : 'success'} after newer catalog commits`, async () => {
+  let resume!: (rows: any[]) => void;
+  const list = vi.spyOn(PendingOutbox, 'list').mockReturnValueOnce(new Promise(done => { resume = done; }));
+  vi.spyOn(PendingOutbox, 'rejected').mockResolvedValue([]);
+  vi.spyOn(PendingOutbox, 'acknowledged').mockResolvedValue([]);
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    if (url.includes('scope=catalog')) return Promise.resolve(new Response(JSON.stringify({ ...catalog, products: [{ ...INITIAL_PRODUCTS[0], stockQuantity: 7 }] })));
+    if (offline) return Promise.reject(new TypeError('offline'));
+    return Promise.resolve(new Response(JSON.stringify({ ...catalog, historyIncluded: true, products: [{ ...INITIAL_PRODUCTS[0], stockQuantity: 8 }] })));
+  }));
+  const old = PosApi.fetchInitialData();
+  await vi.waitFor(() => expect(list).toHaveBeenCalled());
+  await PosApi.fetchCatalog(); resume([]); expect((await old).products[0].stockQuantity).toBe(7);
+  expect(PosStorage.getProducts()[0].stockQuantity).toBe(7);
+});
+it('keeps a zero-price product in catalog, bootstrap and durable cache', async () => {
+  const products = [{ ...INITIAL_PRODUCTS[0], pricePaisa: 0 }];
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify({ ...catalog, products, historyIncluded: url.includes('scope=catalog') ? false : true })))));
+  expect((await PosApi.fetchCatalog()).products[0].pricePaisa).toBe(0);
+  expect((await PosApi.fetchInitialData()).products[0].pricePaisa).toBe(0);
+  expect(PosStorage.getProducts()[0].pricePaisa).toBe(0);
+  expect(JSON.parse(localStorage.getItem('tasty_pos_products')!)[0].pricePaisa).toBe(0);
+});
+it('a successful stock adjustment invalidates an already-running catalog response', async () => {
+  let resume!: (res: Response) => void;
+  const product = { ...INITIAL_PRODUCTS[0], stockQuantity: 7 };
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => url.includes('scope=catalog') ? new Promise(done => { resume = done; }) : Promise.resolve(new Response(JSON.stringify({ product, log: { id: 'log-new' } })))));
+  PosStorage.setProducts(INITIAL_PRODUCTS);
+  const old = PosApi.fetchCatalog(); const rejected = expect(old).rejects.toMatchObject({ name: 'SupersededRequestError' });
+  await PosApi.adjustStock(product.id, 1, 'Restock', 'restock', INITIAL_USERS[0], true);
+  resume(new Response(JSON.stringify({ ...catalog, products: [{ ...product, stockQuantity: 6 }] }))); await rejected;
+  expect(PosStorage.getProducts()[0].stockQuantity).toBe(7);
 });

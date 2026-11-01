@@ -60,6 +60,9 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
     return !range.error && time >= range.start && time < range.end && (paymentFilter === 'all' || (paymentFilter === 'other' ? !['cash', 'card', 'scan'].includes(order.paymentMethod) : order.paymentMethod === paymentFilter));
   });
 
+  const scopedItems = (order: Order) => order.items.filter(item => selectedCategoryId === 'all' || item.categoryId === selectedCategoryId);
+  const scopedOrders = filteredOrders.filter(order => scopedItems(order).length > 0);
+
   // Aggregate items sold from filtered orders
   interface ItemAgg {
     productId: string;
@@ -78,7 +81,6 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
 
   filteredOrders.forEach(order => {
     order.items.forEach(it => {
-      const prod = products.find(p => p.id === it.productId);
       const categoryId = it.categoryId;
 
       if (selectedCategoryId !== 'all' && categoryId !== selectedCategoryId) {
@@ -140,9 +142,11 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
       'Margin %',
     ];
 
+    // Only user-entered text needs formula protection; preserve signed money as numbers.
+    const safeText = (text: string) => /^[\s]*[=+@-]/.test(text) ? "'" + text : text;
     const rows = itemsList.map(item => [
-      `"${item.productName.replace(/"/g, '""')}"`,
-      `"${item.categoryName}"`,
+      safeText(item.productName),
+      safeText(item.categoryName),
       item.quantity,
       rupeeText(Math.round(item.avgSellingPrice)),
       rupeeText(Math.round(item.avgCostPrice)),
@@ -153,17 +157,18 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
       `${item.profitMarginPercent.toFixed(1)}%`,
     ]);
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
+    const escape = (value: string | number) => {
+      const text = String(value);
+      return '"' + text.replace(/"/g, '""') + '"';
+    };
+    const csvContent = [headers, ...rows].map(row => row.map(escape).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `maltiva_profit_loss_${dateFilter}_${Date.now()}.csv`);
+    link.href = url;
+    link.download = `maltiva_profit_loss_${dateFilter}_${Date.now()}.csv`;
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try { link.click(); } finally { link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+
   };
 
   return (
@@ -262,8 +267,9 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
         {range.error && <p role="alert" className="text-pos-danger-text">{range.error}</p>}
       </div>
       <div id="profit-loss-print-area" className="space-y-6">
-        <div className="flex flex-wrap gap-5 text-sm text-pos-secondary">
-          {(['cash', 'card', 'scan', 'other'] as const).map(method => <p key={method}><span className="capitalize">{method}</span>: <strong>{formatPKR(filteredOrders.filter(order => (method === 'other' ? !['cash', 'card', 'scan'].includes(order.paymentMethod) : order.paymentMethod === method)).reduce((sum, order) => sum + order.totalPaisa, 0))}</strong></p>)}
+        <div aria-label="Revenue by payment method" className="flex flex-wrap gap-5 text-sm text-pos-secondary">
+          <span>Revenue excluding tax:</span>
+          {(['cash', 'card', 'scan', 'other'] as const).map(method => <p key={method}><span className="capitalize">{method}</span>: <strong>{formatPKR(scopedOrders.filter(order => (method === 'other' ? !['cash', 'card', 'scan'].includes(order.paymentMethod) : order.paymentMethod === method)).reduce((sum, order) => sum + scopedItems(order).reduce((amount, item) => amount + (item.netRevenuePaisa ?? item.totalPricePaisa), 0), 0))}</strong></p>)}
         </div>
         <div className="hidden print:block border-b border-pos-control pb-4">
           <h1 className="text-2xl font-black text-pos-text">Profit &amp; Loss Audit</h1>
@@ -281,7 +287,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             {formatPKR(totalRevenue)}
           </p>
           <p className="text-[11px] text-pos-muted">
-            Total sales generated across {filteredOrders.length} orders
+            Revenue excluding tax across {scopedOrders.length} orders
           </p>
         </div>
 

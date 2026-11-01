@@ -1,0 +1,43 @@
+// @vitest-environment node
+import { afterAll,beforeAll,expect,it } from 'vitest';
+import Database from 'better-sqlite3';
+import { dirname,join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { isolatedServer } from './helpers/isolated-server';
+let server:Awaited<ReturnType<typeof isolatedServer>>;
+beforeAll(async()=>{server=await isolatedServer();},30000);afterAll(async()=>server?.cleanup());
+const login=(username:string,secret:string)=>fetch(server.url+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:secret})});
+it('DIAGNOSTIC: one account has separate username and email lockout buckets',async()=>{
+ for(let i=0;i<5;i++)expect((await login('cashier','wrong-fixture-secret')).status).toBe(401);
+ expect((await login('cashier','fixture-only-secret')).status).toBe(429);
+ const alias=await login('cashier@maltivacrust.com','fixture-only-secret');expect(alias.status).toBe(200);
+ console.log('ALIAS_LOCKOUT: username 429, same account email 200 (a correct secret is still required)');
+});
+it('DIAGNOSTIC: lockout is lost when only the disposable server restarts',async()=>{
+ expect((await login('cashier','fixture-only-secret')).status).toBe(429);
+ await server.stop();await server.start();expect((await login('cashier','fixture-only-secret')).status).toBe(200);
+ console.log('LOCKOUT_RESTART: locked account becomes available immediately after server restart');
+},30000);
+it('CONTROL: cashier cannot use protected admin/menu/stock routes or retrieve product costs',async()=>{
+ const session=await(await login('cashier','fixture-only-secret')).json();const headers={Authorization:'Bearer '+session.token,'Content-Type':'application/json'};
+ for(const [route,method] of [['/api/users','GET'],['/api/products','POST'],['/api/inventory/adjust','POST'],['/api/settings/printer','PUT'],['/api/reports/profit','GET']])expect((await fetch(server.url+route,{method,headers,...(method==='GET'?{}:{body:'{}'})})).status).toBe(403);
+ const data=await(await fetch(server.url+'/api/data',{headers})).json();expect(data.users).toEqual([]);expect(data.products.every((p:any)=>p.costPricePaisa===undefined)).toBe(true);
+ console.log('SERVER_BOUNDARY_CONTROL: 5 restricted routes 403, cashier staff/cost fields excluded');
+});
+it('CONTROL: server logout revokes the old bearer token',async()=>{
+ const session=await(await login('cashier','fixture-only-secret')).json();const headers={Authorization:'Bearer '+session.token};expect((await fetch(server.url+'/api/auth/logout',{method:'POST',headers})).status).toBe(200);
+ expect((await fetch(server.url+'/api/data',{headers})).status).toBe(401);
+ console.log('LOGOUT_CONTROL: reusing a server-revoked token returns 401');
+});
+
+it('CONTROL: a full backup carries sensitive account/session material and must stay administrator-private',async()=>{
+ const created=await(await server.request('/api/maintenance/backups',{method:'POST'})).json();expect(created.filename).toBeTruthy();
+ const response=await server.request('/api/maintenance/backups/'+encodeURIComponent(created.filename));expect(response.status).toBe(200);
+ const bytes=Buffer.from(await response.arrayBuffer());const file=join(dirname(server.dbPath),'backups',created.filename);expect(bytes.equals(readFileSync(file))).toBe(true);
+ const image=new Database(file,{readonly:true});
+ try{expect(image.prepare("SELECT count(*) n FROM settings WHERE key='authSecret'").get()).toMatchObject({n:1});
+ const sessions:any=image.prepare('SELECT count(*) n FROM auth_sessions').get();expect(sessions.n).toBeGreaterThan(0);
+ const hashes:any=image.prepare("SELECT count(*) n FROM users WHERE password LIKE 's1$%'").get();expect(hashes.n).toBeGreaterThan(0);
+ console.log('BACKUP_SENSITIVITY_CONTROL: contains staff credential hashes, signing secret and active-session records; no values printed');
+ }finally{image.close();}
+});

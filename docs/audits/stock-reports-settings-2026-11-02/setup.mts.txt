@@ -1,0 +1,27 @@
+
+import {spawn} from 'node:child_process';
+import {createServer} from 'node:http';
+import net from 'node:net';
+import {once} from 'node:events';
+import {writeFileSync,appendFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {pathToFileURL} from 'node:url';
+const root="D:/Shakeel/Github/maltiva-pos",qa="C:/Users/SHAKEE~1/AppData/Local/Temp/maltiva-stock-report-923763c541924ab2979aa86e28e1c8c2";
+const require=createRequire(root+'/package.json'),Database=require('better-sqlite3');
+async function freePort(){const r=net.createServer();r.listen(0,'127.0.0.1');await once(r,'listening');const port=r.address().port;await new Promise(done=>r.close(done));return port;}
+const backendPort=await freePort(),browserPort=await freePort(),backend='http://127.0.0.1:'+backendPort;
+const child=spawn(process.execPath,[qa+'/server.cjs'],{cwd:qa,env:{...process.env,NODE_ENV:'production',NODE_PATH:root+'/node_modules',PORT:String(backendPort),HOST:'127.0.0.1',MALTIVA_POS_DB_DIR:qa},stdio:['ignore','pipe','pipe']});
+child.stdout.on('data',s=>appendFileSync(qa+'/server.log',s));child.stderr.on('data',s=>appendFileSync(qa+'/server.log',s));
+for(let n=0;n<200;n++){try{if((await fetch(backend+'/api/health')).ok)break;}catch{}await new Promise(r=>setTimeout(r,50));}
+const {INITIAL_USERS}=await import(pathToFileURL(root+'/src/data/initialData.ts').href);
+const {saleFixture,reviewSale}=await import(pathToFileURL(root+'/tests/helpers/sale-fixtures.ts').href);
+const db=new Database(qa+'/maltiva_pos.db');
+for(const u of [...INITIAL_USERS,{id:'audit-manager',name:'Audit Manager',username:'audit-manager',email:'audit-manager@fixture.test',pin:'9283',role:'manager',avatar:'',branch:'Audit'}])db.prepare('INSERT INTO users (id,name,username,email,password,pin,role,avatar,active,branch) VALUES (?,?,?,?,?,?,?,?,1,?)').run(u.id,u.name,u.username,u.email,'fixture-only-secret',u.pin,u.role,u.avatar,u.branch);
+const admin=await(await fetch(backend+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:'fixture-only-secret'})})).json();
+const sale=await reviewSale(backend,{...saleFixture('audit-browser-template'),createdAt:new Date().toISOString()},admin.token);
+const saved=await(await fetch(backend+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+admin.token},body:JSON.stringify(sale)})).json();if(!saved.order)throw Error(JSON.stringify(saved));
+const template=db.prepare('SELECT * FROM orders WHERE id=?').get(sale.id),item=db.prepare('SELECT * FROM order_items WHERE orderId=?').get(sale.id),payment=db.prepare('SELECT * FROM payments WHERE order_id=?').get(sale.id);
+function clone(table,row){const keys=Object.keys(row);db.prepare(`INSERT INTO ${table} (${keys.map(k=>'"'+k+'"').join(',')}) VALUES (${keys.map(()=>'?').join(',')})`).run(...keys.map(k=>row[k]));}
+db.transaction(()=>{for(let n=1;n<=10000;n++){const id='audit-history-'+n;const method=n%3===0?'card':n%3===1?'scan':'cash';clone('orders',{...template,id,orderNumber:'#AUDIT-'+n,idempotency_key:'audit-key-'+n,tokenNumber:n+1,paymentMethod:method});clone('order_items',{...item,id:'audit-item-'+n,orderId:id});clone('payments',{...payment,id:'audit-payment-'+n,order_id:id,method,tendered_paisa:method==='cash'?100000:null});}db.prepare('UPDATE order_counters SET value=10001').run();})();db.close();
+const proxy=createServer(async(req,res)=>{try{const began=Date.now(),chunks=[];for await(const chunk of req)chunks.push(chunk);const method=req.method;const upstream=await fetch(backend+req.url,{method,headers:{...req.headers,host:'127.0.0.1:'+backendPort},body:['GET','HEAD'].includes(method)?undefined:Buffer.concat(chunks)});const body=Buffer.from(await upstream.arrayBuffer());res.writeHead(upstream.status,Object.fromEntries([...upstream.headers].filter(([k])=>!['transfer-encoding','content-encoding','content-length'].includes(k))));res.end(body);if(req.url.startsWith('/api/'))appendFileSync(qa+'/requests.jsonl',JSON.stringify({method,path:req.url,status:upstream.status,bytes:body.length,ms:Date.now()-began})+'\n');}catch(e){res.writeHead(502);res.end(String(e));}});proxy.listen(browserPort,'127.0.0.1');const config={url:'http://127.0.0.1:'+browserPort,backend,orders:10001,totalPaisa:990099000,pid:process.pid,childPid:child.pid};writeFileSync(qa+'/ready.json',JSON.stringify(config));console.log(config);
+process.on('SIGTERM',()=>{child.kill();proxy.close();});

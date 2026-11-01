@@ -1,0 +1,12 @@
+Disposable admin authentication: PASS
+Authorized admin costs remain available in memory: PASS
+No persisted private fields in tasty_pos_products: PASS
+No persisted private fields in tasty_pos_orders: PASS
+Switch to real disposable cashier: PASS
+Cashier bootstrap/recovery has no admin costs or staff: PASS
+Submitted draft identity retained without private persistence: PASS
+Durable acknowledgment retained and safe after cache clearing: PASS
+Delayed product save cannot update new-session cache: PASS
+Backup download is suppressed after session switch: PASS
+Late 201 preserves saved state and original key without private cache: PASS
+All security browser checks passed. Synthetic recovery rows were removed; server sales were not changed.

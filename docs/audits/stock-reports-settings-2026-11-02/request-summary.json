@@ -1,0 +1,21 @@
+{
+  "count": 217,
+  "statuses": {
+    "200": 216,
+    "201": 1
+  },
+  "routes": {
+    "GET /api/auth/staff": 4,
+    "POST /api/auth/login": 3,
+    "GET /api/auth/session": 19,
+    "GET /api/data": 6,
+    "GET /api/orders/pending-status?": 90,
+    "GET /api/data?scope=catalog": 91,
+    "POST /api/orders/quote": 1,
+    "POST /api/orders": 1,
+    "PUT /api/settings/printer": 1,
+    "POST /api/auth/logout": 1
+  },
+  "maxResponseBytes": 17439672,
+  "noTokensOrBodiesCaptured": true
+}

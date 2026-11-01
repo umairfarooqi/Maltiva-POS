@@ -1,0 +1,25 @@
+
+> react-example@0.0.0 test
+> vitest run --maxWorkers=1 --reporter=dot
+
+
+ RUN  v5.0.3 D:/Shakeel/Github/maltiva-pos
+
+Not implemented: navigation to another Document
+·······················································stdout | tests/loading-performance-server.test.ts > batched history and lightweight catalog loading > keeps full reporting history complete while catalog responses exclude history, staff and logs
+Loading fixture: 10001 orders; full 17554030 bytes; catalog 9078 bytes; history SELECTs 4.
+
+stderr | tests/theme.test.tsx > device theme preference > switches immediately in Settings without saving business settings
+The current testing environment is not configured to support act(...)
+
+········································································································································································································································································································
+
+ Test Files  47 passed (47)
+      Tests  351 passed (351)
+   Start at  02:16:58
+   Duration  176.49s (tests 48%, environment 37%, setup 11%, import 3%, transform 1%)
+
+Environment  jsdom was created 47 times · 61.77s total, 37% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

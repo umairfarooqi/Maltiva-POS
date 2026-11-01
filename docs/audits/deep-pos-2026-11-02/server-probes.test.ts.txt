@@ -1,0 +1,36 @@
+// @vitest-environment node
+import Database from 'better-sqlite3';
+import { afterAll,beforeAll,expect,it } from 'vitest';
+import { isolatedServer } from './helpers/isolated-server';
+import { saleFixture,reviewSale } from './helpers/sale-fixtures';
+let server:Awaited<ReturnType<typeof isolatedServer>>,db:InstanceType<typeof Database>,manager:string;
+beforeAll(async()=>{server=await isolatedServer();db=new Database(server.dbPath);
+ const response=await server.request('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Audit Manager',username:'audit-manager',email:'audit-manager@fixture.test',role:'manager',password:'fixture-manager-secret',pin:'9283'})});expect(response.status).toBe(201);
+ manager=(await(await fetch(server.url+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'audit-manager',password:'fixture-manager-secret'})})).json()).token;
+},30000);
+afterAll(async()=>{db?.close();await server?.cleanup();});
+const login=(username:string,password:string)=>fetch(server.url+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+it('DIAGNOSTIC: username lockout does not cover the same account email alias',async()=>{
+ for(let n=0;n<5;n++)expect((await login('cashier','wrong-fixture-secret')).status).toBe(401);
+ expect((await login('cashier','fixture-only-secret')).status).toBe(429);
+ const user:any=db.prepare("SELECT email FROM users WHERE username='cashier'").get();const bypass=await login(user.email,'fixture-only-secret');expect(bypass.status).toBe(200);
+ console.log('LOCKOUT_ALIAS: username=429, same account email='+bypass.status);
+});
+it('DIAGNOSTIC: manager settings save is denied although manager UI offers editing',async()=>{
+ const response=await fetch(server.url+'/api/settings/printer',{method:'PUT',headers:{Authorization:'Bearer '+manager,'Content-Type':'application/json'},body:JSON.stringify({storeName:'Audit manager edit'})});expect(response.status).toBe(403);
+ console.log('MANAGER_SETTINGS: PUT=403');
+});
+it('DIAGNOSTIC: hidden manager profit API remains available and counts cancelled receipts',async()=>{
+ const sale=await reviewSale(server.url,saleFixture('audit-profit'),server.token);
+ expect((await server.request('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sale)})).status).toBe(201);
+ db.prepare("UPDATE orders SET status='cancelled' WHERE id=?").run(sale.id);
+ const response=await fetch(server.url+'/api/reports/profit',{headers:{Authorization:'Bearer '+manager}});expect(response.status).toBe(200);const report=await response.json();expect(report.orderCount).toBe(1);expect(report.orders[0].status).toBe('cancelled');expect(report.totalProfitPaisa).toBeGreaterThan(0);
+ console.log('PROFIT_API: manager='+response.status+', cancelled orderCount='+report.orderCount+', cancelled profit='+report.totalProfitPaisa);
+});
+
+it('DIAGNOSTIC: a saved zero-price dish is silently omitted from catalog reads',async()=>{
+ const response=await server.request('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'audit-zero-price',name:'Audit Zero Price',moneySchemaVersion:2,pricePaisa:0,costPricePaisa:0,stockQuantity:1,variations:[],bundledProducts:[],isAvailable:true})});expect(response.status).toBe(201);
+ expect(db.prepare("SELECT id FROM products WHERE id='audit-zero-price'").get()).toBeTruthy();
+ const catalog=await(await server.request('/api/data?scope=catalog')).json();expect(catalog.products.some((p:any)=>p.id==='audit-zero-price')).toBe(false);
+ console.log('ZERO_PRICE_DISH: POST=201, SQLite row exists, catalog excludes it');
+});

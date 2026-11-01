@@ -1,0 +1,38 @@
+import {PosApi} from 'D:/Shakeel/Github/maltiva-pos/src/services/api';
+import {PosStorage} from 'D:/Shakeel/Github/maltiva-pos/src/services/storage';
+import {PendingOutbox} from 'D:/Shakeel/Github/maltiva-pos/src/services/pendingOutbox';
+import {INITIAL_PRODUCTS,INITIAL_CATEGORIES,INITIAL_PRINTER_SETTINGS} from 'D:/Shakeel/Github/maltiva-pos/src/data/initialData';
+const output=document.querySelector('pre')!, button=document.querySelector('button')!;
+const json=(body:any)=>new Response(JSON.stringify(body),{headers:{'Content-Type':'application/json'}});
+const payload=(stock:number,full=false)=>({historyIncluded:!full?false:true,products:[{...INITIAL_PRODUCTS[0],stockQuantity:stock}],categories:INITIAL_CATEGORIES,printerSettings:INITIAL_PRINTER_SETTINGS,orders:[],users:[],tables:[],inventoryLogs:[]});
+button.onclick=async()=>{
+ button.disabled=true;
+ const originalFetch=window.fetch, originalList=PendingOutbox.list, originalRejected=PendingOutbox.rejected, originalAcknowledged=PendingOutbox.acknowledged;
+ const checks:string[]=[];
+ const assert=(ok:boolean,name:string)=>{if(!ok)throw Error(name);checks.push(name);};
+ try{
+  localStorage.clear();PosStorage.setToken('synthetic-browser-owner');
+  PendingOutbox.rejected=async()=>[];PendingOutbox.acknowledged=async()=>[];
+  for(const offline of [false,true]){
+   let resume!:(x:any[])=>void,entered!:(x?:unknown)=>void;
+   const paused=new Promise(done=>{entered=done});
+   PendingOutbox.list=()=>{entered();return new Promise(done=>{resume=done});};
+   window.fetch=async(url:any)=>{if(String(url).includes('scope=catalog'))return json(payload(7));if(offline)throw new TypeError('offline');return json(payload(8,true));};
+   const old=PosApi.fetchInitialData();await paused;await PosApi.fetchCatalog();resume([]);const data=await old;
+   assert(data.products[0].stockQuantity===7 && PosStorage.getProducts()[0].stockQuantity===7,`old full ${offline?'fallback':'success'} preserves new stock`);
+  }
+  PendingOutbox.list=async()=>[];
+  const responses:Array<(x:Response)=>void>=[];
+  window.fetch=()=>new Promise(done=>responses.push(done));
+  const old=PosApi.fetchCatalog().then(()=>false,e=>e.name==='SupersededRequestError');
+  const fresh=PosApi.fetchCatalog();responses[1](json(payload(4)));await fresh;responses[0](json(payload(9)));
+  assert(await old && PosStorage.getProducts()[0].stockQuantity===4,'out-of-order catalog keeps latest stock');
+  window.fetch=()=>new Promise(done=>responses.push(done));
+  const obsolete=PosApi.fetchInitialData().then(()=>false,e=>e.name==='SessionChangedError');
+  PosStorage.setToken('synthetic-cashier-owner');PosStorage.setProducts([{...INITIAL_PRODUCTS[0],stockQuantity:3}]);
+  responses[2](json(payload(99,true)));
+  assert(await obsolete && PosStorage.getProducts()[0].stockQuantity===3,'account switch blocks obsolete bootstrap');
+  output.textContent=JSON.stringify({passed:checks.length,checks},null,2);
+ }catch(error){output.textContent=JSON.stringify({failed:String(error),checks},null,2);}
+ finally{window.fetch=originalFetch;PendingOutbox.list=originalList;PendingOutbox.rejected=originalRejected;PendingOutbox.acknowledged=originalAcknowledged;localStorage.clear();}
+};

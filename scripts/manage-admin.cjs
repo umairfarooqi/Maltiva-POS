@@ -83,6 +83,9 @@ if (existing) {
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='auth_sessions'").get()) {
     db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(existing.id);
   }
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='auth_failures'").get()) {
+    db.prepare('DELETE FROM auth_failures WHERE key=?').run(`account:${existing.id}`);
+  }
   console.log(`Updated existing administrator account "${username}" (active=1, PIN and password reset).`);
 } else {
   const id = `user-${randomUUID()}`;

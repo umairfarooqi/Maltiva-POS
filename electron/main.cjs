@@ -76,8 +76,8 @@ function createCustomerWindow() {
         },
       });
 
-      // MIRROR MODE: Load the same main page as the cashier
-      customerWindow.loadURL(APP_URL);
+      // The customer screen receives only the public display payload.
+      customerWindow.loadURL(`${APP_URL}/customer-display`);
     }
   }
 }

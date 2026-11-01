@@ -1,0 +1,26 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+const qa=process.argv[2], config=JSON.parse(readFileSync(qa+'/ready.json','utf8'));
+const root='D:/Shakeel/Github/maltiva-pos';
+const {INITIAL_PRODUCTS}=await import(pathToFileURL(root+'/src/data/initialData.ts').href);
+const {saleFixture,reviewSale}=await import(pathToFileURL(root+'/tests/helpers/sale-fixtures.ts').href);
+const login=await(await fetch(config.backend+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:'fixture-only-secret'})})).json();
+async function call(route,method='GET',body){const res=await fetch(config.backend+route,{method,headers:{Authorization:'Bearer '+login.token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=await res.json();if(!res.ok)throw Error(JSON.stringify({status:res.status,data}));return data;}
+const command=process.argv[3];
+if(command==='seed'){
+ await call('/api/categories','POST',{id:'audit-snacks',name:'Audit Snacks',icon:'',order:99});
+ const product={...INITIAL_PRODUCTS[0],moneySchemaVersion:2,id:'audit-special',name:'Deal #1, "Special"',categoryId:'audit-snacks',categoryName:'Audit Snacks',isDeal:false,bundledProducts:[],variations:[],pricePaisa:12550,costPricePaisa:6525,stockQuantity:10};
+ await call('/api/products','POST',product);
+ await call('/api/products','POST',{...product,id:'audit-free',name:'Free water #1',pricePaisa:0,costPricePaisa:500});
+ await call('/api/settings/printer','PUT',{taxBp:1700,taxInclusive:false,autoPrintDualSlips:false});
+ const base=saleFixture('category');base.items=[{...base.items[0],productId:product.id}];
+ const quote=await reviewSale(config.backend,base,login.token);
+ const saved=await call('/api/orders','POST',{...quote,cashTenderedPaisa:15000,changeDuePaisa:15000-quote.totalPaisa});
+ writeFileSync(qa+'/fixture-check.json',JSON.stringify({orderCount:10002,category:saved.order},null,2));
+ console.log({categorySale:saved.order.orderNumber,net:saved.order.netRevenuePaisa,total:saved.order.totalPaisa});
+}else if(command==='empty'||command==='restock'){
+ const products=await call('/api/products');const product=products.find(p=>p.id===INITIAL_PRODUCTS[0].id);
+ const amount=command==='empty'?-product.stockQuantity:4;
+ const result=await call('/api/inventory/adjust','POST',{operationId:crypto.randomUUID(),productId:product.id,changeAmount:amount,reason:'Disposable second terminal verification',type:command==='empty'?'waste':'restock'});
+ const evidence={at:Date.now(),command,stock:result.product.stockQuantity};writeFileSync(qa+'/'+command+'.json',JSON.stringify(evidence));console.log(evidence);
+}

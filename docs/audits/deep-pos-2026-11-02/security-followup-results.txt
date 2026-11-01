@@ -1,0 +1,60 @@
+
+ RUN  v5.0.3 D:/Shakeel/Github/maltiva-pos
+
+stdout | tests/security-followup-server-probes.test.ts > DIAGNOSTIC: one account has separate username and email lockout buckets
+ALIAS_LOCKOUT: username 429, same account email 200 (a correct secret is still required)
+
+ ✓ tests/security-followup-server-probes.test.ts > DIAGNOSTIC: one account has separate username and email lockout buckets 181ms
+stdout | tests/security-followup-server-probes.test.ts > DIAGNOSTIC: lockout is lost when only the disposable server restarts
+LOCKOUT_RESTART: locked account becomes available immediately after server restart
+
+stdout | tests/security-followup-server-probes.test.ts > CONTROL: cashier cannot use protected admin/menu/stock routes or retrieve product costs
+SERVER_BOUNDARY_CONTROL: 5 restricted routes 403, cashier staff/cost fields excluded
+
+ ✓ tests/security-followup-server-probes.test.ts > DIAGNOSTIC: lockout is lost when only the disposable server restarts 563ms
+ ✓ tests/security-followup-server-probes.test.ts > CONTROL: cashier cannot use protected admin/menu/stock routes or retrieve product costs 75ms
+stdout | tests/security-followup-server-probes.test.ts > CONTROL: server logout revokes the old bearer token
+LOGOUT_CONTROL: reusing a server-revoked token returns 401
+
+stdout | tests/security-followup-server-probes.test.ts > CONTROL: a full backup carries sensitive account/session material and must stay administrator-private
+BACKUP_SENSITIVITY_CONTROL: contains staff credential hashes, signing secret and active-session records; no values printed
+
+ ✓ tests/security-followup-server-probes.test.ts > CONTROL: server logout revokes the old bearer token 61ms
+ ✓ tests/security-followup-server-probes.test.ts > CONTROL: a full backup carries sensitive account/session material and must stay administrator-private 38ms
+stdout | tests/security-followup-client-probes.test.ts > DIAGNOSTIC: acknowledged admin costs reappear after all replaceable cache was cleared
+ACK_AFTER_CACHE_CLEAR: saved recovery intact, admin costs still exposed in read result
+
+stdout | tests/security-followup-client-probes.test.ts > DIAGNOSTIC: rejected admin costs also survive cache clearing
+REJECTED_AFTER_CACHE_CLEAR: rejection and original key preserved, costs still exposed
+
+stdout | tests/security-followup-client-probes.test.ts > DIAGNOSTIC: an online cashier bootstrap merges unsaved admin costs from durable recovery
+ONLINE_CASHIER: clean server body + durable admin pending -> private cost returns
+
+stdout | tests/security-followup-client-probes.test.ts > DIAGNOSTIC: delayed admin stock-adjustment JSON restores product cost and private inventory log after switching
+STOCK_RESPONSE_SESSION_RACE: old admin cost/log written to cashier cache
+
+ ✓ tests/security-followup-client-probes.test.ts > DIAGNOSTIC: acknowledged admin costs reappear after all replaceable cache was cleared 16ms
+ ✓ tests/security-followup-client-probes.test.ts > DIAGNOSTIC: rejected admin costs also survive cache clearing 4ms
+ ✓ tests/security-followup-client-probes.test.ts > DIAGNOSTIC: an online cashier bootstrap merges unsaved admin costs from durable recovery 11ms
+ ✓ tests/security-followup-client-probes.test.ts > DIAGNOSTIC: delayed admin stock-adjustment JSON restores product cost and private inventory log after switching 67ms
+stdout | tests/security-followup-client-probes.test.ts > DIAGNOSTIC: a late 201 remains saved safely but writes old admin costs into new-session cache
+LATE_201: saved state retained, pending removed, old admin cost cached for cashier
+
+stdout | tests/security-followup-client-probes.test.ts > CONTROL: cashier-shaped online server rows replace matching old saved cost snapshots
+MATCHING_SAVED_CONTROL: fresh safe server row overrides old saved costs
+
+stdout | tests/security-followup-client-probes.test.ts > DIAGNOSTIC: admin backup download still triggers after switching to a cashier during blob decoding
+BACKUP_DOWNLOAD_SESSION_RACE: old administrator download click runs under cashier session (synthetic blob, no real backup download)
+
+ ✓ tests/security-followup-client-probes.test.ts > DIAGNOSTIC: a late 201 remains saved safely but writes old admin costs into new-session cache 67ms
+ ✓ tests/security-followup-client-probes.test.ts > CONTROL: cashier-shaped online server rows replace matching old saved cost snapshots 2ms
+ ✓ tests/security-followup-client-probes.test.ts > DIAGNOSTIC: admin backup download still triggers after switching to a cashier during blob decoding 68ms
+
+ Test Files  2 passed (2)
+      Tests  12 passed (12)
+   Start at  01:43:09
+   Duration  5.26s (environment 40%, tests 39%, setup 15%, transform 4%, import 2%)
+
+    Isolate  2 workers spawned · ~1.14s startup each (spawn + environment, per file)
+             at least ~1.14s faster with isolate: false — reuses workers across files instead of one per file
+

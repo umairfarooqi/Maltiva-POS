@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import { AccountLockouts } from './src/services/accountLockouts';
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
 import { quoteSale, loadProduct, productSnapshot, taxSettings, problem } from './src/services/pricing';
@@ -113,17 +114,11 @@ function stripOrderCostAndProfit(o: any) {
   };
 }
 
-// Brute-force protection: 5 failures locks the key for 5 minutes (Spec Section 2.1).
-const LOCKOUT_MS = 5 * 60_000;
-const failures = new Map<string, { count: number; until: number }>();
-function isLocked(key: string): boolean { const f = failures.get(key); return !!f && f.until > Date.now(); }
-function recordFailure(key: string) {
-  const f = failures.get(key);
-  const lockExpired = !!f && f.until > 0 && f.until <= Date.now();
-  const count = (f && !lockExpired ? f.count : 0) + 1;
-  failures.set(key, { count, until: count >= 5 ? Date.now() + LOCKOUT_MS : 0 });
-}
-function clearFailures(key: string) { failures.delete(key); }
+// Initialized only with this server's explicitly selected database.
+let lockouts: AccountLockouts;
+const isLocked = (key: string) => lockouts.isLocked(key);
+const recordFailure = (key: string) => lockouts.fail(key);
+const clearFailures = (key: string) => lockouts.clear(key);
 
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
 function validateNewCredentials(body: any, requirePassword = true): string | null {
@@ -152,7 +147,7 @@ function seedDatabase() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     INITIAL_PRODUCTS
-      .filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0)
+      .filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) >= 0)
       .forEach(p => {
       insertProd.run(
         p.id, p.name, p.categoryId, p.categoryName, p.pricePaisa, p.costPricePaisa,
@@ -205,6 +200,7 @@ function validateProduct(data: any) {
 
 async function startServer() {
   const app = express();
+  lockouts = new AccountLockouts(db);
   const PORT = process.env.PORT || 3000;
   const backups = new DatabaseBackups(db);
 
@@ -257,7 +253,7 @@ async function startServer() {
 
     const categories = db.prepare('SELECT * FROM categories').all() as Category[];
     const fetchedProducts = (db.prepare('SELECT * FROM products ORDER BY id').all() as any[]).map(row => productSnapshot(row)!);
-    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
+    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) >= 0);
     const orders = catalogOnly ? [] : loadOrderHistory(db);
     const tables = catalogOnly ? [] : db.prepare('SELECT * FROM tables').all();
     const users = !catalogOnly && caller.role === 'admin' ? (db.prepare('SELECT * FROM users WHERE active=1').all() as any[]).map(publicUser) : [];
@@ -300,7 +296,7 @@ async function startServer() {
     const caller = userFromToken(req.get('Authorization'));
     const isCashier = caller?.role === 'cashier';
     const fetchedProducts = (db.prepare('SELECT id FROM products').all() as { id: string }[]).map(row => loadProduct(db, row.id)!);
-    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
+    const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) >= 0);
     res.json(isCashier ? validProducts.map(stripProductCost) : validProducts);
   });
 
@@ -516,7 +512,7 @@ async function startServer() {
 
   // PROFIT REPORT (manager and admin only; cashiers get 403 per Spec Section 7 & 16.7)
   app.get('/api/reports/profit', requireStrictRole(['admin', 'manager']), (_req: Request, res: Response) => {
-    const orders = (db.prepare('SELECT id FROM orders WHERE profit_incomplete = 0 ORDER BY createdAt DESC').all() as { id: string }[]).map(row => loadOrder(row.id)!);
+    const orders = (db.prepare("SELECT id FROM orders WHERE profit_incomplete = 0 AND status != 'cancelled' ORDER BY createdAt DESC").all() as { id: string }[]).map(row => loadOrder(row.id)!);
     const totalRevenuePaisa = orders.reduce((sum, o) => sum + (o.netRevenuePaisa ?? 0), 0);
     const totalCostPaisa = orders.reduce((sum, o) => sum + (o.totalCostPaisa ?? 0), 0);
     const totalProfitPaisa = orders.reduce((sum, o) => sum + (o.profitPaisa ?? 0), 0);
@@ -538,11 +534,12 @@ async function startServer() {
   app.post('/api/auth/login', (req: Request, res: Response) => {
     const username = String(req.body?.username || '').trim().toLowerCase();
     const secret = String(req.body?.pin ?? req.body?.password ?? '');
-    if (isLocked(username)) { res.status(429).json({ error: 'Account locked for 5 minutes due to failed attempts. Contact an administrator.' }); return; }
     const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(username, username) as any;
+    const lockKey = lockouts.key(user?.id, username);
+    if (isLocked(lockKey)) { res.status(429).json({ error: 'Account locked for 5 minutes due to failed attempts. Contact an administrator.' }); return; }
 
     if (user && (verifySecret(user.password, secret) || verifySecret(user.pin, secret))) {
-      clearFailures(username);
+      clearFailures(lockKey);
       if (!isHashed(user.password) || !isHashed(user.pin) || !isHashed(user.securityAnswer)) {
         db.prepare('UPDATE users SET password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
           isHashed(user.password) ? user.password : hashSecret(user.password || secret),
@@ -552,7 +549,7 @@ async function startServer() {
       const session = signToken(user.id);
       res.json({ success: true, user: publicUser(user), ...session });
     } else {
-      recordFailure(username);
+      recordFailure(lockKey);
       res.status(401).json({ error: 'Invalid credentials' });
     }
   });
@@ -571,9 +568,9 @@ async function startServer() {
   app.post('/api/auth/approve', (req: Request, res: Response) => {
     const username = String(req.body?.username || '').trim().toLowerCase();
     const pin = String(req.body?.pin || '');
-    const lockKey = `approve:${username}`;
-    if (isLocked(lockKey)) { res.status(429).json({ error: 'Too many failed override attempts. Try again in 5 minutes.' }); return; }
     const user = db.prepare('SELECT * FROM users WHERE lower(username) = ? AND active = 1').get(username) as any;
+    const lockKey = lockouts.key(user?.id, username);
+    if (isLocked(lockKey)) { res.status(429).json({ error: 'Too many failed override attempts. Try again in 5 minutes.' }); return; }
     if (!user || (!verifySecret(user.pin, pin) && !verifySecret(user.password, pin))) {
       recordFailure(lockKey);
       res.status(401).json({ error: 'Invalid manager PIN.' });
@@ -636,9 +633,8 @@ async function startServer() {
         db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(target.id);
       }
     })();
-    if (b.pin || b.password || nextActive) {
-      clearFailures(String(target.username).toLowerCase());
-      clearFailures(`approve:${String(target.username).toLowerCase()}`);
+    if (b.pin || b.password || (b.active !== undefined && nextActive)) {
+      clearFailures(`account:${target.id}`);
     }
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
@@ -663,8 +659,7 @@ async function startServer() {
         nextPin, nextPassword, nextPin, target.id);
       db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(target.id);
     })();
-    clearFailures(String(target.username).toLowerCase());
-    clearFailures(`approve:${String(target.username).toLowerCase()}`);
+    clearFailures(`account:${target.id}`);
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
 

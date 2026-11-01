@@ -1,0 +1,29 @@
+{
+  "integrity": [
+    {
+      "integrity_check": "ok"
+    }
+  ],
+  "orders": {
+    "n": 10003
+  },
+  "payments": {
+    "n": 10003
+  },
+  "duplicateKeys": {
+    "n": 0
+  },
+  "totals": {
+    "total": 990113684,
+    "revenue": 990111550,
+    "cost": 550062025,
+    "profit": 440049525
+  },
+  "freeProduct": {
+    "price_paisa": 0,
+    "stockQuantity": 9
+  },
+  "store": {
+    "value": "QA stock settings"
+  }
+}
