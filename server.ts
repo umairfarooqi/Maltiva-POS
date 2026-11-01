@@ -5,6 +5,7 @@ import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
 import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pricing';
 import { integer } from './src/shared/money';
 import { allocateOrderNumbers } from './src/services/orderNumbering';
+import { assertUnreviewedOwner, checkoutOrigin } from './src/services/checkoutOrigin';
 import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
@@ -417,19 +418,34 @@ async function startServer() {
     res.json({ savedOrders, pendingKeys, pendingCount: pendingKeys.length });
   });
 
+  const reviewCheckout = db.transaction((input: any, caller: any) => {
+    if (typeof input?.idempotencyKey === 'string') {
+      const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(input.idempotencyKey) as { id: string } | undefined;
+      if (existing) {
+        const saved = loadOrder(existing.id)!;
+        return { ...saved, pricingFingerprint: saved.pricingFingerprint || `saved:${saved.idempotencyKey}` };
+      }
+    }
+    assertUnreviewedOwner(db, input, input?.idempotencyKey, caller);
+    const quote = quoteSale(db, input);
+    const origin = checkoutOrigin(db, input, quote.items, input.idempotencyKey, caller, true);
+    return { ...quote, cashierId: origin.id, cashierName: origin.name, cashierRole: origin.role };
+  });
   app.post('/api/orders/quote', (req, res) => {
     const caller = userFromToken(req.get('Authorization'));
     const isCashier = caller?.role === 'cashier';
     try {
-      const quote = quoteSale(db, req.body);
+      const quote = reviewCheckout.immediate(req.body, caller);
       res.json(isCashier ? stripOrderCostAndProfit(quote) : quote);
     }
-    catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
+    catch (error: any) { res.status(error.status || 400).json({ error: error.message, code: error.recoveryCode }); }
   });
   const createOrder = db.transaction((input: any, key: string, caller: any) => {
     const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
     if (existing) return loadOrder(existing.id)!;
+    assertUnreviewedOwner(db, input, key, caller);
     const quote = quoteSale(db, input);
+    const origin = checkoutOrigin(db, input, quote.items, key, caller, false);
     if (input.moneySchemaVersion !== 2 || input.pricingFingerprint !== quote.pricingFingerprint) {
       problem('Prices need review. Review the current total and retry this sale.', 409);
     }
@@ -440,11 +456,14 @@ async function startServer() {
     if (input.paymentMethod !== 'cash' && input.cashTenderedPaisa != null) problem('Only cash may carry tender');
     const createdAt = new Date().toISOString();
     const numbers = allocateOrderNumbers(db, new Date(createdAt));
-    // Identity always comes from the authenticated session, never request fields.
-    const cashierId = caller.id;
-    const cashierName = caller.name;
-    const cashierRole = caller.role;
-    const order = { ...input, ...quote, ...numbers, cashierId, cashierName, cashierRole, createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
+    // Original operator comes from the server-owned review record; the current
+    // authenticated submitter is recorded separately when another user recovers it.
+    const cashierId = origin.id;
+    const cashierName = origin.name;
+    const cashierRole = origin.role;
+    const order = { ...input, ...quote, ...numbers, status: 'completed', cashierId, cashierName, cashierRole,
+      recordedById: caller.id, recordedByName: caller.name, recordedByRole: caller.role,
+      createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
       changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa };
     insertMapped('orders', order);
     for (const item of quote.items) {
@@ -472,7 +491,7 @@ async function startServer() {
     }
     catch (error: any) {
       const status = error.status || (['SQLITE_CONSTRAINT_UNIQUE', 'SQLITE_CONSTRAINT_PRIMARYKEY'].includes(error.code) ? 409 : error.code ? 500 : 400);
-      res.status(status).json({ error: error.status ? error.message : 'Sale could not be saved. Review this cart before retrying.' });
+      res.status(status).json({ error: error.status ? error.message : 'Sale could not be saved. Review this cart before retrying.', code: error.recoveryCode });
     }
   });
 

@@ -537,7 +537,7 @@ export default function App() {
       orderNumber: `PENDING-${attemptId}`,
       tokenNumber: 0,
       customerName: 'Takeaway Customer',
-      status: 'in_kitchen',
+      status: 'completed',
       orderType: 'take_away',
       items: cart.map(it => ({
         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -578,6 +578,18 @@ export default function App() {
       const pricing = await PosApi.quoteOrder(newOrder);
       if (sessionChanged()) return;
       if (pricing.error) {
+        if (pricing.code === 'RECOVERY_OWNER_REQUIRED') {
+          const blocked = await PendingOutbox.block(newOrder, pricing.error);
+          if (sessionChanged()) return;
+          checkoutAttempt.current = blocked;
+          checkoutRecoveryPending.current = true;
+          setIsMobileCartOpen(false);
+          PosStorage.setDraft({ cart, paymentMethod: selectedPaymentMethod, attempt: blocked });
+          setSaleFeedback({ success: false, state: 'pending', order: blocked, error: pricing.error });
+          setOrders(PosStorage.getOrders());
+          setPendingOfflineCount((await PendingOutbox.list()).length);
+          return;
+        }
         const rejected = await PendingOutbox.reject(newOrder, pricing.error);
         if (sessionChanged()) return;
         checkoutAttempt.current = rejected;
@@ -683,7 +695,7 @@ export default function App() {
       orderNumber: sample ? 'TEST SLIP - NOT A SALE' : 'DRAFT - NOT A SALE',
       tokenNumber: 0,
       customerName: currentUser?.name || 'Walk-in Customer',
-      status: 'in_kitchen',
+      status: 'pending',
       orderType: 'take_away',
       items: printCart.map(it => ({
         id: it.cartItemId,
@@ -836,6 +848,9 @@ export default function App() {
     );
   }
 
+  const lastSavedOrder = orders.find(order => order.persistenceState === 'saved' &&
+    (order.cashierId === currentUser.id || order.recordedById === currentUser.id));
+
   return (
     <div className="w-screen h-screen overflow-hidden bg-pos-chrome font-sans antialiased text-pos-text">
       <div className="flex h-full w-full overflow-hidden">
@@ -870,10 +885,15 @@ export default function App() {
           <section aria-label="Sale notifications" tabIndex={0} className="shrink-0 max-h-[20dvh] overflow-y-auto">
         {pendingBadge}
         {recoveryError && <div role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">{recoveryError}</div>}
+        {orders.filter(order => order.persistenceState === 'pending' && order.recoveryBlockedReason).map(order => (
+          <div key={`blocked-${order.id}`} role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">
+            Pending {order.orderNumber}: {order.recoveryBlockedReason}
+          </div>
+        ))}
         {saleFeedback && (
           <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-pos-inset px-4 py-2 text-sm shrink-0">
             {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
-              ? 'Pending — recovery copy stored; waiting for the server.' : `Rejected — ${saleFeedback.error}`}
+              ? `Pending — ${saleFeedback.error || 'recovery copy stored; waiting for the server.'}` : `Rejected — ${saleFeedback.error}`}
             {saleFeedback.state === 'rejected' && (cart.length
               ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-pos-success-text">Retry sale</button>
               : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-pos-success-text">Review rejected sale</button>)}
@@ -917,7 +937,11 @@ export default function App() {
                 paymentMethod={paymentMethod}
                 onSelectPaymentMethod={setPaymentMethod}
                 onPlaceOrder={handlePlaceOrder}
-                onOpenPrintModal={handleOpenPrintCurrentCart}
+                canReprintLastOrder={Boolean(lastSavedOrder)}
+                onOpenPrintModal={() => {
+                  if (cart.length) handleOpenPrintCurrentCart();
+                  else if (lastSavedOrder) setReceiptModalOrder(lastSavedOrder);
+                }}
                 isProcessing={isProcessingOrder}
                 isMobileOpen={isMobileCartOpen}
                 onCloseMobile={() => setIsMobileCartOpen(false)}

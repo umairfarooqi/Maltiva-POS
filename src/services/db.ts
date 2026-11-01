@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { migrateMoney } from './moneyMigration';
 import { initOrderNumbering } from './orderNumbering';
+import { initCheckoutOrigins } from './checkoutOrigin';
 
 const DB_DIR = process.env.MALTIVA_POS_DB_DIR || process.cwd();
 const DB_PATH = path.join(DB_DIR, 'maltiva_pos.db');
@@ -196,6 +197,7 @@ export async function initDb() {
 
   await migrateMoney(db);
   initOrderNumbering(db);
+  initCheckoutOrigins(db);
   console.log('Database Vault Ready.');
 }
 

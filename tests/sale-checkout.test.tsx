@@ -12,6 +12,10 @@ import { ThermalReceiptModal } from '../src/components/ThermalReceiptModal';
 import { SettingsView } from '../src/components/SettingsView';
 import { saleFixture } from './helpers/sale-fixtures';
 import { computeTotals } from '../src/shared/money';
+import { printReceipt } from '../src/utils/printReceipt';
+vi.mock('../src/utils/printReceipt', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/utils/printReceipt')>(), printReceipt: vi.fn().mockResolvedValue(undefined),
+}));
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 let outcome: 'saved' | 'pending' | 'rejected';
@@ -21,6 +25,7 @@ beforeEach(async () => {
   localStorage.clear();
   await new Promise<void>(resolve => { const request = indexedDB.deleteDatabase('maltiva-pos-pending-sales'); request.onsuccess = () => resolve(); });
   outcome = 'saved'; requests = []; committed = [];
+  vi.mocked(printReceipt).mockReset().mockResolvedValue(undefined);
   PosStorage.setSession(INITIAL_USERS[0]); PosStorage.setOrders([]); PosStorage.setProducts(structuredClone(INITIAL_PRODUCTS));
   PosStorage.setToken('checkout-test-session');
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
@@ -58,6 +63,62 @@ async function checkout() {
 }
 
 describe('phase 1 cashier decisions', () => {
+  it('a double tap creates one saved sale and token', async () => {
+    const user = userEvent.setup(); render(<App />);
+    await user.click(await screen.findByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    await user.dblClick(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'));
+    expect(requests).toHaveLength(1); expect(committed).toHaveLength(1);
+    expect(committed[0]).toMatchObject({ orderNumber: '#F20261030-0001', tokenNumber: 1 });
+  });
+
+  it('prints only a draft preview from the cart without creating a sale or test slip', async () => {
+    const user = userEvent.setup(); render(<App />);
+    await user.click(await screen.findByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    await user.click(screen.getByRole('button', { name: 'Print' }));
+    const preview = screen.getByRole('dialog', { name: 'Receipt preview' });
+    expect(preview).toHaveTextContent('DRAFT - NOT A SALE');
+    expect(preview).not.toHaveTextContent('TEST SLIP');
+    expect(requests).toHaveLength(0); expect(committed).toHaveLength(0);
+  });
+
+  it('keeps a saved sale after print failure and reprints its last receipt without another checkout', async () => {
+    vi.mocked(printReceipt).mockRejectedValueOnce(new Error('Printer unavailable'));
+    const user = await checkout();
+    await screen.findByRole('button', { name: 'Print Customer Slip' });
+    const original = structuredClone(PosStorage.getOrders()[0]);
+    await user.click(screen.getByRole('button', { name: 'Print Customer Slip' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Printer unavailable');
+    expect(PosStorage.getOrders()[0]).toEqual(original);
+    await user.click(screen.getByRole('button', { name: 'Print Customer Slip' }));
+    await waitFor(() => expect(printReceipt).toHaveBeenCalledTimes(2));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByText('Cart is empty')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Last receipt' }));
+    expect(screen.getByRole('dialog', { name: 'Receipt preview' })).toHaveTextContent(original.orderNumber);
+    await user.click(screen.getByRole('button', { name: 'Print Customer Slip' }));
+    await waitFor(() => expect(printReceipt).toHaveBeenCalledTimes(3));
+    expect(requests).toHaveLength(1); expect(committed).toHaveLength(1);
+    expect(PosStorage.getOrders()[0]).toMatchObject({ id: original.id, idempotencyKey: original.idempotencyKey,
+      orderNumber: original.orderNumber, tokenNumber: original.tokenNumber, persistenceState: 'saved' });
+  });
+
+  it('shows an ownership-blocked sale while allowing a new order to be entered', async () => {
+    const pending = saleFixture('blocked-display'); await PendingOutbox.put(pending);
+    const ordinary = globalThis.fetch;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/orders' && JSON.parse(init!.body as string).id === pending.id) {
+        return json({ code: 'RECOVERY_OWNER_REQUIRED', error: 'Sign in as Cashier A to review this pending sale.' }, 409);
+      }
+      return ordinary(url, init);
+    });
+    const user = userEvent.setup(); render(<App />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign in as Cashier A');
+    expect((await PendingOutbox.list())[0].idempotencyKey).toBe(pending.idempotencyKey);
+    await user.click(screen.getByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    expect(screen.getByRole('button', { name: 'Complete Order (Cash)' })).toBeEnabled();
+    expect(await PendingOutbox.rejected()).toEqual([]);
+  });
   it('retains the sale key and draft when the session ends before an acknowledgment arrives', async () => {
     const originalFetch = globalThis.fetch;
     let release!: () => void;

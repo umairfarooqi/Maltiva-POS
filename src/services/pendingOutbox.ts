@@ -85,6 +85,12 @@ export const PendingOutbox = {
     notify();
     return rejected;
   },
+  async block(order: Order, reason: string): Promise<Order> {
+    const blocked: Order = { ...order, persistenceState: 'pending', synced: false, recoveryBlockedReason: reason };
+    await transaction('readwrite', store => store.put(blocked));
+    notify();
+    return blocked;
+  },
   async remove(key: string): Promise<void> {
     await transaction('readwrite', store => store.delete(key));
     notify();
