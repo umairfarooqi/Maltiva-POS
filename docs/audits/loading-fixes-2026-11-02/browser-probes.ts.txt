@@ -1,0 +1,29 @@
+import { PosApi } from "D:/Shakeel/Github/maltiva-pos/src/services/api";
+import { PosStorage } from "D:/Shakeel/Github/maltiva-pos/src/services/storage";
+import { PendingOutbox } from "D:/Shakeel/Github/maltiva-pos/src/services/pendingOutbox";
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_PRINTER_SETTINGS } from "D:/Shakeel/Github/maltiva-pos/src/data/initialData";
+const button=document.querySelector('#run'), results=document.querySelector('#results');
+button.addEventListener('click',async()=>{
+ button.disabled=true;
+ const realFetch=window.fetch,original={list:PendingOutbox.list,rejected:PendingOutbox.rejected,acknowledged:PendingOutbox.acknowledged};
+ const checks=[];
+ const check=(condition,label)=>{if(!condition)throw Error(label);checks.push(label+': PASS');results.textContent=checks.join('\n');};
+ const catalog={historyIncluded:false,categories:INITIAL_CATEGORIES,products:[{...INITIAL_PRODUCTS[0],stockQuantity:7}],printerSettings:INITIAL_PRINTER_SETTINGS};
+ try {
+ for(const offline of [false,true]) {
+  localStorage.clear();PosStorage.setToken('old-admin-fixture');let resume;let entered;
+  const reading=new Promise(resolve=>entered=resolve);
+  PendingOutbox.list=()=>{entered();return new Promise(resolve=>resume=resolve);};PendingOutbox.rejected=async()=>[];PendingOutbox.acknowledged=async()=>[];
+  window.fetch=async()=>{if(offline)throw new TypeError('offline');return new Response(JSON.stringify({...catalog,historyIncluded:true,users:[{id:'admin-private',role:'admin'}],orders:[{id:'old-private-order',items:[],createdAt:new Date().toISOString(),totalCostPaisa:123}]}));};
+  const started=performance.now();const pending=PosApi.fetchInitialData().then(()=>null,error=>error);
+  await reading;localStorage.clear();PosStorage.setToken('new-cashier-fixture');PosStorage.setUsers([]);PosStorage.setOrders([]);const snapshot=JSON.stringify({...localStorage});resume([]);
+  const error=await pending;check(error?.name==='SessionChangedError'&&JSON.stringify({...localStorage})===snapshot,`${offline?'Fallback':'Bootstrap'} account switch during recovery (${Math.round(performance.now()-started)} ms)`);
+ }
+ const resolvers=[];window.fetch=()=>new Promise(resolve=>resolvers.push(resolve));
+ const old=PosApi.fetchCatalog().then(()=>null,error=>error),latest=PosApi.fetchCatalog();
+ resolvers[1](new Response(JSON.stringify(catalog)));await latest;
+ resolvers[0](new Response(JSON.stringify({...catalog,products:[{...INITIAL_PRODUCTS[0],stockQuantity:8}]})));
+ check((await old)?.name==='SupersededRequestError'&&PosStorage.getProducts()[0].stockQuantity===7,'Out-of-order catalog retains stock 7');
+ results.textContent+='\nAll isolated browser service probes passed.';
+ }catch(error){results.textContent+='\nFAIL: '+error.message;}finally{window.fetch=realFetch;Object.assign(PendingOutbox,original);localStorage.clear();button.disabled=false;}
+});

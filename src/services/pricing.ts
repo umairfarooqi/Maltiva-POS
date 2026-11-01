@@ -6,7 +6,10 @@ import type { OrderItem, Product } from '../types/pos';
 
 export function problem(message: string, status = 400): never { throw Object.assign(new Error(message), { status }); }
 export function loadProduct(db: InstanceType<typeof Database>, id: string): Product | undefined {
-  const row = fromMoneyRow('products', db.prepare('SELECT * FROM products WHERE id=?').get(id));
+  return productSnapshot(db.prepare('SELECT * FROM products WHERE id=?').get(id));
+}
+export function productSnapshot(raw: any): Product | undefined {
+  const row = fromMoneyRow('products', raw);
   if (!row) return;
   return { ...row, isAvailable: Boolean(row.isAvailable), isDeal: Boolean(row.isDeal), variations: JSON.parse(row.variations || '[]'), bundledProducts: JSON.parse(row.bundledProducts || '[]') };
 }

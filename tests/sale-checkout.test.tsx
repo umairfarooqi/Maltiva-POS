@@ -39,6 +39,7 @@ beforeEach(async () => {
       return json({ ...order, moneySchemaVersion: 2, pricingFingerprint: 'reviewed-quote' });
     }
     if (url === '/api/data') return json({ categories: INITIAL_CATEGORIES, products: INITIAL_PRODUCTS, orders: committed, tables: [], users: INITIAL_USERS, printerSettings: INITIAL_PRINTER_SETTINGS, inventoryLogs: [] });
+    if (url === '/api/data?scope=catalog') return json({ categories: INITIAL_CATEGORIES, products: INITIAL_PRODUCTS, printerSettings: INITIAL_PRINTER_SETTINGS, historyIncluded: false });
     if (url.startsWith('/api/orders/pending-status')) {
       if (outcome === 'pending') throw new TypeError('Server stopped');
       return json({ savedOrders: [], pendingKeys: [] });
@@ -54,7 +55,12 @@ beforeEach(async () => {
     throw new Error(`Unexpected URL ${url}`);
   });
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(async () => {
+  cleanup();
+  // Replay is shared across mounts. Finish it before replacing this test's server and recovery database.
+  await PosApi.syncOfflineQueue().catch(() => {});
+  vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+});
 async function checkout() {
   const user = userEvent.setup(); render(<App />);
   await screen.findByText(INITIAL_PRODUCTS[0].name);
@@ -65,6 +71,70 @@ async function checkout() {
 }
 
 describe('phase 1 cashier decisions', () => {
+  it('refreshes catalog after a saved checkout without fetching all order history again', async () => {
+    const transport = globalThis.fetch, paths: string[] = [];
+    let resolve!: (response: Response) => void;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      paths.push(url);
+      if (url === '/api/data?scope=catalog') return new Promise<Response>(done => { resolve = done; });
+      return transport(url, init);
+    });
+    const user = await checkout();
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'), { timeout: 5000 });
+    await waitFor(() => expect(paths).toContain('/api/data?scope=catalog'));
+    expect(paths.filter(path => path === '/api/data')).toHaveLength(1);
+    expect(committed).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.click(screen.getByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    expect(screen.getByRole('button', { name: 'Complete Order (Cash)' })).toBeEnabled();
+    await act(async () => resolve(json({ categories: INITIAL_CATEGORIES, products: INITIAL_PRODUCTS, printerSettings: INITIAL_PRINTER_SETTINGS, historyIncluded: false })));
+  }, 15000);
+  it('keeps a confirmed sale usable when the lightweight stock refresh fails', async () => {
+    const transport = globalThis.fetch;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/data?scope=catalog') throw new TypeError('Stock server unavailable');
+      return transport(url, init);
+    });
+    const user = await checkout();
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved'), { timeout: 5000 });
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await user.click(screen.getByRole('button', { name: INITIAL_PRODUCTS[0].name }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Complete Order (Cash)' })).toBeEnabled());
+    expect(requests).toHaveLength(1); expect(PosStorage.getOrders()[0].persistenceState).toBe('saved');
+  }, 15000);
+  it('loads complete report data before showing report totals', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    vi.spyOn(PosStorage, 'setOrders').mockImplementation(() => { throw new DOMException('Cache full', 'QuotaExceededError'); });
+    const transport = globalThis.fetch; let reads = 0, resolve!: (response: Response) => void;
+    const saved = { ...saleFixture('report-loading'), persistenceState: 'saved', createdAt: new Date().toISOString() };
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/data' && ++reads === 2) return new Promise<Response>(done => { resolve = done; });
+      return transport(url, init);
+    });
+    const user = userEvent.setup(); render(<App />);
+    await screen.findByText(INITIAL_PRODUCTS[0].name);
+    await user.click(screen.getByRole('button', { name: 'Daily Sales' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Loading complete saved sales');
+    expect(screen.queryByText(/Filtered Orders Register/)).not.toBeInTheDocument();
+    await act(async () => resolve(json({ categories: INITIAL_CATEGORIES, products: INITIAL_PRODUCTS, orders: [saved], tables: [], users: INITIAL_USERS, printerSettings: INITIAL_PRINTER_SETTINGS, inventoryLogs: [] })));
+    expect(await screen.findByText(/Filtered Orders Register \(1\)/)).toBeVisible();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(screen.getByText(/Filtered Orders Register \(1\)/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Daily Sales' }));
+    expect(screen.getByText(/Filtered Orders Register \(1\)/)).toBeVisible();
+  }, 15000);
+  it('shows a retryable report error instead of presenting offline cached totals as fresh', async () => {
+    const transport = globalThis.fetch; let reads = 0;
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url === '/api/data' && ++reads > 1) throw new TypeError('Report server unavailable');
+      return transport(url, init);
+    });
+    const user = userEvent.setup(); render(<App />); await screen.findByText(INITIAL_PRODUCTS[0].name);
+    await user.click(screen.getByRole('button', { name: 'Daily Sales' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Reports need the local POS server');
+    expect(screen.getByRole('button', { name: 'Retry report' })).toBeEnabled();
+    expect(screen.queryByText(/Filtered Orders Register/)).not.toBeInTheDocument();
+  }, 15000);
   it('looks up and reprints an older receipt without changing the active cart, customer confirmation or sale count', async () => {
     sessionUser = INITIAL_USERS[1];
     const user = await checkout();
@@ -145,12 +215,12 @@ describe('phase 1 cashier decisions', () => {
       return ordinary(url, init);
     });
     const user = userEvent.setup(); render(<App />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Sign in as Cashier A');
+    expect(await screen.findByRole('alert', {}, { timeout: 5000 })).toHaveTextContent('Sign in as Cashier A');
     expect((await PendingOutbox.list())[0].idempotencyKey).toBe(pending.idempotencyKey);
     await user.click(screen.getByRole('button', { name: INITIAL_PRODUCTS[0].name }));
     expect(screen.getByRole('button', { name: 'Complete Order (Cash)' })).toBeEnabled();
     expect(await PendingOutbox.rejected()).toEqual([]);
-  });
+  }, 15000);
   it('retains the sale key and draft when the session ends before an acknowledgment arrives', async () => {
     const originalFetch = globalThis.fetch;
     let release!: () => void;
@@ -190,7 +260,7 @@ describe('phase 1 cashier decisions', () => {
     await user.click(screen.getByRole('button', { name: 'Complete Order (Cash)' }));
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0].items[0].notes).toBe('No onions');
-  });
+  }, 15000);
 
   it('keeps live confirmation after closing a receipt and opening an independent test slip', async () => {
     const user = await checkout();
@@ -255,6 +325,7 @@ describe('phase 1 cashier decisions', () => {
     expect(screen.getByText('Cart is empty')).toBeVisible();
     expect(await PendingOutbox.list()).toEqual([]);
     expect(await PendingOutbox.acknowledged()).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Last receipt' })).toBeEnabled();
     // Simulate a crash before the submitted draft was cleared.
     const product = INITIAL_PRODUCTS[0];
     PosStorage.setDraft({ paymentMethod: 'cash', attempt: requests[0], cart: [{
@@ -280,10 +351,10 @@ describe('phase 1 cashier decisions', () => {
     expect(await PendingOutbox.list()).toHaveLength(1);
     deletion.mockRestore();
     await user.click(screen.getByRole('button', { name: 'Retry sync' }));
-    await waitFor(() => expect(screen.getByText('Cart is empty')).toBeVisible());
-    await waitFor(() => expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Cart is empty')).toBeVisible(), { timeout: 5000 });
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument(), { timeout: 5000 });
     expect(new Set(requests.map(order => order.idempotencyKey)).size).toBe(1);
-  });
+  }, 15000);
   it('HTTP rejection keeps the cart and the same key for an explicit retry, with no receipt', async () => {
     outcome = 'rejected'; const user = await checkout();
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Rejected'));

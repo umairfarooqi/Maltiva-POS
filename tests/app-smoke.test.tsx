@@ -1,10 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App';
 import { StaffManagementView } from '../src/components/StaffManagementView';
 import { PosApi } from '../src/services/api';
 import { PosStorage } from '../src/services/storage';
+import { PendingOutbox } from '../src/services/pendingOutbox';
+import { saleFixture } from './helpers/sale-fixtures';
 import { User } from '../src/types/pos';
 
 const currentUser: User = {
@@ -63,6 +65,35 @@ describe('App login screen and staff PIN reset', () => {
     await user.click(screen.getByRole('button', { name: /Password/i }));
     expect(screen.queryByRole('button', { name: /Forgot/i })).not.toBeInTheDocument();
     expect(screen.getByText(/Contact Admin for PIN reset/i)).toBeVisible();
+  });
+  it('does not reparse saved history and the checkout draft on unrelated renders', () => {
+    const orders = vi.spyOn(PosStorage, 'getOrders'), draft = vi.spyOn(PosStorage, 'getDraft');
+    const view = render(<App />);
+    expect(orders).toHaveBeenCalledOnce(); expect(draft).toHaveBeenCalledOnce();
+    orders.mockClear(); draft.mockClear();
+    view.rerender(<App />);
+    expect(orders).not.toHaveBeenCalled(); expect(draft).not.toHaveBeenCalled();
+  });
+  it('ignores an older pending-count result after a newer outbox notification', async () => {
+    let resolveOld!: (orders: any[]) => void;
+    const list = vi.spyOn(PendingOutbox, 'list').mockResolvedValueOnce([])
+      .mockReturnValueOnce(new Promise(done => { resolveOld = done; })).mockResolvedValue([]);
+    render(<App />);
+    await waitFor(() => expect(list).toHaveBeenCalledOnce());
+    await act(async () => { window.dispatchEvent(new Event('pos-outbox-changed')); });
+    await act(async () => { window.dispatchEvent(new Event('pos-outbox-changed')); });
+    await act(async () => { resolveOld([saleFixture('stale-count')]); });
+    expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument();
+  });
+  it('uses the latest recovery snapshot instead of an older sync response count', async () => {
+    PosStorage.setToken('smoke-session');
+    vi.spyOn(PendingOutbox, 'list').mockResolvedValue([]);
+    vi.spyOn(PosApi, 'syncOfflineQueue').mockResolvedValue({ syncedCount: 0, rejectedCount: 0, pendingCount: 1, reachable: true });
+    const recovered = vi.spyOn(PosApi, 'loadRecoveryOrders').mockResolvedValue([]);
+    render(<App />);
+    await waitFor(() => expect(recovered).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument();
   });
 
   it('loads only public staff before login and fetches private bootstrap after successful login', async () => {

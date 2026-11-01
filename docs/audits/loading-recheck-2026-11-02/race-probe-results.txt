@@ -1,0 +1,21 @@
+
+> react-example@0.0.0 test
+> vitest run tests/loading-recheck-probes.test.ts --maxWorkers=1 --reporter=verbose
+
+
+ RUN  v5.0.3 D:/Shakeel/Github/maltiva-pos
+
+stdout | tests/loading-recheck-probes.test.ts > diagnoses a session change during bootstrap recovery reads
+SESSION_RACE {"newTokenRetained":true,"cachedStaff":2,"cachedOrders":1,"reportedOnline":true}
+
+stdout | tests/loading-recheck-probes.test.ts > diagnoses catalog responses completing out of order
+CATALOG_RACE {"expectedNewestStock":7,"cachedStock":8}
+
+ ✓ tests/loading-recheck-probes.test.ts > diagnoses a session change during bootstrap recovery reads 78ms
+ ✓ tests/loading-recheck-probes.test.ts > diagnoses catalog responses completing out of order 3ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:58:39
+   Duration  2.98s (environment 78%, setup 12%, transform 6%, tests 3%, import 1%)
+

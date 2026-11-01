@@ -16,7 +16,7 @@ import { VariationModal } from './components/VariationModal';
 import { ThermalReceiptModal } from './components/ThermalReceiptModal';
 import { LoginScreen } from './components/LoginScreen';
 import { CustomerDisplayWindow } from './components/CustomerDisplayWindow';
-import { PosApi, SaleResult } from './services/api';
+import { PosApi, SaleResult, mergeRecoveryState } from './services/api';
 import { PendingOutbox } from './services/pendingOutbox';
 import { PosStorage } from './services/storage';
 import { SESSION_ENDED, endSession, flushSessionRevocations } from './services/session';
@@ -54,17 +54,23 @@ export default function App() {
   const verifiedToken = useRef<string | null>(null);
   const verifySession = useRef<() => Promise<void>>(async () => {});
 
-  const [allUsers, setAllUsers] = useState<User[]>(PosStorage.getUsers());
+  const [allUsers, setAllUsers] = useState<User[]>(() => PosStorage.getUsers());
   const [loginStaff, setLoginStaff] = useState<LoginStaff[]>([]);
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<NavTab>('order_line');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
+  const [reportRetry, setReportRetry] = useState(0);
+  const [reportReadyKey, setReportReadyKey] = useState('');
+  const catalogRefreshPending = useRef(false);
+  const catalogRefreshRequest = useRef(0);
 
   // Core Data Store
-  const [categories, setCategories] = useState<Category[]>(PosStorage.getCategories());
+  const [categories, setCategories] = useState<Category[]>(() => PosStorage.getCategories());
   const [products, setProducts] = useState<Product[]>(() => PosStorage.getProducts().map(normalizeProduct));
-  const [orders, setOrders] = useState<Order[]>(PosStorage.getOrders());
-  const [printerSettings, setPrinterSettings] = useState<PrinterSettings>(PosStorage.getPrinterSettings());
+  const [orders, setOrders] = useState<Order[]>(() => PosStorage.getOrders());
+  const [printerSettings, setPrinterSettings] = useState<PrinterSettings>(() => PosStorage.getPrinterSettings());
 
   // Connectivity & Sync
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -75,15 +81,16 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Takeaway Cart & Active Checkout
-  const initialDraft = useRef(PosStorage.getDraft());
-  const [cart, setCart] = useState<CartItem[]>(initialDraft.current?.cart || []);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialDraft.current?.paymentMethod || 'cash');
-  const checkoutAttempt = useRef<Order | undefined>(initialDraft.current?.attempt);
-  const attemptCart = useRef(JSON.stringify(initialDraft.current?.cart || []));
-  const checkoutRecoveryPending = useRef(Boolean(initialDraft.current?.attempt));
+  const [initialDraft] = useState(() => PosStorage.getDraft());
+  const [cart, setCart] = useState<CartItem[]>(initialDraft?.cart || []);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialDraft?.paymentMethod || 'cash');
+  const checkoutAttempt = useRef<Order | undefined>(initialDraft?.attempt);
+  const [initialBasket] = useState(() => JSON.stringify(initialDraft?.cart || []));
+  const attemptCart = useRef(initialBasket);
+  const checkoutRecoveryPending = useRef(Boolean(initialDraft?.attempt));
   const orderInFlight = useRef(checkoutRecoveryPending.current);
   const [saleFeedback, setSaleFeedback] = useState<SaleResult | null>(() => {
-    const attempt = initialDraft.current?.attempt;
+    const attempt = initialDraft?.attempt;
     return attempt?.persistenceState === 'rejected' ? { success: false, state: 'rejected', order: attempt, error: attempt.rejectionReason } : null;
   });
   const [isProcessingOrder, setIsProcessingOrder] = useState<boolean>(checkoutRecoveryPending.current);
@@ -268,11 +275,15 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    let countRequest = 0;
+    const generation = sessionGeneration.current;
+    const ownsRequest = () => active && generation === sessionGeneration.current;
     const updateCount = async () => {
+      const request = ++countRequest;
       try {
         const count = (await PendingOutbox.list()).length;
-        if (active) setPendingOfflineCount(count);
-      } catch { if (active) setRecoveryError('Recovery storage is unavailable. Existing pending sales are retained.'); }
+        if (active && request === countRequest) setPendingOfflineCount(count);
+      } catch { if (active && request === countRequest) setRecoveryError('Recovery storage is unavailable. Existing pending sales are retained.'); }
     };
     const sync = () => { if (!orderInFlight.current) void handleManualSync(); };
     const onStorage = (event: StorageEvent) => { if (event.key === 'pos-outbox-update') void updateCount(); };
@@ -283,8 +294,8 @@ export default function App() {
     if (!currentUser) {
       PosApi.fetchLoginStaff().then(staff => { if (active) setLoginStaff(staff); })
         .catch(() => { if (active) setIsOnline(false); });
-    } else PosApi.fetchInitialData().then(data => {
-      if (!active) return;
+    } else PosApi.fetchInitialData(ownsRequest).then(data => {
+      if (!ownsRequest()) return;
       reconcileCheckoutDraft(data.orders);
       setCategories(data.categories);
       setProducts(data.products.map(normalizeProduct));
@@ -293,7 +304,7 @@ export default function App() {
       setPrinterSettings(data.printerSettings);
       setIsOnline(data.isOnline);
       sync();
-    }).catch(() => { if (active) setRecoveryError('Could not load recovery data. Keep this window open and retry sync.'); });
+    }).catch(() => { if (ownsRequest()) setRecoveryError('Could not load recovery data. Keep this window open and retry sync.'); });
     // Local server recovery does not depend on browser internet connectivity events.
     const timer = window.setInterval(sync, 5000);
     return () => {
@@ -305,40 +316,66 @@ export default function App() {
     };
   }, [currentUser?.id]);
 
+  useEffect(() => {
+    if (!currentUser || !['dashboard', 'profit_loss'].includes(activeTab)) return;
+    let active = true;
+    const generation = sessionGeneration.current;
+    const key = `${currentUser.id}:${activeTab}:${generation}`;
+    setReportLoading(true); setReportError('');
+    PosApi.fetchInitialData(() => active && generation === sessionGeneration.current).then(data => {
+      if (!active || generation !== sessionGeneration.current) return;
+      if (!data.isOnline) throw new Error('Reports need the local POS server to confirm complete sales. Reconnect and retry.');
+      setOrders(data.orders);
+      setReportReadyKey(key);
+    }).catch(error => { if (active && generation === sessionGeneration.current) setReportError((error as Error).message || 'Could not load complete report data. Retry.'); })
+      .finally(() => { if (active && generation === sessionGeneration.current) setReportLoading(false); });
+    return () => { active = false; };
+  }, [activeTab, currentUser?.id, reportRetry]);
+
+  const refreshCatalog = async (generation: number) => {
+    const request = ++catalogRefreshRequest.current;
+    const ownsRequest = () => generation === sessionGeneration.current && request === catalogRefreshRequest.current && !orderInFlight.current;
+    const data = await PosApi.fetchCatalog(ownsRequest);
+    if (!ownsRequest()) return;
+    setProducts(data.products.map(normalizeProduct)); setCategories(data.categories); setPrinterSettings(data.printerSettings);
+    catalogRefreshPending.current = false;
+  };
+
   const handleManualSync = async () => {
     if (!currentUser || !verifiedToken.current || PosStorage.getToken() !== verifiedToken.current) { void flushSessionRevocations(); return; }
     const generation = sessionGeneration.current;
     try {
       if (checkoutRecoveryPending.current) {
-        const data = await PosApi.fetchInitialData();
+        const data = await PosApi.fetchInitialData(() => generation === sessionGeneration.current);
         if (generation !== sessionGeneration.current) return;
         reconcileCheckoutDraft(data.orders);
       }
       const res = await PosApi.syncOfflineQueue();
       if (generation !== sessionGeneration.current) return;
-      setPendingOfflineCount(res.pendingCount);
+      const recoveredOrders = await PosApi.loadRecoveryOrders();
+      if (generation !== sessionGeneration.current) return;
+      setPendingOfflineCount(recoveredOrders.filter(order => order.persistenceState === 'pending' || !order.persistenceState).length);
       setIsOnline(res.reachable);
-      setOrders(PosStorage.getOrders());
+      setOrders(previous => mergeRecoveryState(previous, recoveredOrders));
       if (res.syncedCount > 0 || res.rejectedCount > 0) {
-        const data = await PosApi.fetchInitialData();
-        if (generation !== sessionGeneration.current) return;
-        setProducts(data.products.map(normalizeProduct));
-        setOrders(data.orders);
-        setCustomerConfirmation(previous => previous ? data.orders.find(order => order.id === previous.id) || previous : null);
+        catalogRefreshPending.current = true;
+        setCustomerConfirmation(previous => previous ? recoveredOrders.find(order => order.id === previous.id) || previous : null);
         setReceiptModalOrder(previous => {
-          const recovered = previous && data.orders.find(order => order.id === previous.id);
+          const recovered = previous && recoveredOrders.find(order => order.id === previous.id);
           return recovered?.persistenceState === 'rejected' ? null : recovered || previous;
         });
         setSaleFeedback(previous => {
           if (previous?.state !== 'pending') return previous;
-          const recovered = data.orders.find(order => order.id === previous.order.id);
+          const recovered = recoveredOrders.find(order => order.id === previous.order.id);
           if (recovered?.persistenceState === 'saved') return { success: true, state: 'saved', order: recovered };
           if (recovered?.persistenceState === 'rejected') return { success: false, state: 'rejected', order: recovered, error: recovered.rejectionReason };
           return previous;
         });
       }
+      if (res.reachable && catalogRefreshPending.current) await refreshCatalog(generation);
+      if (generation !== sessionGeneration.current) return;
       setRecoveryError('');
-    } catch { setRecoveryError('Sync could not finish. Pending sales are retained; retry sync.'); }
+    } catch { if (generation === sessionGeneration.current) setRecoveryError('Sync could not finish. Pending sales are retained; retry sync.'); }
   };
 
   // Login handler
@@ -636,7 +673,7 @@ export default function App() {
       }
       const pendingCount = (await PendingOutbox.list()).length;
       if (sessionChanged()) return;
-      setOrders(PosStorage.getOrders());
+      setOrders(previous => mergeRecoveryState(previous, [...PosStorage.getOrders(), result.order]));
       setPendingOfflineCount(pendingCount);
       setSaleFeedback(result);
       checkoutAttempt.current = undefined;
@@ -647,11 +684,10 @@ export default function App() {
       setReceiptModalOrder(result.order);
       setCustomerConfirmation(result.order);
       if (result.state === 'saved') {
-        // Refresh stock from the transaction that was acknowledged, without resubmitting it.
-        const data = await PosApi.fetchInitialData();
-        if (sessionChanged()) return;
-        setProducts(data.products.map(normalizeProduct));
-        setOrders(data.orders);
+        catalogRefreshPending.current = true;
+        void refreshCatalog(generation).catch(() => {
+          if (!sessionChanged() && catalogRefreshPending.current) setRecoveryError('Sale saved. Menu and stock could not refresh; retry sync.');
+        });
       }
     } catch {
       // A transport or storage exception may happen after submission. Resolve the same key before cart edits.
@@ -851,6 +887,7 @@ export default function App() {
     );
   }
 
+  const reportReady = reportReadyKey === `${currentUser.id}:${activeTab}:${sessionGeneration.current}`;
   const lastSavedOrder = orders.find(order => order.persistenceState === 'saved' &&
     (order.cashierId === currentUser.id || order.recordedById === currentUser.id));
 
@@ -864,6 +901,7 @@ export default function App() {
           if (currentUser.role === 'cashier' && !['order_line', 'receipts'].includes(tab)) {
             return;
           }
+          if (tab !== activeTab && ['dashboard', 'profit_loss'].includes(tab)) setReportReadyKey('');
           setActiveTab(tab);
         }}
         userRole={currentUser.role}
@@ -968,7 +1006,10 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'dashboard' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+          {['dashboard', 'profit_loss'].includes(activeTab) && (!reportReady || reportLoading || reportError) && <div className="min-h-0 flex-1 overflow-auto p-4">
+            {reportError && !reportLoading ? <div role="alert">{reportError} <button type="button" className="min-h-11 border border-pos-control rounded-md px-4 ml-3" onClick={() => setReportRetry(value => value + 1)}>Retry report</button></div> : <p role="status">Loading complete saved sales…</p>}
+          </div>}
+          {activeTab === 'dashboard' && reportReady && !reportLoading && !reportError && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <DashboardView
               orders={orders}
               products={products}
@@ -978,7 +1019,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'profit_loss' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+          {activeTab === 'profit_loss' && reportReady && !reportLoading && !reportError && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <ProfitLossView
               orders={orders}
               products={products}
