@@ -2,7 +2,8 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
-import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pricing';
+import { quoteSale, loadProduct, productSnapshot, taxSettings, problem } from './src/services/pricing';
+import { loadOrderHistory, orderSnapshot } from './src/services/orderSnapshots';
 import { integer } from './src/shared/money';
 import { allocateOrderNumbers } from './src/services/orderNumbering';
 import { assertUnreviewedOwner, checkoutOrigin } from './src/services/checkoutOrigin';
@@ -18,7 +19,6 @@ import {
 import { Order, Category, User, InventoryLog, PrinterSettings } from './src/types/pos';
 
 // Utility to handle JSON in SQLite (for arrays/objects)
-const parseJson = <T>(val: string | null): T | [] => (val ? JSON.parse(val) : []);
 const stringifyJson = (val: any) => JSON.stringify(val);
 
 // ---------- Authentication helpers ----------
@@ -176,15 +176,11 @@ function seedDatabase() {
 }
 
 function loadOrder(id: string): Order | undefined {
-  const row = fromMoneyRow('orders', db.prepare('SELECT * FROM orders WHERE id=?').get(id));
+  const row = db.prepare('SELECT * FROM orders WHERE id=?').get(id);
   if (!row) return;
-  const items = db.prepare('SELECT * FROM order_items WHERE orderId=? ORDER BY rowid').all(id).map((raw: any) => {
-    const item = fromMoneyRow('order_items', raw);
-    return { ...item, selectedVariations: parseJson(item.selectedVariations), bundledProducts: parseJson(item.bundledProducts) };
-  });
+  const items = db.prepare('SELECT * FROM order_items WHERE orderId=? ORDER BY rowid').all(id);
   const cash = db.prepare("SELECT tendered_paisa FROM payments WHERE order_id=? AND method='cash'").get(id) as any;
-  return { ...row, databaseGeneration: databaseGeneration(db), idempotencyKey: row.idempotency_key, items, cashTenderedPaisa: cash?.tendered_paisa,
-    taxInclusive: Boolean(row.taxInclusive), profitIncomplete: Boolean(row.profitIncomplete), synced: true, persistenceState: 'saved' };
+  return orderSnapshot(row, items, cash?.tendered_paisa, databaseGeneration(db));
 }
 function mappedValues(table: string, input: any) {
   const columns = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as any[]).map(c => c.name));
@@ -256,13 +252,15 @@ async function startServer() {
   app.get('/api/data', (req: Request, res: Response) => {
     const caller = userFromToken(req.get('Authorization'));
     const isCashier = caller?.role === 'cashier';
+    if (req.query.scope !== undefined && req.query.scope !== 'catalog') { res.status(400).json({ error: 'Invalid data scope.' }); return; }
+    const catalogOnly = req.query.scope === 'catalog';
 
     const categories = db.prepare('SELECT * FROM categories').all() as Category[];
-    const fetchedProducts = (db.prepare('SELECT id FROM products').all() as { id: string }[]).map(row => loadProduct(db, row.id)!);
+    const fetchedProducts = (db.prepare('SELECT * FROM products ORDER BY id').all() as any[]).map(row => productSnapshot(row)!);
     const validProducts = fetchedProducts.filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) > 0);
-    const orders = (db.prepare('SELECT id FROM orders ORDER BY createdAt DESC, rowid DESC').all() as { id: string }[]).map(row => loadOrder(row.id)!);
-    const tables = db.prepare('SELECT * FROM tables').all();
-    const users = (db.prepare('SELECT * FROM users').all() as any[]).filter(u => u.active).map(publicUser);
+    const orders = catalogOnly ? [] : loadOrderHistory(db);
+    const tables = catalogOnly ? [] : db.prepare('SELECT * FROM tables').all();
+    const users = !catalogOnly && caller.role === 'admin' ? (db.prepare('SELECT * FROM users WHERE active=1').all() as any[]).map(publicUser) : [];
     
     // Get settings from KV table
     const settingsRows = db.prepare('SELECT * FROM settings').all() as { key: string, value: string }[];
@@ -282,7 +280,7 @@ async function startServer() {
       kitchenPrinterEnabled: settingsMap.kitchenPrinterEnabled === 'true',
     };
 
-    const inventoryLogs = isCashier ? [] : (db.prepare('SELECT * FROM inventory_logs ORDER BY timestamp DESC').all() as InventoryLog[]);
+    const inventoryLogs = isCashier || catalogOnly ? [] : (db.prepare('SELECT * FROM inventory_logs ORDER BY timestamp DESC').all() as InventoryLog[]);
 
     res.json({
       categories,
@@ -292,6 +290,7 @@ async function startServer() {
       users: caller.role === 'admin' ? users : [],
       printerSettings,
       inventoryLogs,
+      historyIncluded: !catalogOnly,
       isOnline: true,
     });
   });

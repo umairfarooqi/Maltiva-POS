@@ -35,6 +35,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
+  const [pagination, setPagination] = useState({ filter: '', page: 0 });
+  const pageSize = 50;
+  const filterKey = JSON.stringify([dateFilter, paymentFilter, customStartDate, customEndDate]);
+
   const now = new Date();
   const range = dateRange(dateFilter, customStartDate, customEndDate, now);
   const todayRange = dateRange('today', '', '', now);
@@ -55,6 +59,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     return !range.error && orderTime >= range.start && orderTime < range.end;
   });
+
+  // Pagination bounds DOM work only. Every metric below uses the complete filtered history.
+  const pageCount = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  const page = pagination.filter === filterKey ? Math.min(pagination.page, pageCount - 1) : 0;
+  const pageOrders = filteredOrders.slice(page * pageSize, (page + 1) * pageSize);
+  const changePage = (next: number) => setPagination({ filter: filterKey, page: next });
 
   // Calculate Metrics
   const totalSales = filteredOrders.reduce((sum, o) => sum + o.totalPaisa, 0);
@@ -129,7 +139,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               key={tab.id}
               aria-pressed={dateFilter === tab.id}
-              onClick={() => setDateFilter(tab.id as any)}
+              onClick={() => { setDateFilter(tab.id as any); setPagination({ filter: '', page: 0 }); }}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 dateFilter === tab.id
                   ? 'bg-pos-action text-white'
@@ -158,7 +168,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               key={p.id}
               aria-pressed={paymentFilter === p.id}
-              onClick={() => setPaymentFilter(p.id as any)}
+              onClick={() => { setPaymentFilter(p.id as any); setPagination({ filter: '', page: 0 }); }}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                 paymentFilter === p.id
                   ? 'bg-pos-strong text-white'
@@ -179,7 +189,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <input
               id="sales-from-date" type="date"
               value={customStartDate}
-              onChange={e => setCustomStartDate(e.target.value)}
+              onChange={e => { setCustomStartDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
               className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
             />
           </div>
@@ -189,7 +199,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <input
               id="sales-to-date" type="date"
               value={customEndDate}
-              onChange={e => setCustomEndDate(e.target.value)}
+              onChange={e => { setCustomEndDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
               className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
             />
           </div>
@@ -295,6 +305,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
+        {filteredOrders.length > 0 && (
+          <nav aria-label="Report pages" className="p-4 border-b border-pos-border flex flex-wrap items-center justify-between gap-3 text-xs text-pos-secondary">
+            <span role="status">Rows {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredOrders.length)} of {filteredOrders.length} · Page {page + 1} of {pageCount}. Totals include all matching orders.</span>
+            <div className="flex gap-2">
+              <button type="button" disabled={page === 0} onClick={() => changePage(page - 1)} className="px-3 py-2 rounded-md border border-pos-control hover:bg-pos-inset disabled:opacity-50 disabled:cursor-not-allowed">Previous page</button>
+              <button type="button" disabled={page + 1 >= pageCount} onClick={() => changePage(page + 1)} className="px-3 py-2 rounded-md border border-pos-control hover:bg-pos-inset disabled:opacity-50 disabled:cursor-not-allowed">Next page</button>
+              <button type="button" disabled={page + 1 >= pageCount} onClick={() => changePage(pageCount - 1)} className="px-3 py-2 rounded-md border border-pos-control hover:bg-pos-inset disabled:opacity-50 disabled:cursor-not-allowed">Last page</button>
+            </div>
+          </nav>
+        )}
         {filteredOrders.length === 0 ? (
           <div className="py-12 text-center text-pos-muted text-xs">
             No takeaway orders found for the selected date and payment filter.
@@ -315,7 +335,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-pos-divider">
-                {filteredOrders.map(order => (
+                {pageOrders.map(order => (
                   <tr key={order.id} className="hover:bg-pos-inset/70 transition">
                     <td className="p-4 font-black text-pos-text font-mono">
                       <span className="px-2.5 py-1 rounded-lg bg-pos-success-bg text-pos-success-text border border-pos-success-border">

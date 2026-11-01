@@ -6,6 +6,14 @@ import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from '../utils/norma
 
 export type SaleResult = { success: boolean; state: 'saved' | 'pending' | 'rejected'; order: Order; error?: string };
 
+/** Optional cache failure must never erase complete server history held in memory. */
+export function mergeRecoveryState(previous: Order[], recovered: Order[]): Order[] {
+  const generation = PosStorage.getDatabaseGeneration();
+  const confirmed = previous.filter(order => order.persistenceState === 'saved' &&
+    (!localStorage.getItem('pos_database_changed') || order.databaseGeneration === generation));
+  return mergeOrders([...recovered, ...confirmed], []);
+}
+
 function mergeOrders(serverOrders: Order[], pending: Order[], rejected: Order[] = []): Order[] {
   const merged = new Map<string, Order>();
   for (const order of [...rejected, ...serverOrders, ...pending]) merged.set(order.idempotencyKey || order.id, order);
@@ -124,7 +132,37 @@ async function persistProduct(url: string, method: string, product: Omit<Product
   return normalizeProduct(body);
 }
 
+let catalogRequest = 0;
+
+function assertSession(token: string | null, isCurrent: () => boolean = () => true) {
+  if (PosStorage.getToken() !== token) {
+    throw Object.assign(new Error('The active session changed.'), { name: 'SessionChangedError' });
+  }
+  if (!isCurrent()) throw Object.assign(new Error('This data request was superseded.'), { name: 'SupersededRequestError' });
+}
+
 export const PosApi = {
+  async loadRecoveryOrders(): Promise<Order[]> {
+    const pending = await PendingOutbox.list();
+    const [rejected, acknowledged] = await Promise.all([PendingOutbox.rejected(), PendingOutbox.acknowledged()]);
+    const orders = mergeRecovery([], pending, rejected, acknowledged);
+    return orders;
+  },
+  async fetchCatalog(isCurrent: () => boolean = () => true): Promise<{ categories: Category[]; products: Product[]; printerSettings: PrinterSettings }> {
+    const token = PosStorage.getToken();
+    const request = ++catalogRequest;
+    const response = await sessionFetch('/api/data?scope=catalog', { headers: authHeaders(), signal: AbortSignal.timeout(5000) });
+    const data = await response.json();
+    assertSession(token, () => request === catalogRequest && isCurrent());
+    if (!response.ok || !data || data.historyIncluded !== false || !Array.isArray(data.products) || !Array.isArray(data.categories) || !data.printerSettings) {
+      throw new Error('Menu and stock could not be refreshed. Retry when the POS server is available.');
+    }
+    const products = data.products.filter((product: Product) => product.name !== 'Untitled Dish' && Number(product.pricePaisa) > 0).map(normalizeProduct);
+    optionalCache(() => PosStorage.setProducts(products));
+    optionalCache(() => PosStorage.setCategories(data.categories));
+    optionalCache(() => PosStorage.setPrinterSettings(data.printerSettings));
+    return { products, categories: data.categories, printerSettings: data.printerSettings };
+  },
   async getSession(): Promise<{ user: User; expiresAt: number }> {
     await flushSessionRevocations();
     const token = PosStorage.getToken();
@@ -170,7 +208,7 @@ export const PosApi = {
     }
   },
   // Sync all data from backend or return local cache
-  async fetchInitialData(): Promise<{
+  async fetchInitialData(isCurrent: () => boolean = () => true): Promise<{
     categories: Category[];
     products: Product[];
     orders: Order[];
@@ -180,6 +218,7 @@ export const PosApi = {
     inventoryLogs: InventoryLog[];
     isOnline: boolean;
   }> {
+    const requestToken = PosStorage.getToken();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
     const headers = authHeaders();
@@ -188,20 +227,25 @@ export const PosApi = {
 
       if (res.ok) {
         const data = await res.json();
+        assertSession(requestToken, isCurrent);
+        if (data.historyIncluded === false) throw new Error('Complete saved history was not returned. Retry report loading.');
         // Update local cache
-        optionalCache(() => PosStorage.setCategories(data.categories));
         const fetchedProducts: Product[] = Array.isArray(data.products) ? data.products : [];
         const validProducts = fetchedProducts.filter(
           product => product.name !== 'Untitled Dish' && Number(product.pricePaisa) > 0
         );
         const normalizedProducts = validProducts.map(normalizeProduct);
-        optionalCache(() => PosStorage.setProducts(normalizedProducts));
         const products = normalizedProducts;
         const serverOrders: Order[] = (data.orders || []).map((order: Order) => ({ ...order, idempotencyKey: order.idempotencyKey || order.id, synced: true, persistenceState: 'saved' }));
         const pending = await PendingOutbox.list();
         const rejected = await PendingOutbox.rejected();
         const acknowledged = await PendingOutbox.acknowledged();
+        // Recovery reads can yield through logout, account switching or cancellation.
+        // Commit the entire snapshot only while this request still owns the session.
+        assertSession(requestToken, isCurrent);
         const orders = mergeRecovery(serverOrders, pending, rejected, acknowledged);
+        optionalCache(() => PosStorage.setCategories(data.categories));
+        optionalCache(() => PosStorage.setProducts(normalizedProducts));
         optionalCache(() => PosStorage.setOrders(orders));
         optionalCache(() => PosStorage.setTables(data.tables || []));
         optionalCache(() => PosStorage.setUsers(data.users));
@@ -210,13 +254,17 @@ export const PosApi = {
 
         return { ...data, products, orders, tables: data.tables || [], isOnline: true };
       }
-    } catch {
-      // Network failed or offline: fall back to local storage seamlessly
+    } catch (error) {
+      assertSession(requestToken, isCurrent);
+      if (['SessionChangedError', 'SupersededRequestError'].includes((error as Error)?.name)) throw error;
+      // Only a still-owned request may use the offline recovery fallback.
     } finally { clearTimeout(timeoutId); }
 
+    assertSession(requestToken, isCurrent);
     const pending = await PendingOutbox.list();
     const rejected = await PendingOutbox.rejected();
     const acknowledged = await PendingOutbox.acknowledged();
+    assertSession(requestToken, isCurrent);
     const orders = mergeRecovery(PosStorage.getOrders().filter(order => order.persistenceState !== 'pending' && order.persistenceState !== 'rejected'), pending, rejected, acknowledged);
     optionalCache(() => PosStorage.setOrders(orders));
     return {

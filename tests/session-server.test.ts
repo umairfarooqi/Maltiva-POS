@@ -99,8 +99,9 @@ describe('persisted session lifecycle', () => {
   it('rejects a session removed or expired in server storage', async () => {
     const token = await login();
     const claims = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString());
-    claims.exp = Date.now() - 1;
-    db.prepare('UPDATE auth_sessions SET expires_at=? WHERE id=?').run(claims.exp, claims.sid);
+    // Keep the fixture clearly expired across the client/server process clock boundary.
+    claims.exp = Date.now() - 60_000;
+    expect(db.prepare('UPDATE auth_sessions SET expires_at=? WHERE id=?').run(claims.exp, claims.sid).changes).toBe(1);
     const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
     const secret = (db.prepare("SELECT value FROM settings WHERE key='authSecret'").get() as { value: string }).value;
     const expired = `${payload}.${createHmac('sha256', secret).update(payload).digest('base64url')}`;

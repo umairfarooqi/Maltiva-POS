@@ -1,0 +1,29 @@
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {PosApi} from '../src/services/api';
+import {PosStorage} from '../src/services/storage';
+import {PendingOutbox} from '../src/services/pendingOutbox';
+import {INITIAL_PRODUCTS,INITIAL_CATEGORIES,INITIAL_USERS,INITIAL_PRINTER_SETTINGS} from '../src/data/initialData';
+import {saleFixture} from './helpers/sale-fixtures';
+beforeEach(()=>localStorage.clear());
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();localStorage.clear()});
+it('diagnoses a session change during bootstrap recovery reads',async()=>{
+ PosStorage.setToken('old-admin'); let resolve!: (x:any[])=>void;
+ const list=vi.spyOn(PendingOutbox,'list').mockReturnValue(new Promise(done=>{resolve=done}));
+ vi.spyOn(PendingOutbox,'rejected').mockResolvedValue([]);vi.spyOn(PendingOutbox,'acknowledged').mockResolvedValue([]);
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({historyIncluded:true,categories:INITIAL_CATEGORIES,products:INITIAL_PRODUCTS,users:INITIAL_USERS,printerSettings:INITIAL_PRINTER_SETTINGS,orders:[saleFixture('old-admin-data')],inventoryLogs:[]}))));
+ const request=PosApi.fetchInitialData();await vi.waitFor(()=>expect(list).toHaveBeenCalled());
+ localStorage.clear();PosStorage.setToken('new-cashier');resolve([]);const result=await request;
+ const observed={newTokenRetained:PosStorage.getToken()==='new-cashier',cachedStaff:PosStorage.getUsers().length,cachedOrders:PosStorage.getOrders().length,reportedOnline:result.isOnline};
+ console.info('SESSION_RACE',JSON.stringify(observed));
+ expect(observed).toMatchObject({newTokenRetained:true,cachedStaff:2,cachedOrders:1,reportedOnline:true});
+});
+it('diagnoses catalog responses completing out of order',async()=>{
+ PosStorage.setToken('same-session');const pending:Array<(r:Response)=>void>=[];
+ vi.stubGlobal('fetch',vi.fn().mockImplementation(()=>new Promise<Response>(resolve=>pending.push(resolve))));
+ const body=(stock:number)=>({historyIncluded:false,categories:INITIAL_CATEGORIES,products:[{...INITIAL_PRODUCTS[0],stockQuantity:stock}],printerSettings:INITIAL_PRINTER_SETTINGS});
+ const old=PosApi.fetchCatalog(),latest=PosApi.fetchCatalog();
+ pending[1](new Response(JSON.stringify(body(7))));await latest;
+ pending[0](new Response(JSON.stringify(body(8))));await old;
+ console.info('CATALOG_RACE',JSON.stringify({expectedNewestStock:7,cachedStock:PosStorage.getProducts()[0].stockQuantity}));
+ expect(PosStorage.getProducts()[0].stockQuantity).toBe(8);
+});

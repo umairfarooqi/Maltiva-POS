@@ -1,0 +1,4 @@
+Bootstrap account switch during recovery (8 ms): PASS
+Fallback account switch during recovery (1 ms): PASS
+Out-of-order catalog retains stock 7: PASS
+All isolated browser service probes passed.
