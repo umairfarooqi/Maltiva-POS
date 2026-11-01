@@ -266,6 +266,10 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                   <span>Payment Mode</span>
                   <span className="uppercase font-bold">{order.paymentMethod}</span>
                 </div>
+                {order.persistenceState === 'saved' && order.paymentMethod === 'cash' && order.cashTenderedPaisa != null && <>
+                  <div className="flex justify-between"><span>Cash received</span><span>{formatPKR(order.cashTenderedPaisa)}</span></div>
+                  {order.changeDuePaisa != null && <div className="flex justify-between"><span>Change</span><span>{formatPKR(order.changeDuePaisa)}</span></div>}
+                </>}
               </div>
 
               {/* Customer Footer */}

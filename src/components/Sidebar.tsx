@@ -10,6 +10,7 @@ import {
   PanelLeftClose,
   X,
   Users,
+  Receipt,
 } from 'lucide-react';
 import { UserRole } from '../types/pos';
 import { Dialog } from './ui/Dialog';
@@ -17,6 +18,7 @@ import { MaltivaLogo } from './MaltivaLogo';
 
 export type NavTab =
   | 'order_line'
+  | 'receipts'
   | 'manage_dishes'
   | 'dashboard'
   | 'profit_loss'
@@ -52,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Pure Takeaway Navigation Items
   const navItems = [
     { id: 'order_line' as NavTab, label: 'Order Line', icon: Store, adminOnly: false },
+    { id: 'receipts' as NavTab, label: 'Receipts', icon: Receipt, adminOnly: false },
     { id: 'manage_dishes' as NavTab, label: 'Dishes & Deals', icon: UtensilsCrossed, adminOnly: true },
     { id: 'dashboard' as NavTab, label: 'Daily Sales', icon: LayoutDashboard, adminOnly: true },
     { id: 'profit_loss' as NavTab, label: 'Profit & Loss', icon: TrendingUp, adminOnly: true, onlyAdmin: true },

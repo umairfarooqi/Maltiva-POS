@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { OrderLineView } from './components/OrderLineView';
+import { ReceiptsView } from './components/ReceiptsView';
 import { Dialog } from './components/ui/Dialog';
 import { CartDrawer } from './components/CartDrawer';
 import { ManageDishesView } from './components/ManageDishesView';
@@ -860,8 +861,8 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         onSelectTab={tab => {
-          if (currentUser.role === 'cashier' && tab !== 'order_line') {
-            return; // Lock cashier to order line
+          if (currentUser.role === 'cashier' && !['order_line', 'receipts'].includes(tab)) {
+            return;
           }
           setActiveTab(tab);
         }}
@@ -879,7 +880,7 @@ export default function App() {
         <Header
           currentUser={currentUser}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
-          onOpenMobileCart={() => setIsMobileCartOpen(true)}
+          onOpenMobileCart={() => { setActiveTab('order_line'); setIsMobileCartOpen(true); }}
           cartItemCount={cart.reduce((sum, it) => sum + it.quantity, 0)}
         />
 
@@ -913,8 +914,8 @@ export default function App() {
 
         {/* View Body */}
         <div className="min-h-0 flex-1 flex overflow-hidden">
-          {activeTab === 'order_line' && (
-            <>
+          {['order_line', 'receipts'].includes(activeTab) && (
+            <div hidden={activeTab !== 'order_line'} className={`min-h-0 min-w-0 flex-1 ${activeTab === 'order_line' ? 'flex' : 'hidden'}`}>
               <OrderLineView
                 isLocked={isProcessingOrder}
                 products={products}
@@ -948,9 +949,10 @@ export default function App() {
                 isMobileOpen={isMobileCartOpen}
                 onCloseMobile={() => setIsMobileCartOpen(false)}
               />
-            </>
+            </div>
           )}
 
+          {activeTab === 'receipts' && <ReceiptsView onOpenReceipt={setReceiptModalOrder} onBack={() => setActiveTab('order_line')} />}
           {activeTab === 'manage_dishes' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
             <ManageDishesView
               products={products}
