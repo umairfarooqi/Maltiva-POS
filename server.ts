@@ -8,6 +8,7 @@ import { allocateOrderNumbers } from './src/services/orderNumbering';
 import { assertUnreviewedOwner, checkoutOrigin } from './src/services/checkoutOrigin';
 import { assertSaleGeneration, databaseGeneration, wasDatabaseRestored } from './src/services/databaseGeneration';
 import { DatabaseBackups } from './src/services/databaseBackups';
+import { findReceipts, receiptTimestamp } from './src/services/receiptLookup';
 import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
@@ -399,6 +400,18 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Receipt browsing reads committed server snapshots without mutating checkout.
+  app.get('/api/receipts', (req, res, next) => {
+    try { res.json(findReceipts(db, req.query)); } catch (error) { next(error); }
+  });
+  app.get('/api/receipts/:id', (req, res) => {
+    const id = String(req.params.id);
+    if (!id || id.length > 200) { res.status(400).json({ error: 'Invalid receipt reference.' }); return; }
+    const order = loadOrder(id);
+    if (!order || order.status === 'cancelled') { res.status(404).json({ error: 'Saved receipt not found. Search again.' }); return; }
+    const receipt = { ...order, createdAt: receiptTimestamp(order.createdAt) };
+    res.json((req as any).caller.role === 'cashier' ? stripOrderCostAndProfit(receipt) : receipt);
+  });
   // Reconcile keys from this browser's durable outbox. Unsent keys are known only to the browser.
   app.get('/api/orders/pending-status', (req: Request, res: Response) => {
     const caller = userFromToken(req.get('Authorization'));

@@ -63,6 +63,10 @@ export function receiptText(order: Order, settings: PrinterSettings, paperWidth:
     if (order.taxPaisa > 0) row('TAX:', formatPKR(order.taxPaisa));
     row('TOTAL PAYABLE:', formatPKR(order.totalPaisa));
     row('PAYMENT MODE:', order.paymentMethod.toUpperCase());
+    if (order.persistenceState === 'saved' && order.paymentMethod === 'cash' && order.cashTenderedPaisa != null) {
+      row('CASH RECEIVED:', formatPKR(order.cashTenderedPaisa));
+      if (order.changeDuePaisa != null) row('CHANGE:', formatPKR(order.changeDuePaisa));
+    }
     rule(); center(`Thank you for ordering at ${settings.storeName || 'Maltiva Crust'}!`);
     center('Fresh food. Clear pickup.');
     if (settings.whatsApp) center(`Order / WhatsApp: ${settings.whatsApp}`);

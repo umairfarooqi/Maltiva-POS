@@ -5,6 +5,7 @@ import { migrateMoney } from './moneyMigration';
 import { initOrderNumbering } from './orderNumbering';
 import { initCheckoutOrigins } from './checkoutOrigin';
 import { initDatabaseGeneration } from './databaseGeneration';
+import { initReceiptLookup } from './receiptLookup';
 
 const DB_DIR = process.env.MALTIVA_POS_DB_DIR || process.cwd();
 const DB_PATH = path.join(DB_DIR, 'maltiva_pos.db');
@@ -200,6 +201,7 @@ export async function initDb() {
   initOrderNumbering(db);
   initCheckoutOrigins(db);
   initDatabaseGeneration(db);
+  initReceiptLookup(db);
   console.log('Database Vault Ready.');
 }
 
