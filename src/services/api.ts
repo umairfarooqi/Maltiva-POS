@@ -1,7 +1,8 @@
 import { Order, Product, Category, TableItem, User, LoginStaff, InventoryLog, PrinterSettings } from '../types/pos';
 import { PosStorage } from './storage';
 import { PendingOutbox } from './pendingOutbox';
-import { sessionFetch, endSession, queueSessionRevocation, flushSessionRevocations } from './session';
+import { checkoutData } from './clientPrivacy';
+import { captureSession, sessionFetch, endSession, queueSessionRevocation, flushSessionRevocations } from './session';
 import { DEFAULT_UNCATEGORIZED_CATEGORY, normalizeProduct } from '../utils/normalizeProduct';
 
 export type SaleResult = { success: boolean; state: 'saved' | 'pending' | 'rejected'; order: Order; error?: string };
@@ -33,7 +34,7 @@ function mergeRecovery(serverOrders: Order[], pending: Order[], rejected: Order[
 }
 
 function cacheOrder(order: Order) {
-  PosStorage.setOrders(mergeOrders([order], [], PosStorage.getOrders()));
+  PosStorage.setOrders(mergeOrders([checkoutData(order)], [], PosStorage.getOrders()));
 }
 
 function optionalCache(write: () => void) {
@@ -52,6 +53,10 @@ function pendingResult(order: Order): SaleResult {
 
 async function saved(order: Order): Promise<Order> {
   const canonical: Order = { ...order, idempotencyKey: order.idempotencyKey || order.id, persistenceState: 'saved', synced: true };
+  if (localStorage.getItem('pos_database_changed') && canonical.databaseGeneration !== PosStorage.getDatabaseGeneration()) {
+    await PendingOutbox.acknowledge(checkoutData(canonical));
+    return checkoutData(canonical);
+  }
   try { cacheOrder(canonical); } catch {
     await PendingOutbox.acknowledge(canonical);
     return canonical;
@@ -74,6 +79,7 @@ async function submitSale(order: Order): Promise<SaleResult> {
 }
 
 async function sendSale(order: Order): Promise<SaleResult> {
+  const owner = captureSession();
   if (order.recoveryBlockedReason) {
     const { recoveryBlockedReason: _previousReason, ...retry } = order;
     order = await PendingOutbox.put(retry);
@@ -86,7 +92,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
     response = await sessionFetch('/api/orders', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': order.idempotencyKey!, ...authHeaders() },
       body: JSON.stringify(order), signal: controller.signal,
-    });
+    }, { saleAcknowledgment: true });
     try { body = await response.json(); } catch (error) {
       // A 201 may already have committed, even if its body cannot be decoded.
       if (response.status === 201) return pendingResult(order);
@@ -101,7 +107,8 @@ async function sendSale(order: Order): Promise<SaleResult> {
   if (response.status === 201) {
     if (body?.order?.id && Array.isArray(body.order.items) &&
         (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
-      return { success: true, state: 'saved', order: await saved(body.order) };
+      const canonical = await saved(body.order);
+      return { success: true, state: 'saved', order: owner.isCurrent() ? canonical : checkoutData(canonical) };
     }
     return pendingResult(order);
   }
@@ -125,13 +132,17 @@ async function persistProduct(url: string, method: string, product: Omit<Product
   try {
     response = await sessionFetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(product), signal: AbortSignal.timeout(5000) });
-  } catch { throw new Error('Menu changes need the local server. Keep this form and retry when it is available.'); }
+  } catch (error) {
+    if ((error as Error).name === 'SessionChangedError') throw error;
+    throw new Error('Menu changes need the local server. Keep this form and retry when it is available.');
+  }
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || 'Menu changes could not be saved. Keep this form and retry.');
   if (body.id !== product.id || body.moneySchemaVersion !== 2) throw new Error('Could not confirm the saved menu. Keep this form and retry.');
   return normalizeProduct(body);
 }
 
+// Shared by lightweight reads, full bootstrap and catalog mutations.
 let catalogRequest = 0;
 
 function assertSession(token: string | null, isCurrent: () => boolean = () => true) {
@@ -143,21 +154,25 @@ function assertSession(token: string | null, isCurrent: () => boolean = () => tr
 
 export const PosApi = {
   async loadRecoveryOrders(): Promise<Order[]> {
+    const owner = captureSession();
     const pending = await PendingOutbox.list();
     const [rejected, acknowledged] = await Promise.all([PendingOutbox.rejected(), PendingOutbox.acknowledged()]);
-    const orders = mergeRecovery([], pending, rejected, acknowledged);
+    owner.assertCurrent();
+    const orders = checkoutData(mergeRecovery([], pending, rejected, acknowledged));
     return orders;
   },
   async fetchCatalog(isCurrent: () => boolean = () => true): Promise<{ categories: Category[]; products: Product[]; printerSettings: PrinterSettings }> {
     const token = PosStorage.getToken();
+    const owner = captureSession();
     const request = ++catalogRequest;
     const response = await sessionFetch('/api/data?scope=catalog', { headers: authHeaders(), signal: AbortSignal.timeout(5000) });
     const data = await response.json();
+    owner.assertCurrent();
     assertSession(token, () => request === catalogRequest && isCurrent());
     if (!response.ok || !data || data.historyIncluded !== false || !Array.isArray(data.products) || !Array.isArray(data.categories) || !data.printerSettings) {
       throw new Error('Menu and stock could not be refreshed. Retry when the POS server is available.');
     }
-    const products = data.products.filter((product: Product) => product.name !== 'Untitled Dish' && Number(product.pricePaisa) > 0).map(normalizeProduct);
+    const products = data.products.filter((product: Product) => product.name !== 'Untitled Dish' && Number(product.pricePaisa) >= 0).map(normalizeProduct);
     optionalCache(() => PosStorage.setProducts(products));
     optionalCache(() => PosStorage.setCategories(data.categories));
     optionalCache(() => PosStorage.setPrinterSettings(data.printerSettings));
@@ -167,6 +182,7 @@ export const PosApi = {
     await flushSessionRevocations();
     const token = PosStorage.getToken();
     if (!token) throw new Error('Please sign in again.');
+    const owner = captureSession();
     const response = await sessionFetch('/api/auth/session', {
       headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000), cache: 'no-store',
     });
@@ -176,6 +192,7 @@ export const PosApi = {
       endSession(token);
       throw new Error('Please sign in again.');
     }
+    owner.assertCurrent();
     if (PosStorage.getToken() !== token) throw new Error('The active session changed.');
     PosStorage.setSession(data.user);
     return data;
@@ -188,15 +205,22 @@ export const PosApi = {
     return staff;
   },
   async saveMoneySettings(settings: PrinterSettings): Promise<void> {
+    const owner = captureSession();
+    ++catalogRequest;
     const response = await sessionFetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
-    if (!response.ok) throw new Error('Tax settings could not be saved on the server. Retry when it is available.');
+    owner.assertCurrent();
+    ++catalogRequest;
+    if (response.status === 403) throw new Error('Only an administrator can change store, tax and printer settings.');
+    if (!response.ok) throw new Error('Settings could not be saved on the server. Retry when it is available.');
   },
   async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string; code?: string }> {
+    const owner = captureSession();
     try {
       const response = await sessionFetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
       const body = await response.json();
+      owner.assertCurrent();
       if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.', code: body.code };
       if (body.moneySchemaVersion !== 2 || typeof body.pricingFingerprint !== 'string' || !Array.isArray(body.items)) {
         return { error: 'Invalid pricing response. Keep this cart and retry.' };
@@ -219,6 +243,9 @@ export const PosApi = {
     isOnline: boolean;
   }> {
     const requestToken = PosStorage.getToken();
+    const owner = captureSession();
+    const request = ++catalogRequest;
+    const ownsRequest = () => owner.isCurrent() && isCurrent();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
     const headers = authHeaders();
@@ -227,44 +254,56 @@ export const PosApi = {
 
       if (res.ok) {
         const data = await res.json();
-        assertSession(requestToken, isCurrent);
+        owner.assertCurrent();
+        assertSession(requestToken, ownsRequest);
         if (data.historyIncluded === false) throw new Error('Complete saved history was not returned. Retry report loading.');
         // Update local cache
         const fetchedProducts: Product[] = Array.isArray(data.products) ? data.products : [];
         const validProducts = fetchedProducts.filter(
-          product => product.name !== 'Untitled Dish' && Number(product.pricePaisa) > 0
+          product => product.name !== 'Untitled Dish' && Number(product.pricePaisa) >= 0
         );
         const normalizedProducts = validProducts.map(normalizeProduct);
-        const products = normalizedProducts;
+
         const serverOrders: Order[] = (data.orders || []).map((order: Order) => ({ ...order, idempotencyKey: order.idempotencyKey || order.id, synced: true, persistenceState: 'saved' }));
         const pending = await PendingOutbox.list();
         const rejected = await PendingOutbox.rejected();
         const acknowledged = await PendingOutbox.acknowledged();
         // Recovery reads can yield through logout, account switching or cancellation.
         // Commit the entire snapshot only while this request still owns the session.
-        assertSession(requestToken, isCurrent);
+        owner.assertCurrent();
+        assertSession(requestToken, ownsRequest);
         const orders = mergeRecovery(serverOrders, pending, rejected, acknowledged);
-        optionalCache(() => PosStorage.setCategories(data.categories));
-        optionalCache(() => PosStorage.setProducts(normalizedProducts));
+        const ownsCatalog = request === catalogRequest;
+        if (ownsCatalog) {
+          optionalCache(() => PosStorage.setCategories(data.categories));
+          optionalCache(() => PosStorage.setProducts(normalizedProducts));
+          optionalCache(() => PosStorage.setPrinterSettings(data.printerSettings));
+        }
+        // Complete history remains useful even if a newer stock read won.
+        // Return the current catalog as well, so callers cannot render old stock.
+        const catalog = ownsCatalog ? { products: normalizedProducts, categories: data.categories, printerSettings: data.printerSettings }
+          : { products: PosStorage.getProducts(), categories: PosStorage.getCategories(), printerSettings: PosStorage.getPrinterSettings() };
         optionalCache(() => PosStorage.setOrders(orders));
         optionalCache(() => PosStorage.setTables(data.tables || []));
         optionalCache(() => PosStorage.setUsers(data.users));
-        optionalCache(() => PosStorage.setPrinterSettings(data.printerSettings));
         optionalCache(() => PosStorage.setInventoryLogs(data.inventoryLogs || []));
 
-        return { ...data, products, orders, tables: data.tables || [], isOnline: true };
+        return { ...data, ...catalog, orders, tables: data.tables || [], isOnline: true };
       }
     } catch (error) {
-      assertSession(requestToken, isCurrent);
+      owner.assertCurrent();
+      assertSession(requestToken, ownsRequest);
       if (['SessionChangedError', 'SupersededRequestError'].includes((error as Error)?.name)) throw error;
       // Only a still-owned request may use the offline recovery fallback.
     } finally { clearTimeout(timeoutId); }
 
-    assertSession(requestToken, isCurrent);
+    owner.assertCurrent();
+    assertSession(requestToken, ownsRequest);
     const pending = await PendingOutbox.list();
     const rejected = await PendingOutbox.rejected();
     const acknowledged = await PendingOutbox.acknowledged();
-    assertSession(requestToken, isCurrent);
+    owner.assertCurrent();
+    assertSession(requestToken, ownsRequest);
     const orders = mergeRecovery(PosStorage.getOrders().filter(order => order.persistenceState !== 'pending' && order.persistenceState !== 'rejected'), pending, rejected, acknowledged);
     optionalCache(() => PosStorage.setOrders(orders));
     return {
@@ -325,55 +364,86 @@ export const PosApi = {
 
   // Product CRUD
   async createProduct(productData: Partial<Product>, _isOnline: boolean): Promise<Product> {
+    const owner = captureSession();
+    ++catalogRequest;
     const newProd = normalizeProduct({ ...productData, id: productData.id || `prod-${Date.now()}` });
     const savedProduct = await persistProduct('/api/products', 'POST', newProd);
+    owner.assertCurrent();
+    ++catalogRequest;
     optionalCache(() => PosStorage.setProducts([savedProduct, ...PosStorage.getProducts().filter(p => p.id !== savedProduct.id)]));
+    owner.assertCurrent();
     return savedProduct;
   },
 
   async updateProduct(product: Product, _isOnline: boolean): Promise<Product> {
+    const owner = captureSession();
+    ++catalogRequest;
     const normalized = normalizeProduct(product);
     const { stockQuantity: _stock, ...catalog } = normalized;
     const updated = await persistProduct(`/api/products/${normalized.id}`, 'PUT', catalog);
+    owner.assertCurrent();
+    ++catalogRequest;
     optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === updated.id ? updated : p)));
+    owner.assertCurrent();
     return updated;
   },
 
   async deleteProduct(productId: string, _isOnline: boolean): Promise<boolean> {
+    const owner = captureSession();
+    ++catalogRequest;
     const headers = authHeaders();
     const response = await sessionFetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
+    owner.assertCurrent();
     if (!response.ok) throw new Error('Product could not be deleted. Retry when the server is available.');
+    owner.assertCurrent();
+    ++catalogRequest;
     optionalCache(() => PosStorage.setProducts(PosStorage.getProducts().filter(p => p.id !== productId)));
+    owner.assertCurrent();
     return true;
   },
 
   // Category CRUD
   async createCategory(name: string, icon: string, _isOnline: boolean): Promise<Category> {
+    const owner = captureSession();
+    ++catalogRequest;
     const category = { id: `cat-${crypto.randomUUID()}`, name: name.trim(), icon, itemCount: 0, order: 99 };
     const response = await sessionFetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
+    owner.assertCurrent();
     if (!response.ok) throw new Error('Category could not be saved on the server. Retry when it is available.');
     const saved = { ...category, ...await response.json() };
     if (!saved.id) throw new Error('Server did not confirm the category.');
+    owner.assertCurrent();
+    ++catalogRequest;
     optionalCache(() => PosStorage.setCategories([...PosStorage.getCategories(), saved]));
+    owner.assertCurrent();
     return saved;
   },
 
   async updateCategory(category: Category, _isOnline: boolean): Promise<Category> {
+    const owner = captureSession();
+    ++catalogRequest;
     const response = await sessionFetch(`/api/categories/${encodeURIComponent(category.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(category) });
+    owner.assertCurrent();
     if (!response.ok) throw new Error('Category could not be updated on the server. Retry when it is available.');
     const saved = { ...category, ...await response.json() };
+    owner.assertCurrent();
+    ++catalogRequest;
     optionalCache(() => {
       PosStorage.setCategories(PosStorage.getCategories().map(c => c.id === category.id ? saved : c));
       PosStorage.setProducts(PosStorage.getProducts().map(p => p.categoryId === category.id ? { ...p, categoryName: saved.name } : p));
     });
+    owner.assertCurrent();
     return saved;
   },
 
   async deleteCategory(categoryId: string, _isOnline: boolean): Promise<boolean> {
+    const owner = captureSession();
+    ++catalogRequest;
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return false;
     {
       const headers = authHeaders();
       const res = await sessionFetch(`/api/categories/${categoryId}`, { method: 'DELETE', ...(Object.keys(headers).length ? { headers } : {}) });
+      owner.assertCurrent();
       if (!res.ok) {
         let message = 'Delete failed';
         try {
@@ -386,6 +456,8 @@ export const PosApi = {
       }
     }
 
+    owner.assertCurrent();
+    ++catalogRequest;
     const cats = PosStorage.getCategories().filter(c => c.id !== categoryId);
     if (!cats.some(category => category.id === DEFAULT_UNCATEGORIZED_CATEGORY.id)) {
       cats.push(DEFAULT_UNCATEGORIZED_CATEGORY);
@@ -403,6 +475,7 @@ export const PosApi = {
     );
     PosStorage.setProducts(products);
 
+    owner.assertCurrent();
     return true;
   },
 
@@ -415,19 +488,25 @@ export const PosApi = {
     user: User,
     _isOnline: boolean
   ): Promise<{ product: Product; log: InventoryLog }> {
+    const owner = captureSession();
+    ++catalogRequest;
     const signature = JSON.stringify({ productId, changeAmount, reason, type, userId: user.id });
     const operationId = stockAdjustmentKeys.get(signature) || crypto.randomUUID();
     stockAdjustmentKeys.set(signature, operationId);
     const response = await sessionFetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name }) });
+    owner.assertCurrent();
     if (!response.ok) throw new Error('Stock adjustment could not be confirmed. Keep this form open and retry.');
     const result = await response.json();
     if (!result.product?.id || !result.log?.id) throw new Error('Server did not confirm the stock adjustment.');
     stockAdjustmentKeys.delete(signature);
+    owner.assertCurrent();
+    ++catalogRequest;
     optionalCache(() => {
       PosStorage.setProducts(PosStorage.getProducts().map(p => p.id === productId ? normalizeProduct(result.product) : p));
       PosStorage.setInventoryLogs([result.log, ...PosStorage.getInventoryLogs().filter(log => log.id !== result.log.id)]);
     });
+    owner.assertCurrent();
     return result;
   },
 
@@ -437,8 +516,10 @@ export const PosApi = {
     passwordOrPin: string,
     _isOnline?: boolean
   ): Promise<{ success: boolean; user?: User; expiresAt?: number; error?: string }> {
+    const owner = captureSession();
     try {
       await flushSessionRevocations();
+      owner.assertCurrent();
       const previousToken = PosStorage.getToken();
       const res = await sessionFetch('/api/auth/login', {
         method: 'POST',
@@ -446,6 +527,7 @@ export const PosApi = {
         body: JSON.stringify({ username: username.trim().toLowerCase(), password: passwordOrPin.trim(), pin: passwordOrPin.trim() }),
       });
       const data = await res.json();
+      owner.assertCurrent();
       if (PosStorage.getToken() !== previousToken) return { success: false, error: 'The session changed in another window. Please retry.' };
       if (res.ok && data.user && data.token && Number.isSafeInteger(data.expiresAt) && data.expiresAt > Date.now()) {
         PosStorage.setToken(data.token);
@@ -472,6 +554,7 @@ export const PosApi = {
   },
 
   async approveOverride(username: string, pin: string): Promise<{ approved: boolean; approvalToken?: string; approver?: User; error?: string }> {
+    const owner = captureSession();
     try {
       const res = await sessionFetch('/api/auth/approve', {
         method: 'POST',
@@ -479,46 +562,60 @@ export const PosApi = {
         body: JSON.stringify({ username: username.trim().toLowerCase(), pin: pin.trim() }),
       });
       const data = await res.json();
-      return res.ok ? { approved: true, approvalToken: data.approvalToken, approver: data.approver } : { approved: false, error: data.error || 'Manager approval failed.' };
+      owner.assertCurrent();
+    return res.ok ? { approved: true, approvalToken: data.approvalToken, approver: data.approver } : { approved: false, error: data.error || 'Manager approval failed.' };
     } catch {
-      return { approved: false, error: 'Cannot reach the POS server.' };
+      owner.assertCurrent();
+    return { approved: false, error: 'Cannot reach the POS server.' };
     }
   },
 
   // USER MANAGEMENT (admin token required by the server)
   async listUsers(): Promise<User[]> {
+    const owner = captureSession();
     const res = await sessionFetch('/api/users', { headers: authHeaders() });
     const body = await res.json();
+    owner.assertCurrent();
     if (!res.ok) throw new Error(body.error || 'Could not load staff accounts.');
+    owner.assertCurrent();
     return body;
   },
 
   async createUser(input: Partial<User> & { password: string; pin: string }): Promise<User> {
+    const owner = captureSession();
     const res = await sessionFetch('/api/users', {
       method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(input),
     });
     const body = await res.json();
+    owner.assertCurrent();
     if (!res.ok) throw new Error(body.error || 'Could not create the staff account.');
+    owner.assertCurrent();
     return body;
   },
 
   async updateUser(id: string, changes: Partial<User> & { password?: string; pin?: string }): Promise<User> {
+    const owner = captureSession();
     const res = await sessionFetch(`/api/users/${encodeURIComponent(id)}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(changes),
     });
     const body = await res.json();
+    owner.assertCurrent();
     if (!res.ok) throw new Error(body.error || 'Could not update the staff account.');
+    owner.assertCurrent();
     return body;
   },
 
   async resetUserPin(id: string, pin: string, password?: string): Promise<User> {
+    const owner = captureSession();
     const res = await sessionFetch(`/api/users/${encodeURIComponent(id)}/reset-pin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ pin, ...(password ? { password } : {}) }),
     });
     const body = await res.json();
+    owner.assertCurrent();
     if (!res.ok) throw new Error(body.error || 'Could not reset staff PIN.');
+    owner.assertCurrent();
     return body;
   },
 };

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { act, render, screen, waitFor, within, cleanup } from '@testing-library/react';
+import { act, render, screen, waitFor, within, cleanup, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App';
@@ -294,7 +294,8 @@ describe('phase 1 cashier decisions', () => {
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
       if (url !== '/api/orders/quote') return originalFetch(url, init);
       const order = JSON.parse(init!.body as string);
-      const items = order.items.map((item: any) => ({ ...item, unitPricePaisa: 100000, totalPricePaisa: 100000 }));
+      // The server prices costs from its catalog; safe recovery copies omit them.
+      const items = order.items.map((item: any) => ({ ...item, unitCostPaisa: INITIAL_PRODUCTS.find(product => product.id === item.productId)?.costPricePaisa ?? 0, unitPricePaisa: 100000, totalPricePaisa: 100000 }));
       return json({ ...order, ...computeTotals(items, { taxBp: 0 }), items, moneySchemaVersion: 2, pricingFingerprint: 'changed-quote' });
     });
     const user = await checkout();
@@ -353,6 +354,23 @@ describe('phase 1 cashier decisions', () => {
     await user.click(screen.getByRole('button', { name: 'Retry sync' }));
     await waitFor(() => expect(screen.getByText('Cart is empty')).toBeVisible(), { timeout: 5000 });
     await waitFor(() => expect(screen.queryByRole('status', { name: 'Pending sales' })).not.toBeInTheDocument(), { timeout: 5000 });
+    expect(new Set(requests.map(order => order.idempotencyKey)).size).toBe(1);
+  }, 15000);
+  it('reconciles an uncertain checkout when a sync started earlier finishes afterward', async () => {
+    const original = PosApi.loadRecoveryOrders.bind(PosApi);
+    let release!: () => Promise<void>, started!: () => void;
+    const reading = new Promise<void>(resolve => { started = resolve; });
+    vi.spyOn(PosApi, 'loadRecoveryOrders').mockImplementationOnce(() => new Promise(resolve => {
+      started(); release = async () => { resolve(await original()); };
+    }));
+    const deletion = vi.spyOn(PendingOutbox, 'remove').mockRejectedValue(new Error('Recovery storage interrupted'));
+    await checkout(); await reading;
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Checkout could not finish'));
+    expect(screen.getByRole('button', { name: 'Processing...' })).toBeDisabled();
+    deletion.mockRestore();
+    await act(async () => { await release(); });
+    await waitFor(() => expect(screen.getByText('Cart is empty')).toBeVisible());
+    expect(screen.getByRole('status', { name: 'Sale result' })).toHaveTextContent('Saved');
     expect(new Set(requests.map(order => order.idempotencyKey)).size).toBe(1);
   }, 15000);
   it('HTTP rejection keeps the cart and the same key for an explicit retry, with no receipt', async () => {
@@ -463,4 +481,42 @@ describe('phase 1 cashier decisions', () => {
     expect(clipboard.writeText.mock.calls[0][0].match(/PENDING/g)).toHaveLength(2);
     expect(area).not.toHaveTextContent('TOTAL PAID');
   });
+});
+
+it('normal sync picks up another terminal stock changes without downloading history', async () => {
+  const transport = globalThis.fetch;
+  let stock = 5, catalogReads = 0, fullReads = 0;
+  vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+    if (url === '/api/data') fullReads++;
+    if (url === '/api/data?scope=catalog') { catalogReads++; return json({ historyIncluded: false, categories: INITIAL_CATEGORIES, products: [{ ...INITIAL_PRODUCTS[0], stockQuantity: stock }], printerSettings: INITIAL_PRINTER_SETTINGS }); }
+    return transport(url, init);
+  });
+  render(<App />);
+  await waitFor(() => expect(catalogReads).toBeGreaterThan(0));
+  await waitFor(() => expect(PosStorage.getProducts()[0].stockQuantity).toBe(5));
+  stock = 0; const before = catalogReads;
+  await act(async () => { window.dispatchEvent(new Event('online')); });
+  await waitFor(() => expect(catalogReads).toBeGreaterThan(before));
+  await waitFor(() => expect(PosStorage.getProducts()[0].stockQuantity).toBe(0));
+  stock = 4; const next = catalogReads;
+  await act(async () => { window.dispatchEvent(new Event('online')); });
+  await waitFor(() => expect(catalogReads).toBeGreaterThan(next));
+  await waitFor(() => expect(PosStorage.getProducts()[0].stockQuantity).toBe(4));
+  expect(fullReads).toBe(1);
+});
+
+it('stock polling does not erase an unsaved settings form when server settings are unchanged', async () => {
+  const user = userEvent.setup(); let reads = 0;
+  const transport = globalThis.fetch;
+  vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => { if (url === '/api/data?scope=catalog') reads++; return transport(url, init); });
+  render(<App />); await screen.findByText(INITIAL_PRODUCTS[0].name);
+  await waitFor(() => expect(reads).toBeGreaterThan(0));
+  await act(async () => {});
+  await user.click(screen.getByRole('button', { name: 'Settings' }));
+  const input = screen.getByRole('textbox', { name: 'Store Name' });
+  fireEvent.change(input, { target: { value: 'Unsaved store draft' } });
+  const before = reads;
+  await act(async () => { window.dispatchEvent(new Event('online')); });
+  await waitFor(() => expect(reads).toBeGreaterThan(before));
+  expect(input).toHaveValue('Unsaved store draft');
 });

@@ -1,0 +1,64 @@
+import 'fake-indexeddb/auto';
+import { afterEach,beforeEach,expect,it,vi } from 'vitest';
+import { MaintenanceApi } from '../src/services/maintenanceApi';
+import { PosApi } from '../src/services/api';
+import { PosStorage } from '../src/services/storage';
+import { PendingOutbox } from '../src/services/pendingOutbox';
+import { INITIAL_PRODUCTS,INITIAL_CATEGORIES,INITIAL_USERS,INITIAL_PRINTER_SETTINGS } from '../src/data/initialData';
+import { normalizeProduct } from '../src/utils/normalizeProduct';
+import { saleFixture } from './helpers/sale-fixtures';
+beforeEach(async()=>{localStorage.clear();await new Promise<void>((resolve,reject)=>{const r=indexedDB.deleteDatabase('maltiva-pos-pending-sales');r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error);r.onblocked=()=>reject(Error('blocked fixture database'));});});
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();localStorage.clear();});
+const cashier=()=>{PosStorage.setToken('new-cashier');PosStorage.setSession(INITIAL_USERS[1]);};
+const full={historyIncluded:true,products:[{...normalizeProduct(INITIAL_PRODUCTS[0]),costPricePaisa:0}],categories:INITIAL_CATEGORIES,users:[],orders:[],inventoryLogs:[],printerSettings:INITIAL_PRINTER_SETTINGS};
+it('DIAGNOSTIC: acknowledged admin costs reappear after all replaceable cache was cleared',async()=>{
+ const order={...saleFixture('ack-private'),persistenceState:'saved' as const,synced:true};
+ await PendingOutbox.acknowledge(order);localStorage.clear();cashier();
+ const recovered=await PosApi.loadRecoveryOrders();expect(recovered[0].totalCostPaisa).toBe(55000);expect(recovered[0].items[0].unitCostPaisa).toBe(55000);expect(await PendingOutbox.acknowledged()).toHaveLength(1);
+ console.log('ACK_AFTER_CACHE_CLEAR: saved recovery intact, admin costs still exposed in read result');
+});
+it('DIAGNOSTIC: rejected admin costs also survive cache clearing',async()=>{
+ await PendingOutbox.reject(saleFixture('rejected-private'),'Fixture rejected');localStorage.clear();cashier();
+ const recovered=await PosApi.loadRecoveryOrders();expect(recovered[0].persistenceState).toBe('rejected');expect(recovered[0].totalCostPaisa).toBe(55000);
+ console.log('REJECTED_AFTER_CACHE_CLEAR: rejection and original key preserved, costs still exposed');
+});
+it('DIAGNOSTIC: an online cashier bootstrap merges unsaved admin costs from durable recovery',async()=>{
+ const order=await PendingOutbox.put(saleFixture('pending-private'));localStorage.clear();cashier();
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(full))));
+ const data=await PosApi.fetchInitialData();expect(data.isOnline).toBe(true);expect(data.users).toEqual([]);expect(data.orders[0].idempotencyKey).toBe(order.idempotencyKey);expect(data.orders[0].totalCostPaisa).toBe(55000);
+ console.log('ONLINE_CASHIER: clean server body + durable admin pending -> private cost returns');
+});
+it('DIAGNOSTIC: delayed admin stock-adjustment JSON restores product cost and private inventory log after switching',async()=>{
+ PosStorage.setToken('old-admin');const product=normalizeProduct(INITIAL_PRODUCTS[0]);let resume!:(x:any)=>void;
+ const response=new Response('{}');const json=vi.spyOn(response,'json').mockReturnValue(new Promise(done=>resume=done));vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response));
+ const pending=PosApi.adjustStock(product.id,1,'Fixture restock','restock',INITIAL_USERS[0],true);await vi.waitFor(()=>expect(json).toHaveBeenCalled());
+ localStorage.clear();cashier();PosStorage.setProducts([{...product,costPricePaisa:0}]);resume({product,log:{id:'fixture-log',productId:product.id,changeAmount:1,userId:INITIAL_USERS[0].id}});await pending;
+ expect(PosStorage.getProducts()[0].costPricePaisa).toBe(product.costPricePaisa);expect(PosStorage.getInventoryLogs()).toHaveLength(1);expect(PosStorage.getToken()).toBe('new-cashier');
+ console.log('STOCK_RESPONSE_SESSION_RACE: old admin cost/log written to cashier cache');
+});
+it('DIAGNOSTIC: a late 201 remains saved safely but writes old admin costs into new-session cache',async()=>{
+ PosStorage.setToken('old-admin');const order=saleFixture('late-saved-private');let resume!:(x:any)=>void;
+ const response=new Response('{}',{status:201});const json=vi.spyOn(response,'json').mockReturnValue(new Promise(done=>resume=done));vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response));
+ const pending=PosApi.placeOrder(order,true);await vi.waitFor(()=>expect(json).toHaveBeenCalled());localStorage.clear();cashier();resume({order:{...order,orderNumber:'#SAVED-FIXTURE',tokenNumber:9}});
+ const result=await pending;expect(result.state).toBe('saved');expect(await PendingOutbox.list()).toHaveLength(0);expect(PosStorage.getOrders()[0].totalCostPaisa).toBe(55000);expect(PosStorage.getToken()).toBe('new-cashier');
+ console.log('LATE_201: saved state retained, pending removed, old admin cost cached for cashier');
+});
+it('CONTROL: cashier-shaped online server rows replace matching old saved cost snapshots',async()=>{
+ const order={...saleFixture('matching-private'),persistenceState:'saved' as const};PosStorage.setOrders([order]);cashier();
+ const {totalCostPaisa,profitPaisa,profitMarginPercent,...safeOrder}=order;
+ safeOrder.items=order.items.map(({unitCostPaisa,totalCostPaisa,...item})=>item as any);
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({...full,orders:[safeOrder]}))));
+ const data=await PosApi.fetchInitialData();expect(data.orders[0].totalCostPaisa).toBeUndefined();
+ console.log('MATCHING_SAVED_CONTROL: fresh safe server row overrides old saved costs');
+});
+
+it('DIAGNOSTIC: admin backup download still triggers after switching to a cashier during blob decoding',async()=>{
+ PosStorage.setToken('old-admin');let resume!:(blob:Blob)=>void;
+ const response=new Response('synthetic backup fixture');const blob=vi.spyOn(response,'blob').mockReturnValue(new Promise(done=>resume=done));vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response));
+ const OriginalURL=URL;vi.stubGlobal('URL',class extends OriginalURL {static createObjectURL(){return 'blob:fixture-only-backup';}static revokeObjectURL(){}});
+ const click=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+ const pending=MaintenanceApi.download('fixture-only-backup.db');await vi.waitFor(()=>expect(blob).toHaveBeenCalled());
+ localStorage.clear();cashier();resume(new Blob(['synthetic backup fixture']));await pending;
+ expect(click).toHaveBeenCalledOnce();expect(PosStorage.getToken()).toBe('new-cashier');
+ console.log('BACKUP_DOWNLOAD_SESSION_RACE: old administrator download click runs under cashier session (synthetic blob, no real backup download)');
+});

@@ -1,0 +1,7 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const qa=process.argv[2],{backend}=JSON.parse(readFileSync(qa+'/ready.json','utf8'));
+const login=await(await fetch(backend+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'admin',password:'fixture-only-secret'})})).json();
+const start=performance.now();const res=await fetch(backend+'/api/reports/profit',{headers:{Authorization:'Bearer '+login.token}});const data=await res.json();
+const result={status:res.status,orderCount:data.orderCount,totalRevenuePaisa:data.totalRevenuePaisa,totalCostPaisa:data.totalCostPaisa,totalProfitPaisa:data.totalProfitPaisa,rows:data.orders.length,ms:Math.round(performance.now()-start)};
+if(result.status!==200||result.orderCount!==10003||result.totalRevenuePaisa!==990111550||result.totalCostPaisa!==550062025||result.totalProfitPaisa!==440049525)throw Error(JSON.stringify(result));
+writeFileSync(qa+'/profit-api-check.json',JSON.stringify(result,null,2));console.log(result);

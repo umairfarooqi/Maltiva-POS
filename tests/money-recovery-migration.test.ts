@@ -41,8 +41,9 @@ describe('browser money migration', () => {
   });
   it('preserves keys and converts outbox rows once before replay', async () => {
     await rawStore(legacy);
-    expect((await PendingOutbox.list())[0]).toMatchObject({ idempotencyKey: 'original-key', totalPaisa: 36630, profitPaisa: 13300, moneySchemaVersion: 2 });
+    expect((await PendingOutbox.list())[0]).toMatchObject({ idempotencyKey: 'original-key', totalPaisa: 36630, moneySchemaVersion: 2 });
     expect((await PendingOutbox.list())[0].totalPaisa).toBe(36630);
+    expect((await PendingOutbox.list())[0].profitPaisa).toBeUndefined();
     expect((await rawStore())[0].items[0].selectedVariations[0].priceDeltaPaisa).toBe(25);
   });
   it('a failed replacement leaves the original recovery row intact', async () => {
@@ -51,6 +52,7 @@ describe('browser money migration', () => {
     await expect(PendingOutbox.list()).rejects.toThrow('Storage failed'); write.mockRestore();
     expect((await rawStore())[0].total).toBe(366.3);
     expect((await PendingOutbox.list())[0].totalPaisa).toBe(36630);
+    expect((await PendingOutbox.list())[0].profitPaisa).toBeUndefined();
   });
   it('converts legacy history, settings and catalog reads without discarding old copies', () => {
     localStorage.setItem('tasty_pos_orders', JSON.stringify([legacy]));
@@ -58,7 +60,8 @@ describe('browser money migration', () => {
     localStorage.setItem('tasty_pos_products', JSON.stringify([{ id: 'p', name: 'Dish', price: 333, costPrice: 0 }]));
     expect(PosStorage.getOrders()[0].totalPaisa).toBe(36630);
     expect(PosStorage.getPrinterSettings().taxBp).toBe(1000);
-    expect(PosStorage.getProducts()[0]).toMatchObject({ pricePaisa: 33300, costPricePaisa: 0 });
+    expect(PosStorage.getProducts()[0]).toMatchObject({ pricePaisa: 33300 });
+    expect(PosStorage.getProducts()[0].costPricePaisa).toBeUndefined();
     expect(JSON.parse(localStorage.getItem('tasty_pos_orders')!)[0].total).toBe(366.3);
     expect(upgradeMoney(upgradeMoney(legacy))).toEqual(upgradeMoney(legacy));
   });

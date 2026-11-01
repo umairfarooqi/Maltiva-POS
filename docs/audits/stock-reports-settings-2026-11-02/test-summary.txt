@@ -1,0 +1,22 @@
+Final current-code run: npm test -- --maxWorkers=1
+
+> react-example@0.0.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.3 D:/Shakeel/Github/maltiva-pos
+
+Not implemented: navigation to another Document
+
+ Test Files  49 passed (49)
+      Tests  363 passed (363)
+   Start at  02:43:40
+   Duration  188.44s (tests 49%, environment 35%, setup 11%, import 4%, transform 1%)
+
+Environment  jsdom was created 49 times · 62.01s total, 35% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+
+Other checks: npm run lint; npm run test:electron; production Vite renderer and esbuild server builds; git diff --check.
+Browser harness: four controlled ownership checks passed.

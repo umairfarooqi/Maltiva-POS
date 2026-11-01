@@ -1,7 +1,26 @@
+import { checkoutData } from './clientPrivacy';
 import { PosStorage } from './storage';
 
 export const SESSION_ENDED = 'pos-session-ended';
 const REVOCATIONS = 'tasty_pos_session_revocations';
+
+export function captureSession() {
+  const token = PosStorage.getToken(), revision = PosStorage.sessionRevision();
+  const generation = PosStorage.getDatabaseGeneration();
+  const isCurrent = () => PosStorage.getToken() === token && PosStorage.sessionRevision() === revision &&
+    (generation === null || PosStorage.getDatabaseGeneration() === generation);
+  const assertCurrent = () => {
+    if (!isCurrent()) throw Object.assign(new Error('The active session changed.'), { name: 'SessionChangedError' });
+  };
+  return { token, isCurrent, assertCurrent };
+}
+
+if (typeof window !== 'undefined') window.addEventListener('storage', event => {
+  if (event.key === null || event.key === 'tasty_pos_auth_token') {
+    PosStorage.invalidatePrivateMemory();
+    PosStorage.sanitizeBrowserData();
+  }
+});
 
 /** An old response must never clear or populate a newer user's session. */
 export function endSession(token: string | null, message = 'Your session ended. Please sign in again.') {
@@ -10,11 +29,15 @@ export function endSession(token: string | null, message = 'Your session ended. 
   window.dispatchEvent(new CustomEvent(SESSION_ENDED, { detail: message }));
 }
 
-export async function sessionFetch(url: string, init: RequestInit = {}): Promise<Response> {
+export async function sessionFetch(url: string, init: RequestInit = {}, options: { saleAcknowledgment?: boolean } = {}): Promise<Response> {
+  const owner = captureSession();
   const authorization = new Headers(init.headers).get('Authorization');
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
-  const response = await fetch(url, init);
-  if (token && PosStorage.getToken() !== token) {
+  if (token && token !== owner.token) throw Object.assign(new Error('The active session changed.'), { name: 'SessionChangedError' });
+  let response: Response;
+  try { response = await fetch(url, init); }
+  catch (error) { owner.assertCurrent(); throw error; }
+  if (token && (PosStorage.getToken() !== token || !owner.isCurrent())) {
     throw Object.assign(new Error('The active session changed.'), { name: 'SessionChangedError' });
   }
   const generation = response.headers.get('X-POS-Database-Generation');
@@ -29,7 +52,28 @@ export async function sessionFetch(url: string, init: RequestInit = {}): Promise
     const body = await response.clone().json().catch(() => ({}));
     if (url !== '/api/auth/approve' || body.code === 'SESSION_INVALID') endSession(token);
   }
-  return response;
+  const delivered = captureSession();
+  // A Response resolves before its body. Keep the guard through JSON/blob decoding,
+  // including cloned responses. The sole stale-body exception is a safe canonical
+  // sale acknowledgment: a paid sale must remain recoverable after logout.
+  const wrap = (value: Response): Response => new Proxy(value, {
+    get(target, key) {
+      const member = Reflect.get(target, key, target);
+      if (key === 'clone' && typeof member === 'function') return () => wrap(member.call(target));
+      if (typeof member === 'function' && ['json', 'blob', 'text', 'arrayBuffer', 'formData'].includes(String(key))) {
+        return async () => {
+          let body: any;
+          try { body = await member.call(target); }
+          catch (error) { delivered.assertCurrent(); throw error; }
+          if (key === 'json' && options.saleAcknowledgment && url === '/api/orders' && target.status === 201 && !delivered.isCurrent()) return checkoutData(body);
+          delivered.assertCurrent();
+          return body;
+        };
+      }
+      return typeof member === 'function' ? member.bind(target) : member;
+    },
+  });
+  return wrap(response);
 }
 
 function revocations(): string[] {

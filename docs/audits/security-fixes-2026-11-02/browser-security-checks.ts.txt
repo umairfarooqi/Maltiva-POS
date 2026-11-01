@@ -1,0 +1,34 @@
+import {PosApi} from "D:/Shakeel/Github/maltiva-pos/src/services/api";
+import {PosStorage} from "D:/Shakeel/Github/maltiva-pos/src/services/storage";
+import {PendingOutbox} from "D:/Shakeel/Github/maltiva-pos/src/services/pendingOutbox";
+import {MaintenanceApi} from "D:/Shakeel/Github/maltiva-pos/src/services/maintenanceApi";
+import {checkoutData,hasPrivateFields} from "D:/Shakeel/Github/maltiva-pos/src/services/clientPrivacy";
+import {saleFixture} from "D:/Shakeel/Github/maltiva-pos/tests/helpers/sale-fixtures";
+const results=document.querySelector('#results'),button=document.querySelector('#run');
+button.addEventListener('click',async()=>{
+ button.disabled=true;const lines=[];const check=(ok,label)=>{if(!ok)throw Error(label);lines.push(label+': PASS');results.textContent=lines.join('\n');};
+ const originalFetch=window.fetch,originalClick=HTMLAnchorElement.prototype.click;let actualToken=null,actualUser=null;
+ const snapshot=()=>Object.fromEntries(Object.entries(localStorage));
+ try{
+  localStorage.clear();const admin=await PosApi.login('admin','fixture-only-secret');check(admin.success,'Disposable admin authentication');
+  const data=await PosApi.fetchInitialData();check(data.isOnline&&data.products.some(p=>p.costPricePaisa>0),'Authorized admin costs remain available in memory');
+  for(const key of ['tasty_pos_products','tasty_pos_orders'])check(!hasPrivateFields(JSON.parse(localStorage.getItem(key))),'No persisted private fields in '+key);
+  const product=data.products[0],pending={...saleFixture('browser-security-pending'),cashierId:admin.user.id,cashierName:admin.user.name};
+  PosStorage.setDraft({cart:[{cartItemId:'kept-line',product,quantity:1,unitPricePaisa:product.pricePaisa,unitCostPaisa:product.costPricePaisa,totalPricePaisa:product.pricePaisa,totalCostPaisa:product.costPricePaisa,selectedVariations:[],notes:'keep browser draft'}],paymentMethod:'cash',attempt:pending});
+  await PendingOutbox.put(pending);await PosApi.logout();const cashier=await PosApi.login('cashier','fixture-only-secret');check(cashier.success,'Switch to real disposable cashier');actualToken=PosStorage.getToken();actualUser=cashier.user;
+  const recovered=await PosApi.fetchInitialData();check(recovered.users.length===0&&!hasPrivateFields(recovered.orders),'Cashier bootstrap/recovery has no admin costs or staff');
+  check(PosStorage.getDraft().attempt.idempotencyKey===pending.idempotencyKey&&!hasPrivateFields(JSON.parse(localStorage.getItem('tasty_pos_checkout_draft'))),'Submitted draft identity retained without private persistence');
+  await PendingOutbox.acknowledge({...pending,persistenceState:'saved',orderNumber:'#FIXTURE-ACK',tokenNumber:7});
+  localStorage.removeItem('tasty_pos_orders');check((await PosApi.loadRecoveryOrders()).some(o=>o.orderNumber==='#FIXTURE-ACK')&&!hasPrivateFields(await PosApi.loadRecoveryOrders()),'Durable acknowledgment retained and safe after cache clearing');
+  let resume,entered;let reading=new Promise(r=>entered=r);const response=new Response('{}');response.json=()=>{entered();return new Promise(r=>resume=r)};window.fetch=async()=>response;
+  PosStorage.setToken('synthetic-old-admin');const old=PosApi.updateProduct(product,true).then(()=>null,e=>e);await reading;PosStorage.setToken('synthetic-new-cashier');const before=snapshot();resume(product);
+  check((await old)?.name==='SessionChangedError'&&JSON.stringify(snapshot())===JSON.stringify(before),'Delayed product save cannot update new-session cache');
+  let downloadClick=false;HTMLAnchorElement.prototype.click=function(){downloadClick=true};reading=new Promise(r=>entered=r);const file=new Response('synthetic file');file.blob=()=>{entered();return new Promise(r=>resume=r)};window.fetch=async()=>file;
+  PosStorage.setToken('synthetic-admin-download');const download=MaintenanceApi.download('fixture-only.db').then(()=>null,e=>e);await reading;PosStorage.setToken('synthetic-cashier-download');resume(new Blob(['fixture']));check((await download)?.name==='SessionChangedError'&&!downloadClick,'Backup download is suppressed after session switch');
+  HTMLAnchorElement.prototype.click=originalClick;reading=new Promise(r=>entered=r);const ack=new Response('{}',{status:201});ack.json=()=>{entered();return new Promise(r=>resume=r)};window.fetch=async()=>ack;
+  PosStorage.setToken('synthetic-admin-sale');const sale=saleFixture('browser-security-late');const saved=PosApi.placeOrder(sale,true);await reading;PosStorage.setToken('synthetic-cashier-sale');resume({order:{...sale,orderNumber:'#FIXTURE-LATE',tokenNumber:8}});const result=await saved;
+  check(result.state==='saved'&&!(await PendingOutbox.list()).some(o=>o.idempotencyKey===sale.idempotencyKey)&&!hasPrivateFields(JSON.parse(localStorage.getItem('tasty_pos_orders'))),'Late 201 preserves saved state and original key without private cache');
+  await PendingOutbox.remove(pending.idempotencyKey);await PendingOutbox.remove(sale.idempotencyKey);PosStorage.clearDraft();
+  results.textContent+='\nAll security browser checks passed. Synthetic recovery rows were removed; server sales were not changed.';
+ }catch(e){results.textContent+='\nFAIL: '+e.stack;}finally{window.fetch=originalFetch;HTMLAnchorElement.prototype.click=originalClick;if(actualToken){PosStorage.setToken(actualToken);PosStorage.setSession(actualUser);await PosApi.logout();}localStorage.clear();button.disabled=false;}
+});

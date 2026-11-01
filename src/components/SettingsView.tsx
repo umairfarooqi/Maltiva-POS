@@ -52,6 +52,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentUser.role !== 'admin') return;
     if (taxError) { setSaveError(taxError); return; }
     if (saving.current) return;
     saving.current = true; setIsSaving(true);
@@ -122,7 +123,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      {currentUser.role !== 'admin' && <p role="status" className="text-sm text-pos-muted">Store, tax and printer settings are read-only. Ask an administrator to change them.</p>}
+      <fieldset disabled={currentUser.role !== 'admin'} className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         
         {/* SECTION 1: STORE IDENTITY */}
         <section className="bg-pos-surface p-5 rounded-lg border border-pos-border space-y-5">
@@ -350,7 +352,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
 
         {/* Staff accounts are managed from the Staff tab (admin only). */}
-      </div>
+      </fieldset>
 
       {currentUser.role === 'admin' && <DatabaseMaintenance />}
       {/* DATABASE MAINTENANCE (Bottom Bar) */}
@@ -386,7 +388,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="shrink-0 flex flex-wrap items-center justify-end gap-3 border-t border-pos-border bg-pos-chrome p-3">
         {saveError && <p role="alert" className="flex-1 text-sm text-pos-danger-text">{saveError}</p>}
         <button
-          disabled={isSaving}
+          disabled={isSaving || currentUser.role !== 'admin'}
           onClick={handleSave}
           className="flex items-center gap-2 px-5 py-3 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
         >

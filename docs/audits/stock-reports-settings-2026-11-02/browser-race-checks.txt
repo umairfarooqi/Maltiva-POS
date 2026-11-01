@@ -1,0 +1,10 @@
+Run catalog ownership checks
+{
+  "passed": 4,
+  "checks": [
+    "old full success preserves new stock",
+    "old full fallback preserves new stock",
+    "out-of-order catalog keeps latest stock",
+    "account switch blocks obsolete bootstrap"
+  ]
+}

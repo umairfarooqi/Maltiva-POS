@@ -1,5 +1,5 @@
 import { PosStorage } from './storage';
-import { endSession, sessionFetch } from './session';
+import { captureSession, endSession, sessionFetch } from './session';
 import { PendingOutbox } from './pendingOutbox';
 
 export interface BackupFile { filename: string; bytes: number; createdAt: string; safetyCopy: boolean }
@@ -9,8 +9,9 @@ export interface RestorePreview {
   current: { counts: Record<string, number> };
 }
 async function request(url: string, init: RequestInit = {}) {
-  const token = PosStorage.getToken();
+  const owner = captureSession(), token = owner.token;
   const response = await sessionFetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...init.headers }, signal: AbortSignal.timeout(60000) });
+  owner.assertCurrent();
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error || 'Database maintenance failed. Keep your backup and retry.');
@@ -26,34 +27,54 @@ export async function requireClearRecovery() {
 }
 export const MaintenanceApi = {
   async discard(token: string) {
+    const owner = captureSession();
     await request(`/api/maintenance/restore/preview/${encodeURIComponent(token)}`, { method: 'DELETE' });
+    owner.assertCurrent();
   },
   async list(): Promise<BackupFile[]> {
-    return (await (await request('/api/maintenance/backups')).json()).backups;
+    const owner = captureSession();
+    const body = await (await request('/api/maintenance/backups')).json();
+    owner.assertCurrent();
+    return body.backups;
   },
   async create(): Promise<{ filename: string }> {
-    return (await request('/api/maintenance/backups', { method: 'POST' })).json();
+    const owner = captureSession();
+    const body = await (await request('/api/maintenance/backups', { method: 'POST' })).json();
+    owner.assertCurrent();
+    return body;
   },
   async download(filename: string) {
+    const owner = captureSession();
     const response = await request(`/api/maintenance/backups/${encodeURIComponent(filename)}`);
-    const url = URL.createObjectURL(await response.blob());
+    const blob = await response.blob();
+    owner.assertCurrent();
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a'); link.href = url; link.download = filename;
     document.body.appendChild(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
   async preview(file: File): Promise<RestorePreview> {
+    const owner = captureSession();
     await requireClearRecovery();
+    owner.assertCurrent();
     if (file.size > 64 * 1024 * 1024) throw new Error('Choose a backup up to 64 MB.');
-    return (await request('/api/maintenance/restore/preview', {
-      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: await file.arrayBuffer(),
+    const bytes = await file.arrayBuffer();
+    owner.assertCurrent();
+    const result = await (await request('/api/maintenance/restore/preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: bytes,
     })).json();
+    owner.assertCurrent();
+    return result;
   },
   async restore(preview: RestorePreview, password: string, confirmation: string) {
+    const owner = captureSession();
     await requireClearRecovery();
-    const token = PosStorage.getToken();
+    owner.assertCurrent();
+    const token = owner.token;
     const result = await (await request('/api/maintenance/restore', { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: preview.token, password, confirmation }),
     })).json();
+    owner.assertCurrent();
     PosStorage.observeDatabaseGeneration(result.databaseGeneration, true);
     endSession(token, `Database restored. A safety backup was saved as ${result.safetyFilename}. Sign in with an account from the selected backup.`);
     return result;

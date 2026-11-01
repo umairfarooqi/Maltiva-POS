@@ -12,10 +12,10 @@ const identifier = (name: string) => `"${name.replaceAll('"', '""')}"`;
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 function fail(message: string, status = 400): never { throw Object.assign(new Error(message), { status }); }
 function schema(db: Db) {
-  return JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all());
+  return JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name!='auth_failures' AND tbl_name!='auth_failures' ORDER BY type,name").all());
 }
 function tables(db: Db): string[] {
-  return (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[]).map(row => row.name);
+  return (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='auth_failures' ORDER BY name").all() as { name: string }[]).map(row => row.name);
 }
 function counts(db: Db) {
   return Object.fromEntries(['orders', 'order_items', 'payments', 'stock_movements', 'products', 'users', 'checkout_intents']
@@ -158,6 +158,9 @@ export class DatabaseBackups {
           ON CONFLICT(business_date,name) DO UPDATE SET value=MAX(value,excluded.value)`);
         for (const counter of issuedCounters) preserveCounter.run(counter.business_date, counter.name, counter.value);
         this.db.exec('DELETE FROM auth_sessions');
+        // Lockout counters are local authentication state, never imported from a backup.
+        // Ignore this additive table in schema comparison for older compatible backups.
+        if (this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='auth_failures'").get()) this.db.exec('DELETE FROM auth_failures');
         const generation = randomUUID();
         const set = this.db.prepare('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)');
         set.run('databaseGeneration', generation); set.run('databaseRestoredAt', new Date().toISOString());

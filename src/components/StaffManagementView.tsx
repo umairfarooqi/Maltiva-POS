@@ -165,7 +165,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
             </h3>
           </div>
           <p className="text-xs text-pos-muted">
-            Store supervisor. Manages dishes, variations, stock updates, settings, and daily sales.
+            Store supervisor. Manages dishes, variations, stock updates and daily sales. Store, tax and printer settings require an administrator.
           </p>
           <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Add & update menu dishes</p>

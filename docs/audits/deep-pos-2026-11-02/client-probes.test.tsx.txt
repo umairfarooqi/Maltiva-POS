@@ -1,0 +1,56 @@
+import 'fake-indexeddb/auto';
+import { afterEach, expect, it, vi } from 'vitest';
+import { render, cleanup, fireEvent, screen } from '@testing-library/react';
+import { PosApi } from '../src/services/api';
+import { PosStorage } from '../src/services/storage';
+import { PendingOutbox } from '../src/services/pendingOutbox';
+import App from '../src/App';
+import { ProfitLossView } from '../src/components/ProfitLossView';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_USERS, INITIAL_PRINTER_SETTINGS } from '../src/data/initialData';
+import { saleFixture } from './helpers/sale-fixtures';
+afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();localStorage.clear();});
+const catalog=(stockQuantity:number)=>({historyIncluded:false,categories:INITIAL_CATEGORIES,products:[{...INITIAL_PRODUCTS[0],stockQuantity}],printerSettings:INITIAL_PRINTER_SETTINGS});
+it('DIAGNOSTIC: older full bootstrap overwrites a newer catalog stock snapshot',async()=>{
+ PosStorage.setToken('same-session');let resume!:(x:any[])=>void;
+ const list=vi.spyOn(PendingOutbox,'list').mockReturnValue(new Promise(done=>resume=done));
+ vi.spyOn(PendingOutbox,'rejected').mockResolvedValue([]);vi.spyOn(PendingOutbox,'acknowledged').mockResolvedValue([]);
+ vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url:string)=>new Response(JSON.stringify(url.includes('scope=catalog')?catalog(7):{...catalog(8),historyIncluded:true,users:[],orders:[]}))));
+ const old=PosApi.fetchInitialData();await vi.waitFor(()=>expect(list).toHaveBeenCalled());
+ await PosApi.fetchCatalog();expect(PosStorage.getProducts()[0].stockQuantity).toBe(7);
+ resume([]);const stale=await old;expect(stale.products[0].stockQuantity).toBe(8);expect(PosStorage.getProducts()[0].stockQuantity).toBe(8);
+ console.log('FULL_VS_CATALOG: newest=7, cache after older bootstrap=8');
+});
+it('DIAGNOSTIC: a cashier offline bootstrap receives previous admin staff and cost cache',async()=>{
+ const adminOrder={...saleFixture('private-cache'),persistenceState:'saved' as const};
+ PosStorage.setToken('admin-session');PosStorage.setUsers(INITIAL_USERS);PosStorage.setOrders([adminOrder]);PosStorage.setProducts(INITIAL_PRODUCTS);
+ PosStorage.clearSession();PosStorage.setToken('cashier-session');PosStorage.setSession(INITIAL_USERS[1]);
+ vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('offline')));
+ vi.spyOn(PendingOutbox,'list').mockResolvedValue([]);vi.spyOn(PendingOutbox,'rejected').mockResolvedValue([]);vi.spyOn(PendingOutbox,'acknowledged').mockResolvedValue([]);
+ const data=await PosApi.fetchInitialData();expect(data.isOnline).toBe(false);expect(data.users).toHaveLength(2);expect(data.orders[0].totalCostPaisa).toBe(55000);expect(data.products[0].costPricePaisa).toBeGreaterThan(0);
+ console.log('OFFLINE_CASHIER_CACHE: old staff='+data.users.length+', old order cost='+data.orders[0].totalCostPaisa);
+});
+it('DIAGNOSTIC: malformed replaceable order cache crashes App before sign-in',()=>{
+ localStorage.clear();localStorage.setItem('tasty_pos_orders','{broken');
+ vi.spyOn(console,'error').mockImplementation(()=>{});
+ expect(()=>render(<App/>)).toThrow();
+ console.log('MALFORMED_ORDER_CACHE: App render throws before login');
+});
+
+it('DIAGNOSTIC: delayed admin product-save body writes costs into the new cashier cache',async()=>{
+ PosStorage.setToken('old-admin');let resume!:(value:any)=>void;
+ const product={...INITIAL_PRODUCTS[0],name:'Saved admin edit',moneySchemaVersion:2 as const,costPricePaisa:55000};
+ const response=new Response('{}');const json=vi.spyOn(response,'json').mockReturnValue(new Promise(done=>resume=done));vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response));
+ const pending=PosApi.updateProduct(product,true);await vi.waitFor(()=>expect(json).toHaveBeenCalled());
+ PosStorage.setToken('new-cashier');const {costPricePaisa,...cashierProduct}=INITIAL_PRODUCTS[0];PosStorage.setProducts([cashierProduct as any]);resume(product);
+ await pending;expect(PosStorage.getToken()).toBe('new-cashier');expect(PosStorage.getProducts()[0].costPricePaisa).toBe(55000);
+ console.log('PRODUCT_SAVE_SESSION_RACE: cashier cache receives old admin cost=55000');
+});
+
+it('DIAGNOSTIC: CSV export is cut off when a dish name contains a hash sign',async()=>{
+ const order={...saleFixture('csv'),createdAt:new Date().toISOString(),persistenceState:'saved' as const};order.items[0].productName='Deal #1';
+ let href='';vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(function(){href=this.href;});
+ render(<ProfitLossView orders={[order]} products={INITIAL_PRODUCTS} categories={INITIAL_CATEGORIES} userRole="admin"/>);
+ fireEvent.click(screen.getByRole('button',{name:'Export CSV',exact:true}));
+ const csv=await(await fetch(href)).text();expect(csv).toContain('Deal ');expect(csv).not.toContain('Deal #1');expect(csv.endsWith('Deal ')).toBe(true);
+ console.log('CSV_HASH_NAME: downloaded content ends at '+JSON.stringify(csv.slice(-25)));
+});

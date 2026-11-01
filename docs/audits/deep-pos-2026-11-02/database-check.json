@@ -1,0 +1,18 @@
+{
+  "integrity": "ok",
+  "orders": 104,
+  "payments": 104,
+  "duplicateKeys": 0,
+  "totals": {
+    "sales": 10269646,
+    "netRevenue": 10267550,
+    "cost": 5698525,
+    "profit": 4569025
+  },
+  "auditSnack": {
+    "stockQuantity": 4,
+    "price_paisa": 12550,
+    "cost_price_paisa": 6525
+  },
+  "hiddenZeroPriceRows": 1
+}
