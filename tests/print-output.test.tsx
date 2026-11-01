@@ -116,7 +116,7 @@ describe('print output', () => {
   it('renders the P&L summary in profit-loss-print-area', () => {
     render(
       <ProfitLossView
-        orders={[order]}
+        orders={[{ ...order, createdAt: new Date().toISOString() }]}
         products={[product]}
         categories={[]}
         userRole="admin"

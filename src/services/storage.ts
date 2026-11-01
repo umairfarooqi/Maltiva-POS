@@ -30,6 +30,23 @@ const STORAGE_KEYS = {
 };
 
 export class PosStorage {
+  static getDatabaseGeneration(): string | null {
+    return localStorage.getItem('pos_database_generation');
+  }
+
+  static observeDatabaseGeneration(generation: string, restored: boolean): boolean {
+    const previous = this.getDatabaseGeneration();
+    const changed = previous ? previous !== generation : restored;
+    if (changed) {
+      localStorage.setItem('pos_database_changed', 'true');
+      // Never remove drafts, legacy pending sales or IndexedDB recovery copies.
+      for (const key of [STORAGE_KEYS.CATEGORIES, STORAGE_KEYS.PRODUCTS, STORAGE_KEYS.ORDERS,
+        STORAGE_KEYS.TABLES, STORAGE_KEYS.USERS, STORAGE_KEYS.CUSTOMERS, STORAGE_KEYS.PRINTER,
+        STORAGE_KEYS.LOGS, 'pos_customer_confirmation']) localStorage.removeItem(key);
+    }
+    if (previous !== generation) localStorage.setItem('pos_database_generation', generation);
+    return changed;
+  }
   static getDraft(): CheckoutDraft | null {
     let value: any;
     try {

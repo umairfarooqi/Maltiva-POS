@@ -196,6 +196,7 @@ describe('phase 1 durable sale recovery', () => {
     let started!: () => void;
     const reading = new Promise<void>(resolve => { started = resolve; });
     vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => ({
+      headers: new Headers(),
       status: 201,
       json: () => new Promise((_resolve, reject) => {
         started();
@@ -215,6 +216,7 @@ describe('phase 1 durable sale recovery', () => {
     let reading!: () => void;
     const bodyStarted = new Promise<void>(resolve => { reading = resolve; });
     vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => ({ ok: true,
+      headers: new Headers(),
       json: () => new Promise((_resolve, reject) => {
         reading(); init.signal!.addEventListener('abort', () => reject(new DOMException('Timeout', 'AbortError')));
       }),

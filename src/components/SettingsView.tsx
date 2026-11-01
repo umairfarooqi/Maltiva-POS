@@ -23,6 +23,7 @@ import { PrinterSettings, User } from '../types/pos';
 import { PosStorage } from '../services/storage';
 import { Dialog } from './ui/Dialog';
 import { useTheme } from '../services/theme';
+import { DatabaseMaintenance } from './DatabaseMaintenance';
 
 interface SettingsViewProps {
   settings: PrinterSettings;
@@ -351,6 +352,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Staff accounts are managed from the Staff tab (admin only). */}
       </div>
 
+      {currentUser.role === 'admin' && <DatabaseMaintenance />}
       {/* DATABASE MAINTENANCE (Bottom Bar) */}
       <footer className="bg-pos-surface p-5 rounded-lg border border-pos-border flex flex-col md:flex-row items-center justify-between gap-5">
         <div className="flex items-center gap-3">

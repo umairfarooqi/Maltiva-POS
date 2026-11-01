@@ -17,6 +17,12 @@ export async function sessionFetch(url: string, init: RequestInit = {}): Promise
   if (token && PosStorage.getToken() !== token) {
     throw Object.assign(new Error('The active session changed.'), { name: 'SessionChangedError' });
   }
+  const generation = response.headers.get('X-POS-Database-Generation');
+  if (generation && url !== '/api/maintenance/restore' &&
+      PosStorage.observeDatabaseGeneration(generation, response.headers.get('X-POS-Database-Restored') === 'true')) {
+    endSession(token, 'The server database was restored or changed. Sign in again. Recovery copies are retained for administrator review.');
+    throw Object.assign(new Error('Database changed. Sign in again.'), { name: 'SessionChangedError' });
+  }
   if (response.status === 401 && token) {
     // Invalid manager credentials also use 401, but do not invalidate the
     // requesting cashier's valid session. Middleware identifies session failures.

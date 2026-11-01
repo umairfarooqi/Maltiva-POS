@@ -15,7 +15,9 @@ function mergeOrders(serverOrders: Order[], pending: Order[], rejected: Order[] 
 function mergeRecovery(serverOrders: Order[], pending: Order[], rejected: Order[], durableSaved: Order[] = []): Order[] {
   // Read the cache after the asynchronous recovery snapshots: a 201 may have arrived meanwhile.
   const cached = PosStorage.getOrders();
-  const acknowledged = [...cached.filter(order => order.persistenceState === 'saved'), ...durableSaved];
+  const generation = PosStorage.getDatabaseGeneration();
+  const acknowledged = [...cached.filter(order => order.persistenceState === 'saved'), ...durableSaved]
+    .filter(order => !localStorage.getItem('pos_database_changed') || order.databaseGeneration === generation);
   const acknowledgedKeys = new Set(acknowledged.map(order => order.idempotencyKey || order.id));
   return mergeOrders([...acknowledged, ...serverOrders],
     pending.filter(order => !acknowledgedKeys.has(order.idempotencyKey || order.id)),
@@ -98,7 +100,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
   // A session failure says nothing about whether an earlier attempt committed.
   // Keep the durable intent pending so signing in can safely replay the same key.
   if (response.status === 401 || response.status === 403) return pendingResult(order);
-  if (body?.code === 'RECOVERY_OWNER_REQUIRED') {
+  if (body?.code === 'RECOVERY_OWNER_REQUIRED' || body?.code === 'DATABASE_CHANGED') {
     const blocked = await PendingOutbox.block(order, body.error || 'The original cashier must review this pending sale.');
     return { ...pendingResult(blocked), error: blocked.recoveryBlockedReason };
   }

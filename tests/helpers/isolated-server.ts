@@ -26,7 +26,10 @@ export async function isolatedServer() {
     });
     child.stdout?.on('data', chunk => { output += chunk; });
     child.stderr?.on('data', chunk => { output += chunk; });
-    for (let attempt = 0; attempt < 150; attempt++) {
+    // Cold TypeScript startup on Windows can exceed 4.5 seconds. Keep a real,
+    // bounded deadline inside the caller's 15-second lifecycle hook timeout.
+    const startupDeadline = Date.now() + 12000;
+    while (Date.now() < startupDeadline) {
       if (child.exitCode !== null) throw new Error(`Server exited: ${output}`);
       try {
         if ((await hostFetch(`${url}/api/health`)).ok) {
