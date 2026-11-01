@@ -76,7 +76,7 @@ export type UserRole = 'admin' | 'cashier' | 'manager';
 
 export interface Order {
   moneySchemaVersion?: 2;
-  pricingFingerprint?: string;
+  pricingFingerprint?: string | null;
   netRevenuePaisa?: number;
   marginBp?: number;
   taxBp?: number;
@@ -87,6 +87,7 @@ export interface Order {
   idempotencyKey?: string;
   persistenceState?: 'saved' | 'pending' | 'rejected' | 'draft';
   rejectionReason?: string;
+  recoveryBlockedReason?: string;
   cashTenderedPaisa?: number;
   changeDuePaisa?: number;
   orderNumber: string;
@@ -94,7 +95,7 @@ export interface Order {
   tokenNumber: number;
   customerName?: string;
   tableName?: string;
-  status: 'pending' | 'in_kitchen' | 'ready' | 'served' | 'cancelled';
+  status: 'pending' | 'completed' | 'in_kitchen' | 'ready' | 'served' | 'cancelled';
   orderType: 'take_away' | 'dine_in';
   items: OrderItem[];
   subtotalPaisa: number;
@@ -108,6 +109,9 @@ export interface Order {
   cashierId: string;
   cashierName: string;
   cashierRole: UserRole;
+  recordedById?: string | null;
+  recordedByName?: string | null;
+  recordedByRole?: UserRole | null;
   createdAt: string;
   synced: boolean;
   offlineQueueId?: string;

@@ -144,7 +144,7 @@ describe('authentication, admin provisioning and role guards', () => {
     }
 
     // Place an order with a forged cashierId/cashierName/cashierRole using the cashier token
-    const reviewed = await reviewSale(server.url, saleFixture('auth-cashier-sale'), adminToken);
+    const reviewed = await reviewSale(server.url, saleFixture('auth-cashier-sale'), cashierToken);
     const forgedSale = {
       ...reviewed,
       cashierId: 'forged-admin-id',

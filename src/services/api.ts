@@ -64,6 +64,10 @@ async function submitSale(order: Order): Promise<SaleResult> {
 }
 
 async function sendSale(order: Order): Promise<SaleResult> {
+  if (order.recoveryBlockedReason) {
+    const { recoveryBlockedReason: _previousReason, ...retry } = order;
+    order = await PendingOutbox.put(retry);
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   let response: Response;
@@ -94,6 +98,10 @@ async function sendSale(order: Order): Promise<SaleResult> {
   // A session failure says nothing about whether an earlier attempt committed.
   // Keep the durable intent pending so signing in can safely replay the same key.
   if (response.status === 401 || response.status === 403) return pendingResult(order);
+  if (body?.code === 'RECOVERY_OWNER_REQUIRED') {
+    const blocked = await PendingOutbox.block(order, body.error || 'The original cashier must review this pending sale.');
+    return { ...pendingResult(blocked), error: blocked.recoveryBlockedReason };
+  }
   const error = typeof body?.error === 'string' ? body.error : body?.error?.message ||
     `Server rejected the sale (HTTP ${response.status}). Retry or review this cart.`;
   const rejected = await PendingOutbox.reject(order, error);
@@ -144,12 +152,12 @@ export const PosApi = {
       body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error('Tax settings could not be saved on the server. Retry when it is available.');
   },
-  async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string }> {
+  async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string; code?: string }> {
     try {
       const response = await sessionFetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
       const body = await response.json();
-      if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.' };
+      if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.', code: body.code };
       if (body.moneySchemaVersion !== 2 || typeof body.pricingFingerprint !== 'string' || !Array.isArray(body.items)) {
         return { error: 'Invalid pricing response. Keep this cart and retry.' };
       }
@@ -258,7 +266,7 @@ export const PosApi = {
         const result = await submitSale(order);
         if (result.state === 'saved') syncedCount++;
         if (result.state === 'rejected') { rejectedCount++; try { cacheOrder(result.order); } catch { /* rejection remains durable in IndexedDB */ } }
-        if (result.state === 'pending') { reachable = false; break; }
+        if (result.state === 'pending' && !result.order.recoveryBlockedReason) { reachable = false; break; }
       }
       return { syncedCount, rejectedCount, pendingCount: (await PendingOutbox.list()).length, reachable };
     })();

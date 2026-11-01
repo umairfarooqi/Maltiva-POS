@@ -21,6 +21,7 @@ interface CartDrawerProps {
   onSelectPaymentMethod: (method: PaymentMethod) => void;
   onPlaceOrder: (cashTenderedPaisa: number, paymentMethod: PaymentMethod) => void;
   onOpenPrintModal: () => void;
+  canReprintLastOrder?: boolean;
   isProcessing: boolean;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -41,6 +42,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onSelectPaymentMethod,
   onPlaceOrder,
   onOpenPrintModal,
+  canReprintLastOrder = false,
   isProcessing,
   isMobileOpen = false,
   onCloseMobile,
@@ -274,12 +276,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         <div className="flex items-center gap-2 pt-0.5">
           <button
             type="button"
-            disabled={isProcessing || cart.length === 0}
+            disabled={isProcessing || (cart.length === 0 && !canReprintLastOrder)}
             onClick={onOpenPrintModal}
             className="h-11 px-3.5 rounded-lg border border-pos-border bg-pos-surface hover:bg-pos-raised text-pos-secondary hover:text-pos-text text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 active:scale-95"
           >
             <Printer className="w-4 h-4" />
-            <span>Print</span>
+            <span>{cart.length === 0 && canReprintLastOrder ? 'Last receipt' : 'Print'}</span>
           </button>
 
           <button

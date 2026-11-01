@@ -18,6 +18,10 @@ export function saleFixture(suffix = '1'): Order & { idempotencyKey: string; cas
   };
 }
 export async function reviewSale(url: string, order: ReturnType<typeof saleFixture>, token: string) {
+  // Fixtures represent the authenticated operator, rather than an unrelated
+  // default cashier. Recovery ownership tests use raw requests intentionally.
+  const operatorId = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()).sub;
+  order = { ...order, cashierId: operatorId };
   const response = await fetch(`${url}/api/orders/quote`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(order) });
   if (!response.ok) throw new Error(`Quote failed: ${await response.text()}`);
   return { ...order, ...await response.json() } as ReturnType<typeof saleFixture>;

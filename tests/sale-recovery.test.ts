@@ -33,6 +33,28 @@ describe('phase 1 durable sale recovery', () => {
   beforeEach(async () => { localStorage.clear(); await resetOutbox(); PosStorage.setOrders([]); PosStorage.setProducts(structuredClone(INITIAL_PRODUCTS)); });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+  it('retains blocked ownership without stopping other pending sales from syncing', async () => {
+    const foreign = saleFixture('foreign-owner'), own = saleFixture('own-owner');
+    await PendingOutbox.put(foreign); await PendingOutbox.put(own);
+    PosStorage.setToken('cashier-B');
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      if (url.startsWith('/api/orders/pending-status')) return json({ savedOrders: [], pendingKeys: [] });
+      const order = JSON.parse(init!.body as string);
+      if (order.id === foreign.id) return json({ code: 'RECOVERY_OWNER_REQUIRED', error: 'Sign in as Cashier A to review this pending sale.' }, 409);
+      return json({ order: { ...order, persistenceState: 'saved', synced: true } }, 201);
+    });
+    expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 1, rejectedCount: 0, pendingCount: 1, reachable: true });
+    expect(await PendingOutbox.rejected()).toEqual([]);
+    expect(await PendingOutbox.list()).toMatchObject([{ idempotencyKey: foreign.idempotencyKey, recoveryBlockedReason: expect.stringContaining('Cashier A') }]);
+    PosStorage.setToken('cashier-A');
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => url.startsWith('/api/orders/pending-status')
+      ? json({ savedOrders: [], pendingKeys: [] })
+      : json({ order: { ...JSON.parse(init!.body as string), persistenceState: 'saved', synced: true } }, 201));
+    expect(await PosApi.syncOfflineQueue()).toMatchObject({ syncedCount: 1, rejectedCount: 0, pendingCount: 0 });
+    expect(await PendingOutbox.list()).toEqual([]);
+    expect(PosStorage.getOrders().find(order => order.id === foreign.id)).toMatchObject({ idempotencyKey: foreign.idempotencyKey, persistenceState: 'saved' });
+  });
+
   it.each([401, 403])('keeps a submitted sale pending on HTTP %s and replays its original key after sign-in', async status => {
     const order = saleFixture(`auth-${status}`);
     PosStorage.setToken('expired-session');

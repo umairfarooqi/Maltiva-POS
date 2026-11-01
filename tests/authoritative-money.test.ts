@@ -38,6 +38,7 @@ describe('authoritative money lifecycle', () => {
   });
   it('validates required, unknown and duplicate options and reads variation deltas from SQLite', async () => {
     const base = saleFixture('options'); base.items[0].productId = 'prod-fajita-pizza';
+    base.cashierId = 'user-admin';
     const quote = async (input: any) => server.request(`/api/orders/quote`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
     expect((await quote(base)).status).toBe(400);
     const selected = { groupId: 'var-faj-size', optionId: 'opt-med', priceDeltaPaisa: 1, costDeltaPaisa: 1 };
@@ -71,7 +72,8 @@ describe('authoritative money lifecycle', () => {
     const invalid = await server.request(`/api/products/${product.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...product, pricePaisa: 1.1 }) });
     expect(invalid.status).toBe(400);
     db.prepare('UPDATE products SET cost_price_paisa=NULL WHERE id=?').run(product.id);
-    const missingCost = await server.request(`/api/orders/quote`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sale) });
+    const missingCost = await server.request(`/api/orders/quote`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...sale, id: `${sale.id}-missing-cost`, idempotencyKey: `${sale.idempotencyKey}-missing-cost` }) });
     expect(missingCost.status).toBe(400);
     db.prepare('UPDATE products SET cost_price_paisa=0 WHERE id=?').run(product.id);
   });
