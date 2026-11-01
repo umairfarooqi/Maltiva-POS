@@ -42,7 +42,7 @@ describe('paisa display and financial history', () => {
     expect(clipboard.writeText.mock.calls[0][0]).toContain('Rs. 366.30');
   });
   it('zero snapshot cost stays zero after catalog edits and provisional sales are excluded', () => {
-    const saved = saleFixture('history'); saved.persistenceState = 'saved';
+    const saved = saleFixture('history'); saved.persistenceState = 'saved'; saved.createdAt = new Date().toISOString();
     saved.items[0] = { ...saved.items[0], unitCostPaisa: 0, totalCostPaisa: 0, netRevenuePaisa: 33300 };
     const pending = { ...saved, id: 'pending', persistenceState: 'pending' as const };
     render(<ProfitLossView orders={[saved, pending]} products={[{ ...INITIAL_PRODUCTS[0], costPricePaisa: 99999 }]}

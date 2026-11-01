@@ -34,10 +34,11 @@ describe('category management', () => {
       vi
         .fn()
         .mockResolvedValueOnce({
+          headers: new Headers(),
           ok: true,
           json: async () => ({ id: 'cat-server-remapped', name: 'Quick Snacks', icon: '🍔' }),
         })
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) })
+        .mockResolvedValueOnce({ headers: new Headers(), ok: true, json: async () => ({ success: true }) })
     );
 
     const created = await PosApi.createCategory('Quick Snacks', '🍔', true);
@@ -54,6 +55,7 @@ describe('category management', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
+        headers: new Headers(),
         ok: false,
         status: 500,
         json: async () => ({ error: 'Delete failed' }),

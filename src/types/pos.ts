@@ -75,6 +75,7 @@ export interface SelectedVariationItem {
 export type UserRole = 'admin' | 'cashier' | 'manager';
 
 export interface Order {
+  databaseGeneration?: string;
   moneySchemaVersion?: 2;
   pricingFingerprint?: string | null;
   netRevenuePaisa?: number;

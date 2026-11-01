@@ -6,6 +6,8 @@ import { quoteSale, loadProduct, taxSettings, problem } from './src/services/pri
 import { integer } from './src/shared/money';
 import { allocateOrderNumbers } from './src/services/orderNumbering';
 import { assertUnreviewedOwner, checkoutOrigin } from './src/services/checkoutOrigin';
+import { assertSaleGeneration, databaseGeneration, wasDatabaseRestored } from './src/services/databaseGeneration';
+import { DatabaseBackups } from './src/services/databaseBackups';
 import db, { initDb } from './src/services/db';
 import { 
   INITIAL_CATEGORIES, 
@@ -180,7 +182,7 @@ function loadOrder(id: string): Order | undefined {
     return { ...item, selectedVariations: parseJson(item.selectedVariations), bundledProducts: parseJson(item.bundledProducts) };
   });
   const cash = db.prepare("SELECT tendered_paisa FROM payments WHERE order_id=? AND method='cash'").get(id) as any;
-  return { ...row, idempotencyKey: row.idempotency_key, items, cashTenderedPaisa: cash?.tendered_paisa,
+  return { ...row, databaseGeneration: databaseGeneration(db), idempotencyKey: row.idempotency_key, items, cashTenderedPaisa: cash?.tendered_paisa,
     taxInclusive: Boolean(row.taxInclusive), profitIncomplete: Boolean(row.profitIncomplete), synced: true, persistenceState: 'saved' };
 }
 function mappedValues(table: string, input: any) {
@@ -207,6 +209,7 @@ function validateProduct(data: any) {
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
+  const backups = new DatabaseBackups(db);
 
   app.use(express.json());
 
@@ -231,6 +234,8 @@ async function startServer() {
   // explicit method/path pairs are public; no financial data is needed to log in.
   app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
+    res.set('X-POS-Database-Generation', databaseGeneration(db));
+    res.set('X-POS-Database-Restored', String(wasDatabaseRestored(db)));
     const publicRoute = (req.method === 'GET' && ['/health', '/auth/staff'].includes(req.path)) ||
       (req.method === 'POST' && req.path === '/auth/login');
     if (publicRoute) { next(); return; }
@@ -426,10 +431,11 @@ async function startServer() {
         return { ...saved, pricingFingerprint: saved.pricingFingerprint || `saved:${saved.idempotencyKey}` };
       }
     }
+    assertSaleGeneration(db, input);
     assertUnreviewedOwner(db, input, input?.idempotencyKey, caller);
     const quote = quoteSale(db, input);
     const origin = checkoutOrigin(db, input, quote.items, input.idempotencyKey, caller, true);
-    return { ...quote, cashierId: origin.id, cashierName: origin.name, cashierRole: origin.role };
+    return { ...quote, databaseGeneration: databaseGeneration(db), cashierId: origin.id, cashierName: origin.name, cashierRole: origin.role };
   });
   app.post('/api/orders/quote', (req, res) => {
     const caller = userFromToken(req.get('Authorization'));
@@ -443,6 +449,7 @@ async function startServer() {
   const createOrder = db.transaction((input: any, key: string, caller: any) => {
     const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
     if (existing) return loadOrder(existing.id)!;
+    assertSaleGeneration(db, input);
     assertUnreviewedOwner(db, input, key, caller);
     const quote = quoteSale(db, input);
     const origin = checkoutOrigin(db, input, quote.items, key, caller, false);
@@ -690,6 +697,41 @@ async function startServer() {
     }
 
     res.json({ success: true });
+  });
+
+  app.get('/api/maintenance/backups', requireAdmin, (_req, res) => {
+    res.json({ backups: backups.list() });
+  });
+  app.post('/api/maintenance/backups', requireAdmin, async (req, res, next) => {
+    try { res.status(201).json(await backups.create((req as any).caller.id)); }
+    catch (error) { next(error); }
+  });
+  app.get('/api/maintenance/backups/:filename', requireAdmin, (req, res, next) => {
+    try { res.download(backups.download(String(req.params.filename)), String(req.params.filename)); }
+    catch (error) { next(error); }
+  });
+  app.post('/api/maintenance/restore/preview', requireAdmin, express.raw({ type: 'application/octet-stream', limit: '64mb' }), (req, res, next) => {
+    try { res.json(backups.preview(req.body, (req as any).caller.authSessionId)); }
+    catch (error) { next(error); }
+  });
+  app.delete('/api/maintenance/restore/preview/:token', requireAdmin, (req, res, next) => {
+    try { backups.discard(String(req.params.token), (req as any).caller.authSessionId); res.json({ success: true }); }
+    catch (error) { next(error); }
+  });
+  app.post('/api/maintenance/restore', requireAdmin, (req, res, next) => {
+    const caller = (req as any).caller, key = `restore:${caller.id}`;
+    if (isLocked(key)) { res.status(429).json({ error: 'Too many incorrect passwords. Wait five minutes.' }); return; }
+    if (!verifySecret(caller.password, req.body?.password)) {
+      recordFailure(key); res.status(400).json({ error: 'Enter your current administrator password.' }); return;
+    }
+    if (req.body?.confirmation !== 'RESTORE') { res.status(400).json({ error: 'Type RESTORE to confirm replacing server data.' }); return; }
+    try {
+      const result = backups.restore(req.body?.token, caller.authSessionId, caller.id);
+      clearFailures(key);
+      res.set('X-POS-Database-Generation', result.databaseGeneration);
+      res.set('X-POS-Database-Restored', 'true');
+      res.json(result);
+    } catch (error) { next(error); }
   });
 
   app.use((error: any, _req: Request, res: Response, _next: any) => {

@@ -16,3 +16,4 @@ coverage/
 *.bak-shm
 *.bak-wal
 *.before-money-v2.db
+/backups/

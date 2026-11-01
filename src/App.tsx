@@ -344,6 +344,7 @@ export default function App() {
   const handleLoginSuccess = (user: User, expiresAt?: number) => {
     sessionGeneration.current++;
     verifiedToken.current = PosStorage.getToken();
+    setOrders(PosStorage.getOrders());
     setCurrentUser(user);
     setSessionExpiresAt(expiresAt ?? null);
     setSessionNotice('');
@@ -527,6 +528,7 @@ export default function App() {
     const attemptId = checkoutAttempt.current?.id || crypto.randomUUID();
 
     let newOrder: Order = checkoutAttempt.current || {
+      databaseGeneration: PosStorage.getDatabaseGeneration() || undefined,
       moneySchemaVersion: 2,
       netRevenuePaisa: totals.netRevenuePaisa,
       taxBp: printerSettings.taxBp, taxInclusive: printerSettings.taxInclusive,
@@ -578,7 +580,7 @@ export default function App() {
       const pricing = await PosApi.quoteOrder(newOrder);
       if (sessionChanged()) return;
       if (pricing.error) {
-        if (pricing.code === 'RECOVERY_OWNER_REQUIRED') {
+        if (pricing.code === 'RECOVERY_OWNER_REQUIRED' || pricing.code === 'DATABASE_CHANGED') {
           const blocked = await PendingOutbox.block(newOrder, pricing.error);
           if (sessionChanged()) return;
           checkoutAttempt.current = blocked;
