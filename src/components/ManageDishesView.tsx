@@ -23,6 +23,7 @@ import { Dialog } from './ui/Dialog';
 import { ProductStockBadge } from './ProductStockBadge';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import { Input, Select, Textarea } from './ui/Field';
 
 interface ManageDishesViewProps {
   defaultLowStockThreshold?: number;
@@ -537,13 +538,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         <div>
           <div className="flex items-center justify-between mb-4 px-2">
             <h2 className="text-sm font-bold text-pos-text tracking-tight">Dish Categories</h2>
-            <button
+            <Button variant="ghost" size="icon-compact"
               onClick={openCreateCategoryModal}
               title="Add category"
-              className="p-1.5 rounded-lg text-pos-accent hover:bg-pos-selected transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
           <div className="space-y-1.5 max-h-[calc(100vh-190px)] overflow-y-auto px-1 scrollbar-none">
             {categories.map(cat => {
@@ -576,22 +576,20 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   </div>
                   {cat.id !== 'cat-all' && (
                     <div className={`category-actions w-full shrink-0 items-center justify-end gap-1 rounded-md bg-pos-surface ${isSelected ? "flex" : "hidden group-hover:flex group-focus-within:flex"}`}>
-                      <button
+                      <Button variant="ghost" size="icon"
                         type="button"
                         onClick={e => openEditCategoryModal(cat, e)}
                         aria-label={`Edit ${cat.name}`}
-                        className="min-w-pos-touch min-h-pos-touch flex items-center justify-center text-pos-muted hover:text-pos-accent transition"
                       >
                         <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button variant="ghost-destructive" size="icon"
                         type="button"
                         onClick={e => handleDeleteCategoryClick(cat.id, e)}
                         aria-label={`Delete ${cat.name}`}
-                        className="min-w-pos-touch min-h-pos-touch flex items-center justify-center text-pos-muted hover:text-pos-danger-text transition"
                       >
                         <Trash2 className="w-3 h-3" />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -612,7 +610,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden px-5 py-5 lg:px-7 select-none">
         <div className="md:hidden flex flex-wrap items-center gap-2 mb-4">
           <label htmlFor="mobile-category" className="text-sm text-pos-secondary">Category</label>
-          <select id="mobile-category" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="min-w-[10rem] flex-1 bg-pos-inset border border-pos-control p-2 rounded-md text-sm">{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}</select>
+          <Select size="compact" id="mobile-category" value={selectedCategoryId} onChange={e => setSelectedCategoryId(e.target.value)} className="min-w-[10rem] flex-1">{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}</Select>
           <button type="button" onClick={openCreateCategoryModal} className="p-2 text-sm text-pos-accent">Add category</button>
           {selectedCategoryId !== 'cat-all' && <><button type="button" onClick={() => openEditCategoryModal(activeCategory)} className="p-2 text-sm text-pos-accent">Edit category</button>{selectedCategoryId !== 'cat-uncategorized' && <button type="button" onClick={() => handleDeleteCategoryClick(selectedCategoryId)} className="p-2 text-sm text-pos-danger-text">Delete category</button>}</>}
         </div>
@@ -621,21 +619,20 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="relative w-full sm:w-56 lg:w-64">
               <Search className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search dishes or deals..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-pos-surface border border-pos-control rounded-md text-xs focus-visible:border-pos-accent transition-colors"
+                className="w-full pl-9 pr-3"
               />
             </div>
-            <button
+            <Button variant="secondary" size="compact"
               onClick={openCreateDealModal}
-              className="px-3.5 py-2.5 bg-pos-surface border border-pos-warning-border hover:bg-pos-warning-bg text-pos-warning-text rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2"
             >
               <PlusCircle className="w-4 h-4" />
               Create Deal
-            </button>
+            </Button>
             <Button variant="primary" size="compact"
               onClick={openCreateDishModal}
             >
@@ -718,7 +715,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                                 Deal
                               </Badge>
                             )}
-                            <button
+                            <Button variant="ghost" size="icon-compact"
                               onClick={e => {
                                 e.stopPropagation();
                                 toggleProductMenu(e, product.id);
@@ -726,10 +723,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                               aria-label={`Actions for ${product.name}`}
                               aria-haspopup="menu"
                               aria-expanded={openMenuProductId === product.id}
-                              className="p-1.5 rounded-lg bg-pos-inset text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer"
                             >
                               <MoreVertical className="w-4 h-4" />
-                            </button>
+                            </Button>
                           </div>
                           <ProductStockBadge product={product} />
                         </div>
@@ -806,9 +802,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <span className="text-sm font-bold font-mono text-pos-text">
                         {formatPKR(safePrice)}
                       </span>
-                      <button onClick={e => toggleProductMenu(e, product.id)} aria-label={`Actions for ${product.name}`} aria-haspopup="menu" aria-expanded={openMenuProductId === product.id} className="p-2 rounded-lg text-pos-muted hover:text-pos-text hover:bg-pos-raised transition">
+                      <Button variant="ghost" size="icon" onClick={e => toggleProductMenu(e, product.id)} aria-label={`Actions for ${product.name}`} aria-haspopup="menu" aria-expanded={openMenuProductId === product.id} >
                         <MoreVertical className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -884,13 +880,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <h3 className="text-lg font-bold text-pos-text">
                 {editingProduct ? 'Edit Dish' : 'Add New Dish'}
               </h3>
-              <button
+              <Button variant="ghost" size="icon"
                 onClick={() => setIsDishModalOpen(false)}
                 aria-label="Close dish editor"
-                className="min-h-pos-touch min-w-pos-touch p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
-              </button>
+              </Button>
             </div>
             <form onSubmit={handleSaveDish} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
@@ -899,11 +894,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <label htmlFor="manage-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Dish Name
                     </label>
-                    <input id="manage-field-2"
+                    <Input id="manage-field-2"
                       type="text"
                       value={formName}
                       onChange={e => setFormName(e.target.value)}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                      className="w-full"
                       required
                     />
                   </div>
@@ -912,27 +907,27 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label htmlFor="manage-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Category
                       </label>
-                      <select id="manage-field-3"
+                      <Select id="manage-field-3"
                         value={formCategoryId}
                         onChange={e => setFormCategoryId(e.target.value)}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent cursor-pointer"
+                        className="w-full"
                       >
                         {categories.map(c => (
                           <option key={c.id} value={c.id}>
                             {c.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                     <div className="group">
                       <label htmlFor="manage-field-4" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Selling Price (PKR)
                       </label>
-                      <input id="manage-field-4"
+                      <Input id="manage-field-4"
                         type="number"
                         value={formPrice}
                         onChange={e => { setFormPrice(e.target.value); setMoneyError(''); }}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        className="w-full tabular-nums"
                         required
                       />
                     </div>
@@ -942,24 +937,24 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label htmlFor="manage-field-5" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Cost Price (PKR)
                       </label>
-                      <input id="manage-field-5"
+                      <Input id="manage-field-5"
                         type="number"
                         value={formCostPrice}
                         onChange={e => { setFormCostPrice(e.target.value); setMoneyError(''); }}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        className="w-full tabular-nums"
                       />
                     </div>
                     <div className="group">
                       <label htmlFor="manage-field-6" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         {editingProduct ? 'Stock when opened' : 'Opening stock'}
                       </label>
-                      <input id="manage-field-6"
+                      <Input id="manage-field-6"
                         type="number"
                         min="0" step="1" readOnly={Boolean(editingProduct)}
                         aria-describedby={editingProduct ? 'dish-stock-help' : undefined}
                         value={formStock}
                         onChange={e => setFormStock(e.target.value)}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        className="w-full tabular-nums"
                       />
                       {editingProduct && <p id="dish-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                     </div>
@@ -968,22 +963,22 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <label htmlFor="manage-field-7" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Image URL
                     </label>
-                    <input id="manage-field-7"
+                    <Input id="manage-field-7"
                       type="text"
                       value={formImage}
                       onChange={e => setFormImage(e.target.value)}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                      className="w-full"
                     />
                   </div>
                   <div className="group">
                     <label htmlFor="manage-field-8" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Description
                     </label>
-                    <textarea id="manage-field-8"
+                    <Textarea id="manage-field-8"
                       value={formDescription}
                       onChange={e => setFormDescription(e.target.value)}
                       rows={3}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -1004,23 +999,22 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label className="text-xs font-bold text-pos-secondary uppercase tracking-wider">
                         Variations & Add-ons
                       </label>
-                      <button
+                      <Button variant="link" size="inline"
                         type="button"
                         onClick={addDynamicVariation}
-                        className="text-xs font-bold text-pos-accent hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" /> Add Option
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="space-y-3">
                       {formGroups.map((group, index) => <div key={group.id} className="rounded-md border border-pos-border p-3 space-y-2">
-                        <input aria-label="Variation group name" value={group.name} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, name: e.target.value } : g))} className="w-full bg-pos-inset rounded p-2 text-sm" />
+                        <Input size="compact" aria-label="Variation group name" value={group.name} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, name: e.target.value } : g))} className="w-full" />
                         <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.required} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, required: e.target.checked } : g))} />Required choice</label>
                         <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.multiSelect} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, multiSelect: e.target.checked } : g))} />Allow multiple choices</label>
                         <button type="button" className="text-xs text-pos-danger-text" onClick={() => { setFormGroups(prev => prev.filter(g => g.id !== group.id)); setFormVariations(prev => prev.filter(v => v.groupId !== group.id)); }}>Remove group {index + 1}</button>
                       </div>)}
-                      <button type="button" className="text-xs text-pos-accent" onClick={() => setFormGroups(prev => [...prev, { id: `group-${Date.now()}`, name: 'New group', required: false, multiSelect: false }])}>Add variation group</button>
+                      <Button variant="link" size="inline" type="button" onClick={() => setFormGroups(prev => [...prev, { id: `group-${Date.now()}`, name: 'New group', required: false, multiSelect: false }])}>Add variation group</Button>
                     </div>
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
                       {formVariations.map((v, idx) => (
@@ -1028,8 +1022,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                           key={v.id || idx}
                           className="flex flex-wrap items-center gap-2 bg-pos-inset p-2.5 rounded-md border border-pos-control"
                         >
-                          <select aria-label="Option group" value={v.groupId} onChange={e => setFormVariations(prev => prev.map(opt => opt.id === v.id ? { ...opt, groupId: e.target.value } : opt))} className="w-24 rounded bg-pos-surface p-1 text-xs">{formGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
-                          <input
+                          <Select size="compact" aria-label="Option group" value={v.groupId} onChange={e => setFormVariations(prev => prev.map(opt => opt.id === v.id ? { ...opt, groupId: e.target.value } : opt))} className="w-24">{formGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</Select>
+                          <Input size="compact"
                             type="text"
                             placeholder="Option Name (e.g., Extra Cheese)"
                             value={v.name}
@@ -1038,9 +1032,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                               updated[idx].name = e.target.value;
                               setFormVariations(updated);
                             }}
-                            className="min-w-0 flex-1 px-3 py-1.5 bg-pos-surface border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                            className="min-w-0 flex-1"
                           />
-                          <input
+                          <Input size="compact"
                             type="number"
                             placeholder="+Price"
                             value={rupeeText(v.priceDeltaPaisa)}
@@ -1050,16 +1044,15 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                               catch (error) { setMoneyError((error as Error).message); return; }
                               setFormVariations(updated);
                             }}
-                            className="w-20 px-2 py-1.5 bg-pos-surface border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                            className="w-20 tabular-nums"
                           />
-                          <button
+                          <Button variant="ghost-destructive" size="icon-compact"
                             type="button"
                             aria-label={`Remove option ${v.name || idx + 1}`}
                             onClick={() => removeDynamicVariation(idx)}
-                            className="p-1.5 text-pos-muted hover:text-pos-danger-text transition cursor-pointer"
                           >
                             <X className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -1094,13 +1087,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <h3 className="text-lg font-bold text-pos-text">
                 {editingDeal ? 'Edit Deal' : 'Create New Deal'}
               </h3>
-              <button
+              <Button variant="ghost" size="icon"
                 onClick={() => setIsDealModalOpen(false)}
                 aria-label="Close deal editor"
-                className="min-h-pos-touch min-w-pos-touch p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
-              </button>
+              </Button>
             </div>
             <form onSubmit={handleSaveDeal} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
@@ -1109,11 +1101,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <label htmlFor="manage-field-9" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Deal Title
                     </label>
-                    <input id="manage-field-9"
+                    <Input id="manage-field-9"
                       type="text"
                       value={dealName}
                       onChange={e => setDealName(e.target.value)}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                      className="w-full"
                       required
                     />
                   </div>
@@ -1122,11 +1114,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label htmlFor="manage-field-10" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Deal Price (PKR)
                       </label>
-                      <input id="manage-field-10"
+                      <Input id="manage-field-10"
                         type="number"
                         value={dealPrice}
                         onChange={e => { setDealPrice(e.target.value); setMoneyError(''); }}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        className="w-full tabular-nums"
                         required
                       />
                     </div>
@@ -1134,11 +1126,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label htmlFor="manage-field-11" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Estimated Cost
                       </label>
-                      <input id="manage-field-11"
+                      <Input id="manage-field-11"
                         type="number"
                         value={dealCostPrice}
                         onChange={e => { setDealCostPrice(e.target.value); setMoneyError(''); }}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        className="w-full tabular-nums"
                       />
                     </div>
                   </div>
@@ -1147,13 +1139,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label htmlFor="manage-field-12" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         {editingDeal ? 'Stock when opened' : 'Opening stock'}
                       </label>
-                      <input id="manage-field-12"
+                      <Input id="manage-field-12"
                         type="number"
                         min="0" step="1" readOnly={Boolean(editingDeal)}
                         aria-describedby={editingDeal ? 'deal-stock-help' : undefined}
                         value={dealStock}
                         onChange={e => setDealStock(e.target.value)}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm font-mono focus-visible:border-pos-accent"
+                        className="w-full tabular-nums"
                       />
                       {editingDeal && <p id="deal-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                     </div>
@@ -1161,11 +1153,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <label htmlFor="manage-field-13" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Image URL
                       </label>
-                      <input id="manage-field-13"
+                      <Input id="manage-field-13"
                         type="text"
                         value={dealImage}
                         onChange={e => setDealImage(e.target.value)}
-                        className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -1173,11 +1165,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <label htmlFor="manage-field-14" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Description
                     </label>
-                    <textarea id="manage-field-14"
+                    <Textarea id="manage-field-14"
                       value={dealDescription}
                       onChange={e => setDealDescription(e.target.value)}
                       rows={3}
-                      className="w-full px-4 py-3 bg-pos-inset border border-pos-control rounded-md text-sm focus-visible:border-pos-accent"
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -1189,10 +1181,10 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     </label>
 
                     <div className="flex items-center gap-2 mb-3">
-                      <select id="manage-field-15"
+                      <Select size="compact" id="manage-field-15"
                         value={selectedProductToAdd}
                         onChange={e => setSelectedProductToAdd(e.target.value)}
-                        className="flex-1 px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                        className="flex-1"
                       >
                         <option value="">Select Existing Dish...</option>
                         {products
@@ -1202,31 +1194,29 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                               {p.name} ({formatPKR(p.pricePaisa)})
                             </option>
                           ))}
-                      </select>
-                      <button
+                      </Select>
+                      <Button variant="secondary" size="compact"
                         type="button"
                         onClick={handleAddProductToDeal}
-                        className="px-3 py-2 bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
                       >
                         Add
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="flex items-center gap-2 mb-4">
-                      <input
+                      <Input size="compact"
                         type="text"
                         placeholder="Or Custom Item (e.g. 1.5L Cold Drink)"
                         value={customItemInput}
                         onChange={e => setCustomItemInput(e.target.value)}
-                        className="flex-1 px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                        className="flex-1"
                       />
-                      <button
+                      <Button variant="secondary" size="compact"
                         type="button"
                         onClick={handleAddCustomItemToDeal}
-                        className="px-3 py-2 bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
                       >
                         Custom
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -1239,33 +1229,31 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                             {item.productName}
                           </span>
                           <div className="flex items-center gap-2">
-                            <button
+                            <Button variant="ghost" size="icon-compact"
                               type="button"
                               aria-label={`Decrease ${item.productName} bundle quantity`}
                               onClick={() => handleUpdateDealItemQty(idx, -1)}
-                              className="p-1 text-pos-muted hover:text-pos-text"
                             >
                               <Minus className="w-3 h-3" />
-                            </button>
+                            </Button>
                             <span className="font-bold text-pos-text w-4 text-center">
                               {item.quantity}
                             </span>
-                            <button
+                            <Button variant="ghost" size="icon-compact"
                               type="button"
                               aria-label={`Increase ${item.productName} bundle quantity`}
                               onClick={() => handleUpdateDealItemQty(idx, 1)}
-                              className="p-1 text-pos-muted hover:text-pos-text"
                             >
                               <Plus className="w-3 h-3" />
-                            </button>
-                            <button
+                            </Button>
+                            <Button variant="ghost-destructive" size="icon-compact"
                               type="button"
                               aria-label={`Remove ${item.productName} from deal`}
                               onClick={() => handleRemoveDealItem(idx)}
-                              className="p-1 text-pos-danger-text hover:text-pos-danger-text ml-2"
+                              className="ml-2"
                             >
                               <X className="w-3.5 h-3.5" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -1306,13 +1294,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <h3 className="text-lg font-bold text-pos-text">
                 {editingCategory ? 'Edit Category' : 'New Category'}
               </h3>
-              <button
+              <Button variant="ghost" size="icon"
                 onClick={() => setIsCategoryModalOpen(false)}
                 aria-label="Close category editor"
-                className="p-1.5 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
             <form onSubmit={handleSaveCategorySubmit} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto space-y-4 pr-1">
@@ -1320,11 +1307,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   <label htmlFor="category-name-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                     Category Name
                   </label>
-                  <input id="category-name-input"
+                  <Input id="category-name-input"
                     type="text"
                     value={catNameInput}
                     onChange={e => setCatNameInput(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                    className="w-full"
                     required
                   />
                 </div>
@@ -1332,11 +1319,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   <label htmlFor="category-icon-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                     Icon Emoji
                   </label>
-                  <input id="category-icon-input"
+                  <Input id="category-icon-input"
                     type="text"
                     value={catIconInput}
                     onChange={e => setCatIconInput(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-lg text-center focus-visible:border-pos-accent"
+                    className="w-full text-lg text-center"
                     required
                   />
                   <div className="mt-2 grid grid-cols-5 gap-2">
@@ -1383,13 +1370,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
           <fieldset disabled={isSaving || isDeleting} className="contents">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-pos-text">Adjust Stock</h3>
-              <button
+              <Button variant="ghost" size="icon"
                 onClick={() => setIsStockModalOpen(false)}
                 aria-label="Close stock adjustment"
-                className="p-1 text-pos-muted hover:text-pos-secondary rounded-md"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
             <p className="text-xs text-pos-muted mb-4">
               Adjust inventory quantity for{' '}
@@ -1401,25 +1387,25 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   <label htmlFor="manage-field-18" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                     Type
                   </label>
-                  <select id="manage-field-18"
+                  <Select size="compact" id="manage-field-18"
                     value={stockType}
                     onChange={e => setStockType(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                    className="w-full"
                   >
                     <option value="restock">Restock (+ Stock)</option>
                     <option value="adjustment">Manual Adjustment (+ Stock)</option>
                     <option value="waste">Waste / Loss (- Stock)</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label htmlFor="manage-field-19" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                     Quantity
                   </label>
-                  <input id="manage-field-19"
+                  <Input size="compact" id="manage-field-19"
                     type="number"
                     value={stockChangeQty}
                     onChange={e => setStockChangeQty(e.target.value)}
-                    className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                    className="w-full tabular-nums"
                     required
                   />
                 </div>
@@ -1427,11 +1413,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   <label htmlFor="manage-field-20" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
                     Reason
                   </label>
-                  <input id="manage-field-20"
+                  <Input size="compact" id="manage-field-20"
                     type="text"
                     value={stockReason}
                     onChange={e => setStockReason(e.target.value)}
-                    className="w-full px-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                    className="w-full"
                     required
                   />
                 </div>
@@ -1443,12 +1429,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 >
                   Cancel
                 </Button>
-                <button
+                <Button variant="primary"
                   type="submit"
-                  className="px-4 py-2 bg-pos-strong hover:bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold"
                 >
                   Apply
-                </button>
+                </Button>
               </div>
             </form>
           </fieldset>

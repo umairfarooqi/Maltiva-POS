@@ -21,14 +21,14 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Left: Mobile menu toggle (< lg) */}
       <div className="flex items-center gap-2.5">
         {onOpenMobileSidebar && (
-          <button
+          <Button variant="ghost" size="icon"
             onClick={onOpenMobileSidebar}
             aria-label="Open navigation"
-            className="p-2 -ml-1.5 text-pos-secondary hover:text-pos-text rounded-lg hover:bg-pos-raised cursor-pointer active:scale-95 transition"
+            className="-ml-1.5"
             title="Open navigation"
           >
             <Menu className="w-5 h-5" aria-hidden="true" />
-          </button>
+          </Button>
         )}
         <span className="text-sm font-bold text-pos-text tracking-tight">Maltiva POS</span>
       </div>

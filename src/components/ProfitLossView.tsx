@@ -14,6 +14,8 @@ import { Order, Product, Category, UserRole } from '../types/pos';
 import { dateRange } from '../utils/dateRange';
 import { formatPKR } from '../utils/formatCurrency';
 import { Button } from './ui/Button';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { Input, Select } from './ui/Field';
 
 interface ProfitLossViewProps {
   orders: Order[];
@@ -194,13 +196,12 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-auto">
-          <button
+          <Button variant="outline" size="compact"
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-pos-control hover:bg-pos-inset text-pos-secondary rounded-md text-xs font-semibold transition"
           >
             <Printer className="w-3.5 h-3.5 text-pos-muted" />
             <span>Print Report</span>
-          </button>
+          </Button>
 
           <Button variant="primary" size="compact"
             onClick={handleExportCSV}
@@ -220,36 +221,28 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             <span>Period:</span>
           </span>
 
-          {[
-            { id: 'today', label: 'Today' },
-            { id: 'yesterday', label: 'Yesterday' },
-            { id: 'week', label: 'Last 7 Days' },
-            { id: 'custom', label: 'Custom Dates' },
-            { id: 'month', label: 'This Month' },
-            { id: 'all', label: 'All Orders' },
-          ].map(f => (
-            <button
-              key={f.id}
-              aria-pressed={dateFilter === f.id}
-              onClick={() => setDateFilter(f.id as any)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                dateFilter === f.id
-                  ? 'bg-pos-action text-pos-action-text'
-                  : 'bg-pos-surface text-pos-secondary hover:bg-pos-inset border border-pos-control'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+          <SegmentedControl
+            label="Period"
+            wrap
+            value={dateFilter}
+            onChange={setDateFilter}
+            options={[
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: 'week', label: 'Last 7 Days' },
+              { value: 'custom', label: 'Custom Dates' },
+              { value: 'month', label: 'This Month' },
+              { value: 'all', label: 'All Orders' },
+            ] as const}
+          />
         </div>
 
         {/* Category Filter */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-pos-muted">Category:</span>
-          <select aria-label="Profit category filter"
+          <Select size="compact" aria-label="Profit category filter"
             value={selectedCategoryId}
             onChange={e => setSelectedCategoryId(e.target.value)}
-            className="px-3 py-1.5 border border-pos-control rounded-md text-xs bg-pos-surface text-pos-secondary focus-visible:border-pos-accent"
           >
             <option value="all">All Categories & Deals</option>
             {categories.map(c => (
@@ -257,13 +250,13 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-pos-secondary">
-        <label>Payment <select aria-label="Profit payment filter" value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="bg-pos-surface border border-pos-control rounded p-2"><option value="all">All Modes</option><option value="cash">Cash</option><option value="card">Card</option><option value="scan">Scan</option><option value="other">Other / Legacy</option></select></label>
-        {dateFilter === 'custom' && <><label>Start date <input type="date" aria-label="Profit start date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="bg-pos-surface border border-pos-control rounded p-2" /></label><label>End date <input type="date" aria-label="Profit end date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="bg-pos-surface border border-pos-control rounded p-2" /></label></>}
+        <label>Payment <Select size="compact" aria-label="Profit payment filter" value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} ><option value="all">All Modes</option><option value="cash">Cash</option><option value="card">Card</option><option value="scan">Scan</option><option value="other">Other / Legacy</option></Select></label>
+        {dateFilter === 'custom' && <><label>Start date <Input size="compact" type="date" aria-label="Profit start date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} /></label><label>End date <Input size="compact" type="date" aria-label="Profit end date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} /></label></>}
         {range.error && <p role="alert" className="text-pos-danger-text">{range.error}</p>}
       </div>
       <div id="profit-loss-print-area" className="space-y-6">

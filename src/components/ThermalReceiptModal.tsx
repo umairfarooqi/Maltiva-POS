@@ -7,6 +7,7 @@ import { assignedPickupToken } from '../utils/orderReference';
 import { receiptText } from '../utils/receiptText';
 import { prepareReceiptPrint, printReceipt } from '../utils/printReceipt';
 import { Button } from './ui/Button';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface ThermalReceiptModalProps {
   order: Order | null;
@@ -97,63 +98,36 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
+            <Button variant="ghost" size="icon"
               onClick={onClose}
               aria-label="Close receipt preview"
-              className="w-pos-touch h-pos-touch shrink-0 rounded-md bg-pos-raised/80 text-pos-muted hover:bg-pos-control flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             {/* Slip Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1 bg-pos-raised/60 p-1 rounded-md text-xs font-semibold">
-              <button
-                aria-pressed={activeTab === 'both'} onClick={() => setActiveTab('both')}
-                className={`px-3 py-1 rounded-lg transition ${
-                  activeTab === 'both' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
-                }`}
-              >
-                Both Slips (2)
-              </button>
-              <button
-                aria-pressed={activeTab === 'customer'} onClick={() => setActiveTab('customer')}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  activeTab === 'customer' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
-                }`}
-              >
-                Customer Slip
-              </button>
-              <button
-                aria-pressed={activeTab === 'kitchen'} onClick={() => setActiveTab('kitchen')}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  activeTab === 'kitchen' ? 'bg-pos-surface text-pos-text' : 'text-pos-muted hover:text-pos-text'
-                }`}
-              >
-                Kitchen Slip (KOT)
-              </button>
-            </div>
+            <SegmentedControl
+              label="Slips"
+              wrap
+              value={activeTab}
+              onChange={setActiveTab}
+              options={[
+                { value: 'both', label: 'Both Slips (2)' },
+                { value: 'customer', label: 'Customer Slip' },
+                { value: 'kitchen', label: 'Kitchen Slip (KOT)' },
+              ] as const}
+            />
 
             {/* Paper Width */}
-            <div className="flex items-center gap-1 bg-pos-surface border border-pos-border rounded-lg p-0.5 text-xs">
-              <button
-                aria-pressed={paperWidth === '80mm'} onClick={() => setPaperWidth('80mm')}
-                className={`px-2 py-1 rounded font-mono font-semibold transition ${
-                  paperWidth === '80mm' ? 'bg-pos-action text-pos-action-text' : 'text-pos-muted'
-                }`}
-              >
-                80mm
-              </button>
-              <button
-                aria-pressed={paperWidth === '58mm'} onClick={() => setPaperWidth('58mm')}
-                className={`px-2 py-1 rounded font-mono font-semibold transition ${
-                  paperWidth === '58mm' ? 'bg-pos-action text-pos-action-text' : 'text-pos-muted'
-                }`}
-              >
-                58mm
-              </button>
-            </div>
+            <SegmentedControl
+              label="Paper width"
+              value={paperWidth}
+              onChange={setPaperWidth}
+              options={[{ value: '80mm', label: '80mm' }, { value: '58mm', label: '58mm' }] as const}
+              className="tabular-nums"
+            />
           </div>
         </div>
 
@@ -377,21 +351,19 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
         {/* Modal Footer Controls */}
         <div className="shrink-0 p-3 border-t border-pos-divider bg-pos-surface flex flex-wrap items-center justify-between gap-3">
-          <button
+          <Button variant="outline"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-2 border border-pos-control hover:bg-pos-inset rounded-md text-xs font-semibold text-pos-secondary transition"
           >
             {copied ? <Check className="w-4 h-4 text-pos-success-text" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'Copied to Clipboard' : 'Copy Text (ESC/POS)'}</span>
-          </button>
+          </Button>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button variant="outline"
               onClick={onClose}
-              className="px-4 py-2 border border-pos-control text-pos-secondary hover:bg-pos-inset rounded-md text-xs font-semibold"
             >
               Done
-            </button>
+            </Button>
             <Button variant="primary"
               onClick={handlePrint}
               disabled={isPrinting}

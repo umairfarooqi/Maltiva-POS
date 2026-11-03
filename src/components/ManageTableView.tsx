@@ -3,6 +3,7 @@ import { Users, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { TableItem, Order } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { Button } from './ui/Button';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface ManageTableViewProps {
   tables: TableItem[];
@@ -51,19 +52,16 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-pos-raised p-1 rounded-md text-xs overflow-x-auto max-w-full scrollbar-none">
-          {(['all', 'available', 'occupied', 'reserved', 'cleaning'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded capitalize font-semibold transition shrink-0 ${
-                filter === s ? 'bg-pos-surface text-pos-text' : 'text-pos-secondary'
-              }`}
-            >
-              {s} ({s === 'all' ? tables.length : tables.filter(t => t.status === s).length})
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Table status"
+          value={filter}
+          onChange={setFilter}
+          className="overflow-x-auto scrollbar-none tabular-nums"
+          options={(['all', 'available', 'occupied', 'reserved', 'cleaning'] as const).map(s => ({
+            value: s,
+            label: `${s[0].toUpperCase()}${s.slice(1)} (${s === 'all' ? tables.length : tables.filter(t => t.status === s).length})`,
+          }))}
+        />
       </div>
 
       {/* Tables Grid */}

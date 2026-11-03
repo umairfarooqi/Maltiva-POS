@@ -16,6 +16,8 @@ import { dateRange } from '../utils/dateRange';
 import { formatPKR } from '../utils/formatCurrency';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface DashboardViewProps {
   orders: Order[];
@@ -132,26 +134,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>Date Basis:</span>
           </span>
 
-          {[
-            { id: 'today', label: "Today's Sales" },
-            { id: 'yesterday', label: 'Yesterday' },
-            { id: 'week', label: 'Last 7 Days' },
-            { id: 'month', label: 'This Month' },
-            { id: 'custom', label: 'Custom Dates' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              aria-pressed={dateFilter === tab.id}
-              onClick={() => { setDateFilter(tab.id as any); setPagination({ filter: '', page: 0 }); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                dateFilter === tab.id
-                  ? 'bg-pos-action text-pos-action-text'
-                  : 'bg-pos-surface text-pos-secondary hover:bg-pos-inset border border-pos-control'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          <SegmentedControl
+            label="Date basis"
+            wrap
+            value={dateFilter}
+            onChange={id => { setDateFilter(id); setPagination({ filter: '', page: 0 }); }}
+            options={[
+              { value: 'today', label: "Today's Sales" },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: 'week', label: 'Last 7 Days' },
+              { value: 'month', label: 'This Month' },
+              { value: 'custom', label: 'Custom Dates' },
+            ] as const}
+          />
         </div>
 
         {/* Payment Filter Tabs */}
@@ -161,26 +156,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>Payment:</span>
           </span>
 
-          {[
-            { id: 'all', label: 'All Modes' },
-            { id: 'cash', label: 'Cash Only' },
-            { id: 'card', label: 'Card Only' },
-            { id: 'scan', label: 'Scan Only' },
-            { id: 'other', label: 'Other / Legacy' },
-          ].map(p => (
-            <button
-              key={p.id}
-              aria-pressed={paymentFilter === p.id}
-              onClick={() => { setPaymentFilter(p.id as any); setPagination({ filter: '', page: 0 }); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
-                paymentFilter === p.id
-                  ? 'bg-pos-strong text-pos-strong-text'
-                  : 'bg-pos-surface text-pos-secondary hover:bg-pos-inset border border-pos-control'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+          <SegmentedControl
+            label="Payment mode"
+            wrap
+            value={paymentFilter}
+            onChange={id => { setPaymentFilter(id); setPagination({ filter: '', page: 0 }); }}
+            options={[
+              { value: 'all', label: 'All Modes' },
+              { value: 'cash', label: 'Cash Only' },
+              { value: 'card', label: 'Card Only' },
+              { value: 'scan', label: 'Scan Only' },
+              { value: 'other', label: 'Other / Legacy' },
+            ] as const}
+          />
         </div>
       </div>
 
@@ -189,21 +177,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-pos-surface p-3 rounded-lg border border-pos-border flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <label htmlFor="sales-from-date" className="text-xs font-bold text-pos-secondary">From Date:</label>
-            <input
+            <Input size="compact"
               id="sales-from-date" type="date" max={today}
               value={customStartDate}
               onChange={e => { if (e.target.value > today) return; setCustomStartDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
-              className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
             />
           </div>
 
           <div className="flex items-center gap-2">
             <label htmlFor="sales-to-date" className="text-xs font-bold text-pos-secondary">To Date:</label>
-            <input
+            <Input size="compact"
               id="sales-to-date" type="date" max={today}
               value={customEndDate}
               onChange={e => { if (e.target.value > today) return; setCustomEndDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
-              className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
             />
           </div>
         </div>
@@ -312,9 +298,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <nav aria-label="Report pages" className="p-4 border-b border-pos-border flex flex-wrap items-center justify-between gap-3 text-xs text-pos-secondary">
             <span role="status">Rows {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredOrders.length)} of {filteredOrders.length} · Page {page + 1} of {pageCount}. Totals include all matching orders.</span>
             <div className="flex gap-2">
-              <button type="button" disabled={page === 0} onClick={() => changePage(page - 1)} className="px-3 py-2 rounded-md border border-pos-control hover:bg-pos-inset disabled:opacity-50 disabled:cursor-not-allowed">Previous page</button>
-              <button type="button" disabled={page + 1 >= pageCount} onClick={() => changePage(page + 1)} className="px-3 py-2 rounded-md border border-pos-control hover:bg-pos-inset disabled:opacity-50 disabled:cursor-not-allowed">Next page</button>
-              <button type="button" disabled={page + 1 >= pageCount} onClick={() => changePage(pageCount - 1)} className="px-3 py-2 rounded-md border border-pos-control hover:bg-pos-inset disabled:opacity-50 disabled:cursor-not-allowed">Last page</button>
+              <Button variant="outline" size="icon-compact" type="button" disabled={page === 0} onClick={() => changePage(page - 1)} >Previous page</Button>
+              <Button variant="outline" size="icon-compact" type="button" disabled={page + 1>= pageCount} onClick={() => changePage(page + 1)} >Next page</Button>
+              <Button variant="outline" size="icon-compact" type="button" disabled={page + 1>= pageCount} onClick={() => changePage(pageCount - 1)} >Last page</Button>
             </div>
           </nav>
         )}
@@ -367,13 +353,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </td>
                     <td className="p-4 text-center">
                       {onSelectOrderPreview && (
-                        <button
+                        <Button variant="outline" size="compact"
                           onClick={() => onSelectOrderPreview(order)}
-                          className="px-2.5 py-1 rounded-lg border border-pos-border hover:bg-pos-selected hover:border-pos-accent hover:text-pos-accent text-pos-secondary text-xs font-semibold inline-flex items-center gap-1 transition"
                         >
                           <Printer className="w-3 h-3" />
                           <span>Reprint Slips</span>
-                        </button>
+                        </Button>
                       )}
                     </td>
                   </tr>

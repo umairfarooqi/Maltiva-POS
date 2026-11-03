@@ -2,11 +2,12 @@ import React, { useRef, useState } from 'react';
 import { MaintenanceApi, BackupFile, RestorePreview } from '../services/maintenanceApi';
 import { Dialog } from './ui/Dialog';
 import { buttonClasses } from './ui/Button';
+import { fieldClasses } from './ui/Field';
 
 const button = buttonClasses({ variant: 'outline' });
 const primaryButton = buttonClasses();
 const destructiveButton = buttonClasses({ variant: 'destructive' });
-const input = 'mt-1 min-h-pos-touch w-full rounded-md border border-pos-control bg-pos-inset px-3 py-2';
+const input = fieldClasses({ className: 'mt-1 w-full' });
 export function DatabaseMaintenance() {
   const [files, setFiles] = useState<BackupFile[]>([]);
   const [directory, setDirectory] = useState('');

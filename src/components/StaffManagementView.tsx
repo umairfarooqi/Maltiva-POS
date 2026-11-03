@@ -3,6 +3,7 @@ import { UserPlus, X, KeyRound, Check } from 'lucide-react';
 import { User, UserRole } from '../types/pos';
 import { Dialog } from './ui/Dialog';
 import { Button } from './ui/Button';
+import { Input, Select } from './ui/Field';
 
 interface StaffManagementViewProps {
   users: User[];
@@ -272,14 +273,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <td className="p-4 text-center">
                   <div className="inline-flex items-center gap-2">
                     {onResetUserPin && (
-                      <button
+                      <Button variant="ghost" size="compact"
                         type="button"
                         onClick={() => handleOpenReset(u)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-pos-secondary hover:bg-pos-raised border border-pos-border transition"
                       >
                         <KeyRound className="w-3 h-3" />
                         <span>Reset PIN</span>
-                      </button>
+                      </Button>
                     )}
                     <button
                       type="button"
@@ -307,13 +307,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         <Dialog label="Add staff member" busy={isSaving} onClose={() => setIsModalOpen(false)} className="bg-pos-surface rounded-lg max-w-md w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <h3 className="text-base font-bold text-pos-text">Add Staff Member</h3>
-              <button
+              <Button variant="ghost" size="icon"
                 disabled={isSaving} onClick={() => setIsModalOpen(false)}
                 aria-label="Close staff editor"
-                className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             {usernameError && (
@@ -329,7 +328,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <label htmlFor="staffmanagementview-field-1" className="text-xs font-bold text-pos-secondary block mb-1">
                   Full Name *
                 </label>
-                <input id="staffmanagementview-field-1"
+                <Input size="compact" id="staffmanagementview-field-1"
                   type="text"
                   required
                   value={name}
@@ -340,7 +339,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     }
                   }}
                   placeholder="e.g. Jordan Smith"
-                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  className="w-full"
                 />
               </div>
 
@@ -350,7 +349,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pos-muted text-xs font-mono">@</span>
-                  <input id="staffmanagementview-field-2"
+                  <Input size="compact" id="staffmanagementview-field-2"
                     type="text"
                     required
                     value={username}
@@ -359,7 +358,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                       setUsernameError('');
                     }}
                     placeholder="e.g. jordansmith or cashier2"
-                    className="w-full pl-7 pr-3 py-2 border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                    className="w-full pl-7 pr-3 tabular-nums"
                   />
                 </div>
                 <p className="text-[10px] text-pos-muted mt-0.5">
@@ -371,12 +370,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <label htmlFor="staffmanagementview-field-3" className="text-xs font-bold text-pos-secondary block mb-1">
                   Email Address
                 </label>
-                <input id="staffmanagementview-field-3"
+                <Input size="compact" id="staffmanagementview-field-3"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="jordan@maltivacrust.com"
-                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  className="w-full"
                 />
               </div>
 
@@ -385,29 +384,29 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   <label htmlFor="staffmanagementview-field-4" className="text-xs font-bold text-pos-secondary block mb-1">
                     System Role *
                   </label>
-                  <select id="staffmanagementview-field-4"
+                  <Select size="compact" id="staffmanagementview-field-4"
                     value={role}
                     onChange={e => setRole(e.target.value as UserRole)}
-                    className="w-full px-3 py-2 border border-pos-control rounded-md text-xs bg-pos-surface focus-visible:border-pos-accent"
+                    className="w-full"
                   >
                     <option value="cashier">Cashier (Order Line only)</option>
                     <option value="manager">Manager (Dishes + Daily Sales)</option>
                     <option value="admin">Admin (Full Control)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
                   <label htmlFor="staffmanagementview-field-5" className="text-xs font-bold text-pos-secondary block mb-1">
                     Password * (min 6 characters)
                   </label>
-                  <input id="staffmanagementview-field-5"
+                  <Input size="compact" id="staffmanagementview-field-5"
                     type="password"
                     required
                     minLength={6}
                     autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                    className="w-full"
                   />
                 </div>
 
@@ -415,7 +414,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   <label htmlFor="staffmanagementview-field-6" className="text-xs font-bold text-pos-secondary block mb-1">
                     4-digit PIN *
                   </label>
-                  <input id="staffmanagementview-field-6"
+                  <Input size="compact" id="staffmanagementview-field-6"
                     type="password"
                     inputMode="numeric"
                     required
@@ -424,7 +423,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     value={pin}
                     onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
                     placeholder="4-digit PIN"
-                    className="w-full px-3 py-2 border border-pos-control rounded-md text-xs font-mono text-center focus-visible:border-pos-accent"
+                    className="w-full text-center tabular-nums"
                   />
                 </div>
               </div>
@@ -457,14 +456,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <h3 className="text-base font-bold text-pos-text">Reset PIN & Unlock</h3>
                 <p className="text-xs text-pos-muted">{resetTarget.name} (@{resetTarget.username})</p>
               </div>
-              <button
+              <Button variant="ghost" size="icon"
                 type="button"
                 disabled={isResetting} onClick={() => setResetTarget(null)}
                 aria-label="Close PIN reset"
-                className="w-8 h-8 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             {resetError && (
@@ -480,7 +478,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <label htmlFor="staffmanagementview-field-7" className="text-xs font-bold text-pos-secondary block mb-1">
                   New 4-Digit PIN *
                 </label>
-                <input id="staffmanagementview-field-7"
+                <Input size="compact" id="staffmanagementview-field-7"
                   type="password"
                   inputMode="numeric"
                   required
@@ -489,7 +487,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   value={resetPin}
                   onChange={e => setResetPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="4-digit PIN"
-                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs font-mono text-center focus-visible:border-pos-accent"
+                  className="w-full text-center tabular-nums"
                 />
               </div>
 
@@ -497,13 +495,13 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <label htmlFor="staffmanagementview-field-8" className="text-xs font-bold text-pos-secondary block mb-1">
                   New Password (optional, min 6 chars)
                 </label>
-                <input id="staffmanagementview-field-8"
+                <Input size="compact" id="staffmanagementview-field-8"
                   type="password"
                   autoComplete="new-password"
                   value={resetPassword}
                   onChange={e => setResetPassword(e.target.value)}
                   placeholder="Leave blank to keep existing password"
-                  className="w-full px-3 py-2 border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  className="w-full"
                 />
               </div>
 

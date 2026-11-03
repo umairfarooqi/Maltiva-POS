@@ -3,8 +3,9 @@ import { ReceiptsApi, ReceiptFilters, ReceiptSummary } from '../services/receipt
 import { Order } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { buttonClasses } from './ui/Button';
+import { fieldClasses } from './ui/Field';
 
-const control = 'min-h-pos-touch rounded-md border border-pos-control bg-pos-inset px-3 py-2 text-sm disabled:opacity-50';
+const control = fieldClasses();
 const action = buttonClasses({ variant: 'outline' });
 export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order: Order) => void; onBack: () => void }) {
   const [filters, setFilters] = useState<ReceiptFilters>({});

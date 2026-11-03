@@ -3,6 +3,7 @@ import { Search, UserPlus, Phone, Mail, Award, Clock } from 'lucide-react';
 import { Customer } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -39,12 +40,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         <div className="flex items-center gap-3">
           <div className="relative max-w-xs w-full">
             <Search className="w-3.5 h-3.5 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
+            <Input size="compact"
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, phone or email..."
-              className="w-full pl-9 pr-3 py-2 bg-pos-inset border border-pos-control rounded-md text-xs text-pos-secondary placeholder:text-pos-muted focus-visible:border-pos-accent"
+              className="w-full pl-9 pr-3"
             />
           </div>
 

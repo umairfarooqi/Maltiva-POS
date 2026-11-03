@@ -10,14 +10,21 @@ export const buttonVariants = {
   outline: 'border border-pos-border text-pos-secondary hover:bg-pos-raised hover:text-pos-text',
   ghost: 'text-pos-secondary hover:bg-pos-raised hover:text-pos-text',
   destructive: 'bg-pos-danger-action text-pos-danger-action-text hover:bg-pos-danger-hover',
+  /** Softer destructive for reversible or pre-confirmation actions (clear cart, clear cache). */
+  'soft-destructive': 'bg-pos-danger-bg text-pos-danger-text border border-pos-danger-border hover:bg-pos-danger-action hover:text-pos-danger-action-text',
+  /** Icon-only destructive (remove line, delete row). */
+  'ghost-destructive': 'text-pos-danger-text hover:bg-pos-danger-bg',
+  link: 'text-pos-accent underline-offset-4 hover:underline',
 } as const;
 
 export const buttonSizes = {
   compact: 'h-pos-compact px-3 text-xs',
   default: 'min-h-pos-touch px-4 text-sm',
-  checkout: 'min-h-pos-checkout px-6 text-base',
+  checkout: 'min-h-pos-checkout px-5 text-sm',
   icon: 'size-pos-touch shrink-0',
   'icon-compact': 'size-pos-compact shrink-0',
+  /** No box: for link-style buttons sitting inside text or section headers. */
+  inline: 'px-1 py-0.5 text-xs',
 } as const;
 
 export type ButtonVariant = keyof typeof buttonVariants;

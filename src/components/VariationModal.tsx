@@ -4,6 +4,7 @@ import { CartItem, Product, SelectedVariationItem, VariationGroup } from '../typ
 import { Dialog } from './ui/Dialog';
 import { formatPKR } from '../utils/formatCurrency';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
 
 interface VariationModalProps {
   product: Product;
@@ -145,13 +146,12 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               </p>
             </div>
           </div>
-          <button
+          <Button variant="ghost" size="icon"
             onClick={onClose}
             aria-label="Close item options"
-            className="w-pos-touch h-pos-touch shrink-0 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary hover:bg-pos-raised flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Variations List (Scrollable) */}
@@ -223,13 +223,13 @@ export const VariationModal: React.FC<VariationModalProps> = ({
             <label htmlFor="item-notes" className="text-xs font-bold text-pos-text uppercase tracking-wider block">
               Special Instructions
             </label>
-            <input
+            <Input
               id="item-notes"
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="e.g. Less salt, dressing on the side..."
-              className="w-full px-3.5 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs text-pos-secondary placeholder:text-pos-muted focus-visible:border-pos-accent"
+              className="w-full"
             />
           </div>
         </div>
@@ -237,31 +237,29 @@ export const VariationModal: React.FC<VariationModalProps> = ({
         {/* Footer: Quantity & Add Button */}
         <div className="shrink-0 p-3 border-t border-pos-divider bg-pos-inset/60 flex flex-wrap items-center justify-between gap-2">
           <div className="shrink-0 flex items-center gap-2 bg-pos-surface border border-pos-control rounded-md p-1">
-            <button
+            <Button variant="secondary" size="icon"
               aria-label="Decrease item quantity"
               disabled={quantity <= 1}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-pos-touch h-pos-touch rounded-lg flex items-center justify-center text-pos-secondary hover:bg-pos-raised font-bold transition"
             >
               -
-            </button>
+            </Button>
             <span className="w-6 text-center font-bold text-pos-text text-sm font-mono">
               {quantity}
             </span>
-            <button
+            <Button variant="secondary" size="icon"
               disabled={quantity >= maximumQuantity}
               aria-label="Increase item quantity"
               onClick={() => setQuantity(quantity + 1)}
-              className="w-pos-touch h-pos-touch rounded-lg flex items-center justify-center text-pos-accent hover:bg-pos-selected font-bold transition"
             >
               +
-            </button>
+            </Button>
           </div>
 
           <Button variant="primary" size="checkout"
             onClick={handleAdd}
             disabled={maximumQuantity < 1 || quantity > maximumQuantity}
-            className="min-w-[160px] flex-1 flex-wrap justify-between! tabular-nums"
+            className="min-w-0 flex-1 justify-between! gap-3! px-4! tabular-nums"
           >
             <span>{initialItem ? 'Update item' : 'Add to Order'}</span>
             <span className="font-mono">{formatPKR(totalPricePaisa)}</span>

@@ -25,6 +25,8 @@ import { Dialog } from './ui/Dialog';
 import { useTheme } from '../services/theme';
 import { DatabaseMaintenance } from './DatabaseMaintenance';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface SettingsViewProps {
   settings: PrinterSettings;
@@ -142,22 +144,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label htmlFor="settingsview-field-1" className="text-xs font-bold text-pos-secondary block mb-1.5">Store Name</label>
-              <input id="settingsview-field-1"
+              <Input id="settingsview-field-1"
                 type="text"
                 value={formData.storeName}
                 onChange={e => setFormData({ ...formData, storeName: e.target.value })}
-                className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                className="w-full"
               />
             </div>
             <div className="md:col-span-2">
               <label htmlFor="settingsview-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5">Location / Address</label>
               <div className="relative">
                 <MapPin className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                <input id="settingsview-field-2"
+                <Input id="settingsview-field-2"
                   type="text"
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full pl-9 pr-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  className="w-full pl-9 pr-4"
                 />
               </div>
             </div>
@@ -165,17 +167,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <label htmlFor="settingsview-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5">WhatsApp Contact</label>
               <div className="relative">
                 <Phone className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                <input id="settingsview-field-3"
+                <Input id="settingsview-field-3"
                   type="text"
                   value={formData.whatsApp}
                   onChange={e => setFormData({ ...formData, whatsApp: e.target.value })}
-                  className="w-full pl-9 pr-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs focus-visible:border-pos-accent"
+                  className="w-full pl-9 pr-4"
                 />
               </div>
             </div>
             <div>
               <label htmlFor="settingsview-field-4" className="text-xs font-bold text-pos-secondary block mb-1.5">Sales Tax %</label>
-              <input id="settingsview-field-4"
+              <Input id="settingsview-field-4"
                 type="number"
                 value={formData.taxBp / 100}
                 step="0.01" min="0"
@@ -183,7 +185,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   try { setFormData({ ...formData, taxBp: parseRupees(e.target.value || '0') }); setTaxError(''); }
                   catch { setTaxError('Tax rate must have at most two decimal places.'); }
                 }}
-                className="w-full px-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                className="w-full tabular-nums"
               />
               {taxError && <p role="alert" className="text-xs text-pos-danger-text">{taxError}</p>}
             </div>
@@ -206,37 +208,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <p className="text-[11px] text-pos-muted">Printer and dual-screen optimization</p>
               </div>
             </div>
-            <button
+            <Button variant="secondary" size="compact"
               onClick={onOpenTestPrint}
-              className="px-3 py-1.5 bg-pos-raised hover:bg-pos-raised text-pos-secondary rounded-lg text-[10px] font-bold transition cursor-pointer"
             >
               Print Test Slip
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                aria-pressed={formData.paperWidth === '80mm'} onClick={() => setFormData({ ...formData, paperWidth: '80mm' })}
-                className={`py-2.5 px-4 rounded-md border text-xs font-bold transition-colors cursor-pointer ${
-                  formData.paperWidth === '80mm'
-                    ? 'border-pos-accent bg-pos-selected text-pos-accent'
-                    : 'border-pos-control text-pos-secondary hover:bg-pos-inset'
-                }`}
-              >
-                80mm Standard
-              </button>
-              <button
-                aria-pressed={formData.paperWidth === '58mm'} onClick={() => setFormData({ ...formData, paperWidth: '58mm' })}
-                className={`py-2.5 px-4 rounded-md border text-xs font-bold transition-colors cursor-pointer ${
-                  formData.paperWidth === '58mm'
-                    ? 'border-pos-accent bg-pos-selected text-pos-accent'
-                    : 'border-pos-control text-pos-secondary hover:bg-pos-inset'
-                }`}
-              >
-                58mm Compact
-              </button>
-            </div>
+            <SegmentedControl
+              label="Receipt paper width"
+              size="default"
+              fill
+              value={formData.paperWidth}
+              onChange={paperWidth => setFormData({ ...formData, paperWidth })}
+              options={[{ value: '80mm', label: '80mm Standard' }, { value: '58mm', label: '58mm Compact' }] as const}
+            />
 
             <div className="p-4 bg-pos-inset rounded-md border border-pos-border space-y-3">
               <label className="flex items-center justify-between cursor-pointer group">
@@ -263,14 +250,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Monitor className="w-4 h-4 text-pos-accent" />
                 <span className="text-xs font-bold text-pos-text">Customer Facing Display</span>
               </div>
-              {onResetCustomerDisplay && <button type="button" onClick={onResetCustomerDisplay} className="p-2 text-xs text-pos-accent">Reset confirmation</button>}
-              <button
+              {onResetCustomerDisplay && <Button variant="link" size="inline" type="button" onClick={onResetCustomerDisplay}>Reset confirmation</Button>}
+              <Button variant="outline" size="icon"
                 aria-label="Open customer display"
                 onClick={handleOpenCustomerDisplay}
-                className="p-2 bg-pos-surface border border-pos-success-border text-pos-accent rounded-md hover:bg-pos-action hover:text-pos-action-text transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
         </section>
@@ -334,14 +320,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label htmlFor="settingsview-field-5" className="text-xs font-bold text-pos-secondary block mb-1.5">Default low-stock threshold</label>
                 <div className="relative">
                   <BellRing className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input id="settingsview-field-5"
+                  <Input id="settingsview-field-5"
                     type="number"
                     min="0"
                     step="1"
                     aria-label="Default low-stock threshold"
                     value={formData.globalLowStockThreshold ?? 5}
                     onChange={e => setFormData({ ...formData, globalLowStockThreshold: parseInt(e.target.value) || 0 })}
-                    className="w-full pl-9 pr-4 py-2.5 bg-pos-inset border border-pos-control rounded-md text-xs font-mono focus-visible:border-pos-accent"
+                    className="w-full pl-9 pr-4 tabular-nums"
                   />
                 </div>
               </div>
@@ -368,20 +354,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button
+          <Button variant="outline" size="compact"
             onClick={handleExportBackup}
-            className="flex items-center gap-2 px-4 py-2 bg-pos-surface border border-pos-control hover:bg-pos-inset text-pos-secondary rounded-md text-xs font-bold transition cursor-pointer"
           >
             <FileDown className="w-4 h-4 text-pos-accent" />
             <span>Export cached data</span>
-          </button>
-          <button
+          </Button>
+          <Button variant="soft-destructive" size="compact"
             onClick={() => setIsWipeSalesDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-pos-danger-bg hover:bg-pos-danger-bg text-pos-danger-text rounded-md text-xs font-bold transition cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             <span>Clear cached sales</span>
-          </button>
+          </Button>
         </div>
       </footer>
 

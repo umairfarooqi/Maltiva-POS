@@ -18,6 +18,7 @@ import { formatPKR } from '../utils/formatCurrency';
 import { normalizeProduct } from '../utils/normalizeProduct';
 import { ProductStockBadge } from './ProductStockBadge';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
 
 interface OrderLineViewProps {
   isLocked?: boolean;
@@ -115,41 +116,39 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
           <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
             <div className="relative flex-1 sm:w-60 max-w-xs">
               <Search className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Quick search dish..."
                 aria-label="Search menu items"
-                className="w-full h-pos-touch pl-9 pr-12 rounded-lg bg-pos-inset border border-pos-border text-xs text-pos-text placeholder:text-pos-muted focus-visible:border-pos-accent transition"
+                className="w-full pl-9 pr-12"
               />
               {searchQuery && (
-                <button
+                <Button variant="ghost" size="icon"
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 min-w-pos-touch min-h-pos-touch flex items-center justify-center p-1 text-pos-muted hover:text-pos-text rounded"
+                  className="absolute right-0 top-1/2 -translate-y-1/2"
                 >
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="flex items-center gap-1">
-              <button
+              <Button variant="outline" size="icon"
                 onClick={() => scrollCategories('left')}
                 aria-label="Previous menu categories"
-                className="w-pos-touch h-pos-touch rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
+              </Button>
+              <Button variant="outline" size="icon"
                 onClick={() => scrollCategories('right')}
                 aria-label="Next menu categories"
-                className="w-pos-touch h-pos-touch rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -328,15 +327,14 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                             onClick={e => e.stopPropagation()}
                             className="flex items-center gap-1 bg-pos-inset rounded-lg p-0.5 border border-pos-accent/50 shrink-0"
                           >
-                            <button
+                            <Button variant="secondary" size="icon-compact"
                               disabled={isLocked || plainQty === 0}
                               title={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
                               onClick={event => { event.stopPropagation(); onQuickDecrementFromCart(product); }}
                               aria-label={`Remove one ${product.name}`}
-                              className="w-9 h-9 rounded-md bg-pos-surface text-pos-text hover:bg-pos-raised flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                             >
                               <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                            </button>
+                            </Button>
                             <span className="text-xs font-black font-mono text-pos-accent min-w-[18px] text-center">
                               {qtyInCart}
                             </span>

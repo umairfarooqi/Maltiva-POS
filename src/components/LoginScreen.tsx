@@ -13,6 +13,8 @@ import { User, LoginStaff } from '../types/pos';
 import { PosApi } from '../services/api';
 import { MaltivaLogo } from './MaltivaLogo';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface LoginScreenProps {
   notice?: React.ReactNode;
@@ -235,14 +237,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               >
                 <AlertCircle className="w-4 h-4 text-pos-danger-text shrink-0" />
                 <span className="font-medium flex-1">{errorMessage}</span>
-                <button
+                <Button variant="ghost-destructive" size="icon"
                   type="button"
                   aria-label="Dismiss login error"
                   onClick={() => setErrorMessage('')}
-                  className="text-pos-danger-text hover:text-pos-danger-text min-h-pos-touch min-w-pos-touch px-1 cursor-pointer font-bold"
                 >
                   ✕
-                </button>
+                </Button>
               </div>
             )}
 
@@ -290,32 +291,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
             <div className="space-y-3 min-w-0">
             {/* Mode Tabs: PIN Pad vs Password */}
-            <div className="flex bg-pos-inset p-0.5 rounded-lg border border-pos-border">
-              <button
-                type="button"
-                aria-pressed={authMethod === 'pin'} onClick={() => setAuthMethod('pin')}
-                className={`flex-1 min-h-pos-touch py-1.5 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  authMethod === 'pin'
-                    ? 'bg-pos-selected text-pos-text shadow-sm'
-                    : 'text-pos-muted hover:text-pos-text'
-                }`}
-              >
-                <KeyRound className="w-3.5 h-3.5 text-pos-accent" />
-                <span>Quick PIN</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={authMethod === 'password'} onClick={() => setAuthMethod('password')}
-                className={`flex-1 min-h-pos-touch py-1.5 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  authMethod === 'password'
-                    ? 'bg-pos-selected text-pos-text shadow-sm'
-                    : 'text-pos-muted hover:text-pos-text'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5 text-pos-accent" />
-                <span>Password</span>
-              </button>
-            </div>
+            <SegmentedControl
+              label="Sign-in method"
+              size="default"
+              fill
+              value={authMethod}
+              onChange={setAuthMethod}
+              options={[
+                { value: 'pin', label: 'Quick PIN', icon: KeyRound },
+                { value: 'password', label: 'Password', icon: Lock },
+              ] as const}
+            />
 
             {/* Form: PIN Pad Mode */}
             {authMethod === 'pin' ? (
@@ -404,14 +390,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   <label htmlFor="loginscreen-field-1" className="text-xs font-medium text-pos-secondary ml-1">Username</label>
                   <div className="relative">
                     <UserIcon className="w-4 h-4 text-pos-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input id="loginscreen-field-1"
+                    <Input id="loginscreen-field-1"
                       type="text"
                       autoComplete="username"
                       required
                       value={username}
                       onChange={e => setUsername(e.target.value)}
                       placeholder="Username"
-                      className="w-full h-pos-touch pl-10 pr-3 bg-pos-inset border border-pos-border rounded-xl text-sm text-pos-text placeholder:text-pos-muted focus:border-pos-accent focus:ring-1 focus:ring-pos-accent outline-none"
+                      className="w-full pl-10 pr-3"
                     />
                   </div>
                 </div>
@@ -423,23 +409,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-pos-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
+                    <Input
                       id="login-password" type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       required
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Enter password or PIN"
-                      className="w-full h-pos-touch pl-10 pr-12 bg-pos-inset border border-pos-border rounded-xl text-sm text-pos-text placeholder:text-pos-muted focus:border-pos-accent focus:ring-1 focus:ring-pos-accent outline-none"
+                      className="w-full pl-10 pr-12"
                     />
-                    <button
+                    <Button variant="ghost" size="icon"
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 min-w-pos-touch min-h-pos-touch flex items-center justify-center text-pos-muted hover:text-pos-text transition cursor-pointer"
+                      className="absolute right-0 top-1/2 -translate-y-1/2"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

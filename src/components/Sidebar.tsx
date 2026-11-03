@@ -15,6 +15,7 @@ import {
 import { UserRole } from '../types/pos';
 import { Dialog } from './ui/Dialog';
 import { MaltivaLogo } from './MaltivaLogo';
+import { Button } from './ui/Button';
 
 export type NavTab =
   | 'order_line'
@@ -225,13 +226,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="flex items-center justify-between mb-6 pl-1">
                 <MaltivaLogo size="sm" showSubtitle={false} collapsed={false} />
                 {onCloseMobile && (
-                  <button
+                  <Button variant="ghost" size="icon"
                     onClick={onCloseMobile}
                     aria-label="Close navigation"
-                    className="p-2 text-pos-muted hover:text-pos-secondary rounded-lg hover:bg-pos-raised cursor-pointer"
                   >
                     <X className="w-4 h-4" aria-hidden="true" />
-                  </button>
+                  </Button>
                 )}
               </div>
 

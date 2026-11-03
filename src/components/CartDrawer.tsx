@@ -7,6 +7,8 @@ import { formatPKR } from '../utils/formatCurrency';
 import { computeTotals, parseRupees, rupeeText } from '../shared/money';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import { Input } from './ui/Field';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface CartDrawerProps {
   error?: string;
@@ -91,26 +93,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
-          <button
+          <Button variant="ghost-destructive" size="icon"
             onClick={() => setConfirmClear(true)}
             disabled={cart.length === 0 || isProcessing}
-            className="min-w-pos-touch min-h-pos-touch p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-lg hover:bg-pos-danger-bg cursor-pointer active:scale-95"
             title="Clear Order"
             aria-label="Clear order"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </Button>
           {isMobileOpen && onCloseMobile && (
-            <button
+            <Button variant="ghost" size="icon"
               type="button"
               disabled={isProcessing}
               onClick={onCloseMobile}
-              className="min-w-pos-touch min-h-pos-touch p-2 text-pos-muted hover:text-pos-text transition rounded-lg hover:bg-pos-raised cursor-pointer"
               title="Close order drawer"
               aria-label="Close order drawer"
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -151,18 +151,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <button type="button" disabled={isProcessing} aria-label={`Decrease quantity of ${item.product.name}`}
+                    <Button variant="secondary" size="icon" type="button" disabled={isProcessing} aria-label={`Decrease quantity of ${item.product.name}`}
                       onClick={() => onUpdateQuantity(item.cartItemId, -1)}
-                      className="w-pos-touch h-pos-touch rounded-lg bg-pos-inset text-pos-text font-bold disabled:opacity-40">-</button>
+                      >-</Button>
                     <span className="min-w-5 text-center text-sm font-bold font-mono text-pos-text" aria-label="Quantity">{item.quantity}</span>
-                    <button type="button" disabled={isProcessing} aria-label={`Increase quantity of ${item.product.name}`}
+                    <Button variant="secondary" size="icon" type="button" disabled={isProcessing} aria-label={`Increase quantity of ${item.product.name}`}
                       onClick={() => onUpdateQuantity(item.cartItemId, 1)}
-                      className="w-pos-touch h-pos-touch rounded-lg bg-pos-inset text-pos-accent font-bold disabled:opacity-40">+</button>
-                    <button type="button" disabled={isProcessing} aria-label={`Remove ${item.product.name}`}
+                      >+</Button>
+                    <Button variant="ghost-destructive" size="icon" type="button" disabled={isProcessing} aria-label={`Remove ${item.product.name}`}
                       onClick={() => onRemoveItem(item.cartItemId)}
-                      className="w-pos-touch h-pos-touch flex items-center justify-center rounded-lg text-pos-danger-text hover:bg-pos-danger-bg disabled:opacity-40">
+                      >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 {item.product.isDeal && <Badge tone="accent" className="mt-0.5">Combo deal</Badge>}
@@ -210,7 +210,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1" htmlFor="cash-tendered">
                   Cash Tendered
                 </label>
-                <input
+                <Input
                   disabled={isProcessing}
                   id="cash-tendered"
                   type="text"
@@ -223,7 +223,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     try { setCashTendered(parseRupees(event.target.value)); setInvalidTender(false); }
                     catch { setInvalidTender(true); }
                   }}
-                  className="w-full h-pos-touch rounded-md border border-pos-control bg-pos-inset px-2.5 text-sm font-bold font-mono text-pos-text focus-visible:border-pos-accent"
+                  className="w-full font-bold tabular-nums"
                 />
               </div>
               <div>
@@ -253,25 +253,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {/* Payment Method Selector */}
         <div className="space-y-1.5">
           <h3 className="sr-only">Payment Method</h3>
-          <div className="grid grid-cols-3 gap-1.5 rounded-lg bg-pos-inset border border-pos-border">
-            {paymentMethods.map(({ value, label, Icon }) => (
-              <button
-                key={value}
-                type="button"
-                disabled={isProcessing}
-                aria-pressed={paymentMethod === value}
-                onClick={() => onSelectPaymentMethod(value)}
-                className={`h-pos-touch flex items-center justify-center gap-1.5 rounded-md text-xs font-bold transition cursor-pointer active:scale-95 ${
-                  paymentMethod === value
-                    ? 'bg-pos-selected text-pos-accent border border-pos-accent/60'
-                    : ' border border-transparent text-pos-secondary hover:text-pos-text hover:bg-pos-surface/60'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" aria-hidden="true" />
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Payment method"
+            size="default"
+            fill
+            disabled={isProcessing}
+            value={paymentMethod}
+            onChange={onSelectPaymentMethod}
+            options={paymentMethods.map(({ value, label, Icon }) => ({ value, label, icon: Icon }))}
+          />
         </div>
 
         {/* Action Buttons */}
@@ -319,8 +309,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         <h2 className="font-bold text-pos-text">Clear current order?</h2>
         <p className="text-sm text-pos-muted mt-2">This removes every item and its instructions from this order.</p>
         <div className="flex justify-end gap-3 mt-5">
-          <button onClick={() => setConfirmClear(false)} className="px-3 py-2 rounded-lg text-xs font-semibold text-pos-secondary hover:bg-pos-raised">Keep order</button>
-          <button disabled={isProcessing} onClick={() => { onClearCart(); setConfirmClear(false); }} className="px-3.5 py-2 rounded-lg text-xs font-bold bg-pos-danger-bg text-pos-danger-text border border-pos-danger-border">Clear all items</button>
+          <Button variant="ghost" onClick={() => setConfirmClear(false)} >Keep order</Button>
+          <Button variant="soft-destructive" disabled={isProcessing} onClick={() => { onClearCart(); setConfirmClear(false); }} >Clear all items</Button>
         </div>
       </Dialog>}
     </>
