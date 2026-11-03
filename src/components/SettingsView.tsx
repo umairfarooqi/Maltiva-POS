@@ -90,8 +90,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="min-w-0 min-h-0 flex-1 flex flex-col bg-pos-canvas select-none">
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+    <div className="min-w-0 min-h-0 flex-1 flex flex-col overflow-hidden bg-pos-canvas">
+      <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5">
       {/* Top Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
         <div>
@@ -366,7 +366,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <p className="text-[11px] text-pos-muted">Export or clear the browser cache. Server sales remain intact.</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={handleExportBackup}
             className="flex items-center gap-2 px-4 py-2 bg-pos-surface border border-pos-control hover:bg-pos-inset text-pos-secondary rounded-md text-xs font-bold transition cursor-pointer"

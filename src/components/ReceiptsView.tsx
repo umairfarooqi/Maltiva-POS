@@ -24,11 +24,7 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
       const result = await ReceiptsApi.search(chosen, page, abort.signal);
       if (id !== request.current || abort.signal.aborted) return;
       setRows(previous => page ? [...previous, ...result.receipts.filter(row => !previous.some(old => old.id === row.id))] : result.receipts);
-      if (!page) {
-        const normalized = { ...chosen, from: result.from, to: result.to };
-        setApplied(normalized);
-        setFilters(previous => previous === chosen ? normalized : previous);
-      }
+      if (!page) setApplied({ ...chosen, from: result.from, to: result.to });
       setToday(result.today); setZone(result.timeZone); setCursor(result.nextCursor); setSearched(true);
     } catch (error) {
       if (id === request.current && !abort.signal.aborted) setError((error as Error).message || 'Receipt lookup needs the POS server. Keep your cart and retry.');
@@ -65,7 +61,7 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
         <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor="receipt-reference">Order reference<input id="receipt-reference" type="text" placeholder="e.g. 0001" maxLength={200} className={control} value={filters.reference || ''} onChange={event => change('reference', event.target.value)} /></label>
         <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-token">Token<input id="receipt-token" type="text" inputMode="numeric" maxLength={16} className={`${control} w-28`} value={filters.token || ''} onChange={event => change('token', event.target.value)} /></label>
         <button type="submit" disabled={busy} className={`${control} bg-pos-action text-white font-semibold`}>Search receipts</button>
-        <button type="button" className={control} onClick={clear}>Clear filters</button>
+        {Object.values(filters).some(value => value.trim()) && <button type="button" className={control} onClick={clear}>Clear filters</button>}
       </form>
       <p className="text-xs text-pos-secondary">Dates follow the store business day. Blank dates mean today; choose up to 31 days. Enter any part of the order reference to search across all dates. A token needs one business date.</p>
       {busy && <p role="status">Loading saved receipts…</p>}

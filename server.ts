@@ -709,10 +709,10 @@ async function startServer() {
   });
 
   app.get('/api/maintenance/backups', requireAdmin, (_req, res) => {
-    res.json({ backups: backups.list() });
+    res.json({ backups: backups.list(), directory: backups.directory });
   });
   app.post('/api/maintenance/backups', requireAdmin, async (req, res, next) => {
-    try { res.status(201).json(await backups.create((req as any).caller.id)); }
+    try { res.status(201).json({ ...await backups.create((req as any).caller.id), directory: backups.directory }); }
     catch (error) { next(error); }
   });
   app.get('/api/maintenance/backups/:filename', requireAdmin, (req, res, next) => {

@@ -12,6 +12,7 @@ describe('cashier receipt search', () => {
   it('opens a canonical saved receipt from another cashier and supports returning to the order', async () => {
     const user = userEvent.setup(), open = vi.fn(), back = vi.fn(); render(<ReceiptsView onOpenReceipt={open} onBack={back} />);
     expect(await screen.findByText(/Other cashier/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open receipt #OLD-RECEIPT' }));
     expect(ReceiptsApi.get).toHaveBeenCalledWith('old-sale', expect.any(AbortSignal));
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ id: 'old-sale', persistenceState: 'saved' }));
@@ -43,6 +44,7 @@ describe('cashier receipt search', () => {
     expect(ReceiptsApi.search).toHaveBeenLastCalledWith({ reference: '123' }, null, expect.any(AbortSignal));
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(reference).toHaveValue('');
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
     expect(ReceiptsApi.search).toHaveBeenLastCalledWith({}, null, expect.any(AbortSignal));
   });
   it('shows a retryable server error without presenting cached history as complete', async () => {

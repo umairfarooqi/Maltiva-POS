@@ -31,13 +31,13 @@ export const MaintenanceApi = {
     await request(`/api/maintenance/restore/preview/${encodeURIComponent(token)}`, { method: 'DELETE' });
     owner.assertCurrent();
   },
-  async list(): Promise<BackupFile[]> {
+  async list(): Promise<{ backups: BackupFile[]; directory: string }> {
     const owner = captureSession();
     const body = await (await request('/api/maintenance/backups')).json();
     owner.assertCurrent();
-    return body.backups;
+    return body;
   },
-  async create(): Promise<{ filename: string }> {
+  async create(): Promise<{ filename: string; directory: string }> {
     const owner = captureSession();
     const body = await (await request('/api/maintenance/backups', { method: 'POST' })).json();
     owner.assertCurrent();

@@ -17,8 +17,8 @@ const preview = {
 beforeEach(() => {
   localStorage.clear(); vi.resetAllMocks();
   vi.mocked(MaintenanceApi.preview).mockResolvedValue(preview);
-  vi.mocked(MaintenanceApi.list).mockResolvedValue([{ filename: 'backup-file.db', bytes: 1024, createdAt: new Date().toISOString(), safetyCopy: false }]);
-  vi.mocked(MaintenanceApi.create).mockResolvedValue({ filename: 'backup-file.db' });
+  vi.mocked(MaintenanceApi.list).mockResolvedValue({ directory: 'C:/POS/backups', backups: [{ filename: 'backup-file.db', bytes: 1024, createdAt: new Date().toISOString(), safetyCopy: false }] });
+  vi.mocked(MaintenanceApi.create).mockResolvedValue({ filename: 'backup-file.db', directory: 'C:/POS/backups' });
   vi.mocked(MaintenanceApi.restore).mockResolvedValue({ success: true });
   vi.mocked(MaintenanceApi.discard).mockResolvedValue(undefined);
 });
@@ -29,6 +29,7 @@ describe('database maintenance settings', () => {
     const user = userEvent.setup(); render(<DatabaseMaintenance />);
     await user.click(screen.getByRole('button', { name: 'Create database backup' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Backup saved on server');
+    expect(screen.getByText('C:/POS/backups')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Download backup-file.db' }));
     expect(MaintenanceApi.create).toHaveBeenCalledOnce(); expect(MaintenanceApi.download).toHaveBeenCalledWith('backup-file.db');
   });
@@ -64,12 +65,12 @@ describe('database maintenance settings', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(MaintenanceApi.restore).not.toHaveBeenCalled();
   });
   it('prevents repeated backup clicks while creation is in progress', async () => {
-    let resolve!: (value: { filename: string }) => void;
+    let resolve!: (value: Awaited<ReturnType<typeof MaintenanceApi.create>>) => void;
     vi.mocked(MaintenanceApi.create).mockReturnValue(new Promise(done => { resolve = done; }));
     const user = userEvent.setup(); render(<DatabaseMaintenance />);
     const button = screen.getByRole('button', { name: 'Create database backup' });
     await user.dblClick(button); expect(MaintenanceApi.create).toHaveBeenCalledOnce(); expect(button).toBeDisabled();
-    resolve({ filename: 'backup-file.db' }); await waitFor(() => expect(button).toBeEnabled());
+    resolve({ filename: 'backup-file.db', directory: 'C:/POS/backups' }); await waitFor(() => expect(button).toBeEnabled());
   });
   it('does not expose database maintenance controls to a cashier', () => {
     render(<SettingsView settings={INITIAL_PRINTER_SETTINGS} currentUser={INITIAL_USERS[1]} onSaveSettings={vi.fn()} onOpenTestPrint={vi.fn()} />);

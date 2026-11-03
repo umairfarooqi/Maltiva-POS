@@ -6,6 +6,7 @@ const button = 'min-h-11 rounded-md border border-pos-control px-4 py-2 text-sm 
 const input = 'mt-1 min-h-11 w-full rounded-md border border-pos-control bg-pos-inset px-3 py-2';
 export function DatabaseMaintenance() {
   const [files, setFiles] = useState<BackupFile[]>([]);
+  const [directory, setDirectory] = useState('');
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState('');
@@ -20,6 +21,11 @@ export function DatabaseMaintenance() {
     try { await action(); }
     catch (error) { setError((error as Error).message || 'Maintenance could not finish. Keep your backup and retry.'); }
     finally { lock.current = false; setBusy(false); }
+  };
+  const listBackups = async () => {
+    const result = await MaintenanceApi.list();
+    setFiles(result.backups);
+    setDirectory(result.directory);
   };
   const closePreview = () => { setPreview(null); setPassword(''); setConfirmation(''); setError(''); };
   const cancelPreview = () => {
@@ -36,15 +42,21 @@ export function DatabaseMaintenance() {
     <div className="flex flex-wrap gap-3">
       <button type="button" disabled={busy} className={`${button} bg-pos-action text-white`} onClick={() => void run(async () => {
         const backup = await MaintenanceApi.create();
+        setDirectory(backup.directory);
         setNotice(`Backup saved on server: ${backup.filename}. Download it below.`);
-        setFiles(await MaintenanceApi.list());
+        await listBackups();
       })}>Create database backup</button>
-      <button type="button" disabled={busy} className={button} onClick={() => void run(async () => setFiles(await MaintenanceApi.list()))}>Show saved backups</button>
+      <button type="button" disabled={busy} className={button} onClick={() => void run(listBackups)}>Show saved backups</button>
       <button type="button" disabled={busy} className={button} onClick={() => fileInput.current?.click()}>Choose backup to restore</button>
-      <input ref={fileInput} type="file" accept=".db,.sqlite,.sqlite3" aria-label="Database backup file" className="sr-only" disabled={busy} onChange={event => {
+      <input ref={fileInput} type="file" accept=".db,.sqlite,.sqlite3" aria-label="Database backup file" hidden disabled={busy} onChange={event => {
         const file = event.target.files?.[0]; event.target.value = '';
         if (file) void run(async () => { const result = await MaintenanceApi.preview(file); setPassword(''); setConfirmation(''); setPreview(result); });
       }} />
+    </div>
+    {directory && <p className="break-all text-sm text-pos-secondary">Server backup folder <code className="font-mono text-pos-text">{directory}</code></p>}
+    <div>
+      <a href="/menu-data-template.json" download className={`${button} inline-flex items-center`}>Download menu data template</a>
+      <p className="mt-2 text-xs text-pos-secondary">Fill in categories and products for data mapping. Amounts use paisa (100 paisa = Rs. 1). The template is separate from database restore.</p>
     </div>
     {busy && !preview && <p role="status" className="text-sm">Checking and saving database files…</p>}
     {notice && <p role="status" className="text-sm text-pos-success-text">{notice}</p>}

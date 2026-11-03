@@ -1,0 +1,28 @@
+{
+  "categories": [
+    {
+      "id": "cat-drinks",
+      "name": "Drinks",
+      "order": 1
+    }
+  ],
+  "products": [
+    {
+      "moneySchemaVersion": 2,
+      "id": "prod-water",
+      "name": "Bottled Water",
+      "categoryId": "cat-drinks",
+      "categoryName": "Drinks",
+      "pricePaisa": 10000,
+      "costPricePaisa": 6000,
+      "stockQuantity": 24,
+      "minStockThreshold": 5,
+      "description": "500 ml bottle",
+      "image": "",
+      "isAvailable": true,
+      "isDeal": false,
+      "bundledProducts": [],
+      "variations": []
+    }
+  ]
+}
