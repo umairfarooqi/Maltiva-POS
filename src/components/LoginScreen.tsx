@@ -7,7 +7,6 @@ import {
   ArrowRight,
   AlertCircle,
   KeyRound,
-  Delete,
 } from 'lucide-react';
 import { User, LoginStaff } from '../types/pos';
 import { PosApi } from '../services/api';
@@ -15,6 +14,9 @@ import { MaltivaLogo } from './MaltivaLogo';
 import { Button } from './ui/Button';
 import { Input } from './ui/Field';
 import { SegmentedControl } from './ui/SegmentedControl';
+import { Avatar } from './ui/Avatar';
+import { Keypad, backspaceKey } from './ui/Keypad';
+import { alertClasses } from './ui/Alert';
 
 interface LoginScreenProps {
   notice?: React.ReactNode;
@@ -191,13 +193,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           <MaltivaLogo size="sm" showSubtitle={false} />
           <div className="hidden sm:block border-l border-pos-border pl-3">
             <span className="text-xs font-bold text-pos-text tracking-wide">Maltiva Crust</span>
-            <span className="text-[11px] text-pos-muted block leading-none mt-0.5">DHA Phase 3, Lahore</span>
+            <span className="text-xs text-pos-muted block leading-none mt-0.5">DHA Phase 3, Lahore</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Online / Offline status */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-pos-surface border border-pos-border text-[11px] font-mono">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-pos-surface border border-pos-border text-xs tabular-nums">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 isOnline ? 'bg-pos-success-text animate-pulse' : 'bg-pos-warning-text'
@@ -209,7 +211,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </div>
 
           {/* Real-time Clock */}
-          <div className="hidden sm:block text-right font-mono text-xs font-semibold text-pos-secondary">
+          <div className="hidden sm:block text-right tabular-nums text-xs font-semibold text-pos-secondary">
             {timeFormatted}
           </div>
         </div>
@@ -219,7 +221,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* CENTER: RESPONSIVE STAFF SELECTION AND AUTHENTICATION         */}
       {/* -------------------------------------------------------- */}
       <main className="w-full max-w-[760px] z-10 my-auto py-3">
-        <div className="bg-pos-surface border border-pos-border rounded-2xl overflow-hidden transition-all">
+        <div className="pos-panel overflow-hidden transition-all">
           <div className="p-4 sm:p-5 grid gap-4 sm:grid-cols-2">
             <fieldset disabled={isLoading} className="contents">
             <div className="space-y-4 min-w-0">
@@ -233,7 +235,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             {errorMessage && (
               <div
                 role="alert"
-                className="p-2.5 rounded-xl bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs flex items-center gap-2 animate-in fade-in duration-150"
+                className={alertClasses('danger', 'flex items-center gap-2 animate-in fade-in duration-150')}
               >
                 <AlertCircle className="w-4 h-4 text-pos-danger-text shrink-0" />
                 <span className="font-medium flex-1">{errorMessage}</span>
@@ -263,17 +265,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     }`}
                   >
                     <div className="relative shrink-0">
-                      {u.avatar ? (
-                        <img
-                          src={u.avatar}
-                          alt={u.name}
-                          className="w-9 h-9 rounded-full object-cover border border-pos-border"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-pos-raised flex items-center justify-center text-pos-text font-bold text-xs">
-                          {u.name?.charAt(0) || u.username?.charAt(0) || 'U'}
-                        </div>
-                      )}
+                      <Avatar name={u.name || u.username || 'U'} src={u.avatar} size="md" />
                       {isSelected && (
                         <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-pos-success-text rounded-full border border-pos-surface" />
                       )}
@@ -281,7 +273,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-pos-text truncate leading-tight">{u.name}</p>
-                      <span className="text-[11px] text-pos-muted">@{u.username}</span>
+                      <span className="text-xs text-pos-muted">@{u.username}</span>
                     </div>
                   </button>
                 );
@@ -328,44 +320,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Compact Tactile Numpad */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => handleKeypadPress(num)}
-                      className="h-13 rounded-lg bg-pos-surface hover:bg-pos-raised active:scale-95 text-base font-bold text-pos-text transition-all border border-pos-border flex items-center justify-center cursor-pointer select-none"
-                    >
-                      {num}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={handleKeypadClear}
-                    className="h-13 rounded-lg bg-pos-inset hover:bg-pos-raised active:scale-95 text-[11px] font-bold text-pos-muted hover:text-pos-text transition-all border border-pos-border flex items-center justify-center cursor-pointer select-none"
-                  >
-                    C
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleKeypadPress('0')}
-                    className="h-13 rounded-lg bg-pos-surface hover:bg-pos-raised active:scale-95 text-base font-bold text-pos-text transition-all border border-pos-border flex items-center justify-center cursor-pointer select-none"
-                  >
-                    0
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleKeypadBackspace}
-                    className="h-13 rounded-lg bg-pos-inset hover:bg-pos-raised active:scale-95 text-pos-muted hover:text-pos-text transition-all border border-pos-border flex items-center justify-center cursor-pointer select-none"
-                    aria-label="Delete digit"
-                  >
-                    <Delete className="w-4 h-4" />
-                  </button>
-                </div>
+                {/* Number pad */}
+                <Keypad
+                  onPress={key => key === 'Clear' ? handleKeypadClear() : key === 'Backspace' ? handleKeypadBackspace() : handleKeypadPress(key)}
+                  bottomRow={[{ value: 'Clear', label: 'C', ariaLabel: 'Clear PIN', secondary: true }, { value: '0' }, backspaceKey('Delete digit')]}
+                />
 
                 {/* Primary Button */}
                 <Button variant="primary"
@@ -405,7 +364,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label htmlFor="login-password" className="text-xs font-medium text-pos-secondary ml-1">Password / PIN</label>
-                    <span className="text-[10px] text-pos-muted">Contact Admin for PIN reset</span>
+                    <span className="text-xs text-pos-muted">Contact Admin for PIN reset</span>
                   </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-pos-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -449,7 +408,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
             </fieldset>
             {activeStaff.length === 0 && (
-              <p className="text-center text-[11px] text-pos-muted">
+              <p className="text-center text-xs text-pos-muted">
                 No active staff accounts found. Provision an administrator from the server terminal (<code className="text-pos-accent">npm run admin:setup</code>).
               </p>
             )}
@@ -460,7 +419,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* -------------------------------------------------------- */}
       {/* BOTTOM FOOTER: DISCREET TERMINAL METRICS                 */}
       {/* -------------------------------------------------------- */}
-      <footer className="w-full max-w-4xl flex items-center justify-between text-[11px] text-pos-muted z-10 shrink-0 py-1">
+      <footer className="w-full max-w-4xl flex items-center justify-between text-xs text-pos-muted z-10 shrink-0 py-1">
         <span>Station #01 &bull; Front Counter</span>
         <span>Maltiva POS Core v2.4</span>
       </footer>

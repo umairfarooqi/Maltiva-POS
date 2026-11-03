@@ -19,11 +19,13 @@ import {
 import { Product, Category, VariationGroup, User, DealBundleItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { normalizeProduct } from '../utils/normalizeProduct';
-import { Dialog } from './ui/Dialog';
+import { Dialog, DialogHeader } from './ui/Dialog';
 import { ProductStockBadge } from './ProductStockBadge';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Input, Select, Textarea } from './ui/Field';
+import { QuantityStepper } from './ui/QuantityStepper';
+import { alertClasses } from './ui/Alert';
 
 interface ManageDishesViewProps {
   defaultLowStockThreshold?: number;
@@ -194,8 +196,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
   const [formName, setFormName] = useState('');
   const [formCategoryId, setFormCategoryId] = useState('cat-pizza');
-  const [formPrice, setFormPrice] = useState('850');
-  const [formCostPrice, setFormCostPrice] = useState('320');
+  const [formPrice, setFormPrice] = useState('0');
+  const [formCostPrice, setFormCostPrice] = useState('0');
   const [formStock, setFormStock] = useState('30');
   const [formMinThreshold, setFormMinThreshold] = useState('5');
   const [formImage, setFormImage] = useState('');
@@ -210,9 +212,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
   const [dealName, setDealName] = useState('');
   const [dealCategoryId, setDealCategoryId] = useState('cat-deals');
-  const [dealPrice, setDealPrice] = useState('1999');
-  const [dealCostPrice, setDealCostPrice] = useState('800');
-  const [dealStock, setDealStock] = useState('40');
+  const [dealPrice, setDealPrice] = useState('0');
+  const [dealCostPrice, setDealCostPrice] = useState('0');
+  const [dealStock, setDealStock] = useState('0');
   const [dealMinThreshold, setDealMinThreshold] = useState('5');
   const [dealImage, setDealImage] = useState('');
   const [dealDescription, setDealDescription] = useState('');
@@ -235,9 +237,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         ? selectedCategoryId
         : categories[0]?.id || 'cat-pizza'
     );
-    setFormPrice('850');
-    setFormCostPrice('320');
-    setFormStock('25');
+    setFormPrice('0');
+    setFormCostPrice('0');
+    setFormStock('0');
     setFormMinThreshold(String(defaultLowStockThreshold));
     setFormImage('');
     setFormDescription('');
@@ -284,9 +286,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setEditingDeal(null);
     setDealName('');
     setDealCategoryId('cat-deals');
-    setDealPrice('2199');
-    setDealCostPrice('850');
-    setDealStock('35');
+    setDealPrice('0');
+    setDealCostPrice('0');
+    setDealStock('0');
     setDealMinThreshold(String(defaultLowStockThreshold));
     setDealImage('');
     setDealDescription('');
@@ -568,7 +570,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono transition-opacity ${isSelected ? 'bg-pos-action text-pos-action-text' : 'bg-pos-raised text-pos-muted'
+                      className={`min-w-5 text-center text-xs px-1.5 py-0.5 rounded-full tabular-nums transition-opacity ${isSelected ? 'bg-pos-action text-pos-action-text' : 'bg-pos-raised text-pos-muted'
                         } `}
                     >
                       {actualCount}
@@ -647,7 +649,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             {activeCategory.name} <span className="text-sm font-medium text-pos-muted">({categoryProducts.length})</span>
           </h2>
           <div className="flex items-center gap-2">
-            <div className="flex bg-pos-surface p-0.5 rounded-lg border border-pos-border">
+            <div className="pos-panel flex p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
                 title="Grid view"
@@ -670,7 +672,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
         <div className="flex-1 overflow-y-auto p-1 pb-3 scrollbar-none">
           {categoryProducts.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-pos-surface rounded-xl border border-dashed border-pos-border">
+            <div className="pos-panel h-full flex flex-col items-center justify-center text-center p-10 border-dashed">
               <Package className="w-12 h-12 text-pos-border mb-3" />
               <p className="text-sm font-semibold text-pos-secondary">No dishes found in this category</p>
             </div>
@@ -686,76 +688,66 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 return (
                   <div
                     key={product.id}
-                    className="bg-pos-surface rounded-xl p-3 border border-pos-border hover:border-pos-control transition-colors group relative cursor-pointer flex flex-col justify-between"
+                    className="pos-panel hover:border-pos-control transition-colors group relative cursor-pointer flex flex-col overflow-hidden"
                   >
-                    <div>
-                      <div className="flex items-start justify-between gap-2.5 mb-2.5">
-                        <button
-                          type="button"
-                          aria-label={`Edit product image for ${product.name}`}
-                          onClick={() => openEditDishModal(product)}
-                          className="w-14 h-14 aspect-square rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 flex items-center justify-center shrink-0"
-                        >
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            onError={event => {
-                              if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
-                                event.currentTarget.src = '/placeholder-dish.svg';
-                              }
-                            }}
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
-                          />
-                        </button>
-
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-1">
-                            {product.isDeal && (
-                              <Badge tone="accent">
-                                Deal
-                              </Badge>
-                            )}
-                            <Button variant="ghost" size="icon-compact"
-                              onClick={e => {
-                                e.stopPropagation();
-                                toggleProductMenu(e, product.id);
-                              }}
-                              aria-label={`Actions for ${product.name}`}
-                              aria-haspopup="menu"
-                              aria-expanded={openMenuProductId === product.id}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <ProductStockBadge product={product} />
-                        </div>
+                    <div className="relative aspect-[4/3] w-full bg-pos-inset overflow-hidden">
+                      <button
+                        type="button"
+                        aria-label={`Edit product image for ${product.name}`}
+                        onClick={() => openEditDishModal(product)}
+                        className="absolute inset-0 w-full h-full"
+                      >
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          onError={event => {
+                            if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                              event.currentTarget.src = '/placeholder-dish.svg';
+                            }
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                        />
+                      </button>
+                      <div className="absolute top-2 left-2 flex items-center gap-1 pointer-events-none">
+                        {product.isDeal && <Badge tone="accent">Deal</Badge>}
+                        <ProductStockBadge product={product} />
                       </div>
-
-                      <div className="mb-2.5 space-y-0.5">
-                        <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
-                          {product.isDeal ? 'Combo Deal' : product.categoryName}
-                        </span>
-                        <h3 className="min-h-10 line-clamp-2 text-sm font-bold leading-snug text-pos-text">
-                          <button type="button" className="text-left w-full" onClick={() => openEditDishModal(product)}>{product.name}</button>
-                        </h3>
-                      </div>
+                      <Button variant="ghost" size="icon-compact"
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleProductMenu(e, product.id);
+                        }}
+                        className="absolute top-2 right-2 bg-pos-surface/80 backdrop-blur-sm"
+                        aria-label={`Actions for ${product.name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuProductId === product.id}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-pos-muted">Price</span>
-                        <span className="text-sm font-black font-mono text-pos-text whitespace-nowrap">
-                          {formatPKR(safePrice)}
-                        </span>
-                      </div>
-                      <div className="flex flex-col text-right">
-                        <span className="text-[10px] text-pos-muted">Margin</span>
-                        <span
-                          className={`text-xs font-bold font-mono ${margin > 40 ? 'text-pos-success-text' : 'text-pos-warning-text'
-                            }`}
-                        >
-                          {margin.toFixed(0)}%
-                        </span>
+                    <div className="p-3 flex flex-col flex-1">
+                      <span className="block truncate text-xs font-bold uppercase tracking-wider text-pos-accent">
+                        {product.isDeal ? 'Combo Deal' : product.categoryName}
+                      </span>
+                      <h3 className="min-h-10 mt-0.5 line-clamp-2 text-sm font-bold leading-snug text-pos-text">
+                        <button type="button" className="text-left w-full" onClick={() => openEditDishModal(product)}>{product.name}</button>
+                      </h3>
+                      <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider">
+                        <div className="flex flex-col">
+                          <span className="text-xs text-pos-muted">Price</span>
+                          <span className="text-sm font-bold tabular-nums text-pos-text whitespace-nowrap">
+                            {formatPKR(safePrice)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col text-right">
+                          <span className="text-xs text-pos-muted">Margin</span>
+                          <span
+                            className={`text-xs font-bold tabular-nums ${margin > 40 ? 'text-pos-success-text' : 'text-pos-warning-text'}`}
+                          >
+                            {margin.toFixed(0)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -770,7 +762,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 return (
                   <div
                     key={product.id}
-                    className="bg-pos-surface p-3 sm:p-3.5 rounded-xl border border-pos-border flex flex-wrap items-center justify-between gap-3 group hover:border-pos-control transition cursor-pointer"
+                    className="pos-panel p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-3 group hover:border-pos-control transition cursor-pointer"
                   >
                     <div className="flex flex-1 basis-full min-w-0 items-center gap-3 sm:basis-0">
                       <div className="shrink-0 w-12 h-12 aspect-square rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 flex items-center justify-center">
@@ -796,10 +788,10 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     </div>
                     <div className="flex w-full shrink-0 items-center justify-end gap-4 border-t border-pos-divider pt-2 sm:w-auto sm:border-0 sm:pt-0 sm:gap-6">
                       <div className="text-right">
-                        <span className="block text-[10px] text-pos-muted">Margin</span>
-                        <span className="text-xs font-semibold font-mono text-pos-secondary">{safePrice > 0 ? (((safePrice - (Number(product.costPricePaisa) || 0)) / safePrice) * 100).toFixed(0) : 0}%</span>
+                        <span className="block text-xs text-pos-muted">Margin</span>
+                        <span className="text-xs font-semibold tabular-nums text-pos-secondary">{safePrice > 0 ? (((safePrice - (Number(product.costPricePaisa) || 0)) / safePrice) * 100).toFixed(0) : 0}%</span>
                       </div>
-                      <span className="text-sm font-bold font-mono text-pos-text">
+                      <span className="text-sm font-bold tabular-nums text-pos-text">
                         {formatPKR(safePrice)}
                       </span>
                       <Button variant="ghost" size="icon" onClick={e => toggleProductMenu(e, product.id)} aria-label={`Actions for ${product.name}`} aria-haspopup="menu" aria-expanded={openMenuProductId === product.id} >
@@ -820,7 +812,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
           onKeyDown={handleMenuKeyDown}
           role="menu" aria-label={`Actions for ${menuProduct.name}`}
           style={menuPosition}
-          className="fixed w-48 max-w-[calc(100vw-1.5rem)] bg-pos-surface rounded-md border border-pos-border z-50 p-1"
+          className="pos-panel fixed w-48 max-w-[calc(100vw-1.5rem)] z-50 p-1"
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -872,21 +864,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DISH MODAL */}
       {isDishModalOpen && (
-        <Dialog label="Dish editor" busy={isSaving || isDeleting} onClose={() => setIsDishModalOpen(false)} className="pos-editor bg-pos-surface rounded-lg max-w-3xl w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+        <Dialog size="3xl" label="Dish editor" busy={isSaving || isDeleting} onClose={() => setIsDishModalOpen(false)} className="pos-editor p-4">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className={alertClasses('danger', 'mb-4')}>{moneyError || saveError}</p>}
           {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
           <fieldset disabled={isSaving || isDeleting} className="contents">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <h3 className="text-lg font-bold text-pos-text">
-                {editingProduct ? 'Edit Dish' : 'Add New Dish'}
-              </h3>
-              <Button variant="ghost" size="icon"
-                onClick={() => setIsDishModalOpen(false)}
-                aria-label="Close dish editor"
-              >
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
+            <DialogHeader title={editingProduct ? 'Edit Dish' : 'Add New Dish'} onClose={() => setIsDishModalOpen(false)} closeLabel="Close dish editor" className="mb-3" />
             <form onSubmit={handleSaveDish} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
                 <div className="space-y-5">
@@ -989,73 +971,62 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <TrendingUp className="w-5 h-5" />
                       <span className="text-sm font-bold">Estimated Profit</span>
                     </div>
-                    <div className="text-3xl font-black text-pos-success-text">
+                    <div className="text-3xl font-bold text-pos-success-text">
                       {previewProfit === null ? 'Enter valid prices' : formatPKR(previewProfit)}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-pos-secondary uppercase tracking-wider">
-                        Variations & Add-ons
-                      </label>
-                      <Button variant="link" size="inline"
-                        type="button"
-                        onClick={addDynamicVariation}
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add Option
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {formGroups.map((group, index) => <div key={group.id} className="rounded-md border border-pos-border p-3 space-y-2">
-                        <Input size="compact" aria-label="Variation group name" value={group.name} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, name: e.target.value } : g))} className="w-full" />
-                        <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.required} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, required: e.target.checked } : g))} />Required choice</label>
-                        <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.multiSelect} onChange={e => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, multiSelect: e.target.checked } : g))} />Allow multiple choices</label>
-                        <button type="button" className="text-xs text-pos-danger-text" onClick={() => { setFormGroups(prev => prev.filter(g => g.id !== group.id)); setFormVariations(prev => prev.filter(v => v.groupId !== group.id)); }}>Remove group {index + 1}</button>
-                      </div>)}
-                      <Button variant="link" size="inline" type="button" onClick={() => setFormGroups(prev => [...prev, { id: `group-${Date.now()}`, name: 'New group', required: false, multiSelect: false }])}>Add variation group</Button>
-                    </div>
-                    <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                      {formVariations.map((v, idx) => (
-                        <div
-                          key={v.id || idx}
-                          className="flex flex-wrap items-center gap-2 bg-pos-inset p-2.5 rounded-md border border-pos-control"
-                        >
-                          <Select size="compact" aria-label="Option group" value={v.groupId} onChange={e => setFormVariations(prev => prev.map(opt => opt.id === v.id ? { ...opt, groupId: e.target.value } : opt))} className="w-24">{formGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</Select>
-                          <Input size="compact"
-                            type="text"
-                            placeholder="Option Name (e.g., Extra Cheese)"
-                            value={v.name}
-                            onChange={e => {
-                              const updated = [...formVariations];
-                              updated[idx].name = e.target.value;
-                              setFormVariations(updated);
-                            }}
-                            className="min-w-0 flex-1"
-                          />
-                          <Input size="compact"
-                            type="number"
-                            placeholder="+Price"
-                            value={rupeeText(v.priceDeltaPaisa)}
-                            onChange={e => {
-                              const updated = [...formVariations];
-                              try { updated[idx].priceDeltaPaisa = parseRupees(e.target.value || '0', true); setMoneyError(''); }
-                              catch (error) { setMoneyError((error as Error).message); return; }
-                              setFormVariations(updated);
-                            }}
-                            className="w-20 tabular-nums"
-                          />
-                          <Button variant="ghost-destructive" size="icon-compact"
-                            type="button"
-                            aria-label={`Remove option ${v.name || idx + 1}`}
-                            onClick={() => removeDynamicVariation(idx)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-pos-secondary uppercase tracking-wider block">
+                      Variations &amp; Add-ons
+                    </label>
+                    {formGroups.length === 0 && (
+                      <p className="text-xs text-pos-muted">Add a group such as "Size" or "Extras", then add its options (e.g. Large +100).</p>
+                    )}
+                    {formGroups.map((group, index) => {
+                      const groupOptions = formVariations.filter(v => v.groupId === group.id);
+                      const updateGroup = (patch: Partial<Omit<VariationGroup, 'options'>>) => setFormGroups(prev => prev.map(g => g.id === group.id ? { ...g, ...patch } : g));
+                      const updateOption = (id: string, patch: Partial<DynamicVariationOption>) => setFormVariations(prev => prev.map(o => o.id === id ? { ...o, ...patch } : o));
+                      return (
+                        <div key={group.id} className="rounded-md border border-pos-border p-3 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Input size="compact" aria-label={`Group ${index + 1} name`} placeholder="Group name (e.g., Size, Extras)" value={group.name} onChange={e => updateGroup({ name: e.target.value })} className="min-w-0 flex-1" />
+                            <Button variant="ghost-destructive" size="icon-compact" type="button" aria-label={`Remove group ${group.name || index + 1}`}
+                              onClick={() => { setFormGroups(prev => prev.filter(g => g.id !== group.id)); setFormVariations(prev => prev.filter(v => v.groupId !== group.id)); }}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.required} onChange={e => updateGroup({ required: e.target.checked })} />Required choice</label>
+                            <label className="flex gap-2 text-xs"><input type="checkbox" checked={group.multiSelect} onChange={e => updateGroup({ multiSelect: e.target.checked })} />Allow multiple choices</label>
+                          </div>
+                          <div className="space-y-2">
+                            {groupOptions.map(v => (
+                              <div key={v.id} className="flex items-center gap-2">
+                                <Input size="compact" type="text" aria-label="Option name" placeholder="Option name (e.g., Extra Cheese)" value={v.name} onChange={e => updateOption(v.id, { name: e.target.value })} className="min-w-0 flex-1" />
+                                <Input size="compact" type="number" aria-label="Extra price" placeholder="+Price" value={rupeeText(v.priceDeltaPaisa)}
+                                  onChange={e => {
+                                    try { updateOption(v.id, { priceDeltaPaisa: parseRupees(e.target.value || '0', true) }); setMoneyError(''); }
+                                    catch (error) { setMoneyError((error as Error).message); }
+                                  }} className="w-24 tabular-nums" />
+                                <Button variant="ghost-destructive" size="icon-compact" type="button" aria-label={`Remove option ${v.name || ''}`}
+                                  onClick={() => setFormVariations(prev => prev.filter(o => o.id !== v.id))}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button variant="link" size="inline" type="button"
+                              onClick={() => setFormVariations(prev => [...prev, { groupId: group.id, id: `opt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, name: '', priceDeltaPaisa: 0, costDeltaPaisa: 0 }])}>
+                              <Plus className="w-3.5 h-3.5" /> Add option
+                            </Button>
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
+                    <Button variant="secondary" size="compact" type="button" className="w-full"
+                      onClick={() => setFormGroups(prev => [...prev, { id: `group-${Date.now()}`, name: '', required: false, multiSelect: false }])}>
+                      <Plus className="w-4 h-4" /> Add variation group
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1079,21 +1050,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DEAL MODAL */}
       {isDealModalOpen && (
-        <Dialog label="Deal editor" busy={isSaving || isDeleting} onClose={() => setIsDealModalOpen(false)} className="pos-editor bg-pos-surface rounded-lg max-w-3xl w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+        <Dialog size="3xl" label="Deal editor" busy={isSaving || isDeleting} onClose={() => setIsDealModalOpen(false)} className="pos-editor p-4">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className={alertClasses('danger', 'mb-4')}>{moneyError || saveError}</p>}
           {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
           <fieldset disabled={isSaving || isDeleting} className="contents">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <h3 className="text-lg font-bold text-pos-text">
-                {editingDeal ? 'Edit Deal' : 'Create New Deal'}
-              </h3>
-              <Button variant="ghost" size="icon"
-                onClick={() => setIsDealModalOpen(false)}
-                aria-label="Close deal editor"
-              >
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
+            <DialogHeader title={editingDeal ? 'Edit Deal' : 'Create New Deal'} onClose={() => setIsDealModalOpen(false)} closeLabel="Close deal editor" className="mb-3" />
             <form onSubmit={handleSaveDeal} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
                 <div className="space-y-5">
@@ -1229,23 +1190,14 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                             {item.productName}
                           </span>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon-compact"
-                              type="button"
-                              aria-label={`Decrease ${item.productName} bundle quantity`}
-                              onClick={() => handleUpdateDealItemQty(idx, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="font-bold text-pos-text w-4 text-center">
-                              {item.quantity}
-                            </span>
-                            <Button variant="ghost" size="icon-compact"
-                              type="button"
-                              aria-label={`Increase ${item.productName} bundle quantity`}
-                              onClick={() => handleUpdateDealItemQty(idx, 1)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
+                            <QuantityStepper
+                              size="compact"
+                              value={item.quantity}
+                              decrementLabel={`Decrease ${item.productName} bundle quantity`}
+                              incrementLabel={`Increase ${item.productName} bundle quantity`}
+                              onDecrement={() => handleUpdateDealItemQty(idx, -1)}
+                              onIncrement={() => handleUpdateDealItemQty(idx, 1)}
+                            />
                             <Button variant="ghost-destructive" size="icon-compact"
                               type="button"
                               aria-label={`Remove ${item.productName} from deal`}
@@ -1286,21 +1238,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* CATEGORY MODAL */}
       {isCategoryModalOpen && (
-        <Dialog label="Category editor" busy={isSaving || isDeleting} onClose={() => setIsCategoryModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-pos-border">
-          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+        <Dialog size="sm" label="Category editor" busy={isSaving || isDeleting} onClose={() => setIsCategoryModalOpen(false)} className="p-4">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className={alertClasses('danger', 'mb-4')}>{moneyError || saveError}</p>}
           {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
           <fieldset disabled={isSaving || isDeleting} className="contents">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <h3 className="text-lg font-bold text-pos-text">
-                {editingCategory ? 'Edit Category' : 'New Category'}
-              </h3>
-              <Button variant="ghost" size="icon"
-                onClick={() => setIsCategoryModalOpen(false)}
-                aria-label="Close category editor"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
+            <DialogHeader title={editingCategory ? 'Edit Category' : 'New Category'} onClose={() => setIsCategoryModalOpen(false)} closeLabel="Close category editor" className="mb-3" />
             <form onSubmit={handleSaveCategorySubmit} className="min-h-0 flex flex-col overflow-hidden">
               <div className="min-h-0 overflow-y-auto space-y-4 pr-1">
                 <div>
@@ -1364,19 +1306,11 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* STOCK ADJUSTMENT MODAL */}
       {isStockModalOpen && selectedStockProduct && (
-        <Dialog label="Adjust stock" busy={isSaving || isDeleting} onClose={() => setIsStockModalOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-pos-border">
-          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+        <Dialog size="sm" label="Adjust stock" busy={isSaving || isDeleting} onClose={() => setIsStockModalOpen(false)} className="p-4">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className={alertClasses('danger', 'mb-4')}>{moneyError || saveError}</p>}
           {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
           <fieldset disabled={isSaving || isDeleting} className="contents">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-pos-text">Adjust Stock</h3>
-              <Button variant="ghost" size="icon"
-                onClick={() => setIsStockModalOpen(false)}
-                aria-label="Close stock adjustment"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
+            <DialogHeader title="Adjust Stock" onClose={() => setIsStockModalOpen(false)} closeLabel="Close stock adjustment" className="mb-4" />
             <p className="text-xs text-pos-muted mb-4">
               Adjust inventory quantity for{' '}
               <span className="font-bold text-pos-text">{selectedStockProduct.name}</span>.
@@ -1442,8 +1376,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
 
       {/* DELETE CONFIRMATION DIALOG */}
       {deleteConfirmTarget && (
-        <Dialog label="Confirm deletion" busy={isSaving || isDeleting} onClose={() => setDeleteConfirmTarget(null)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 max-h-[90dvh] overflow-y-auto border border-pos-border text-center">
-          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className="mb-4 rounded bg-pos-danger-bg p-3 text-sm text-pos-danger-text">{moneyError || saveError}</p>}
+        <Dialog size="sm" label="Confirm deletion" busy={isSaving || isDeleting} onClose={() => setDeleteConfirmTarget(null)} className="p-6 max-h-[90dvh]! overflow-y-auto! text-center">
+          {(moneyError || saveError) && <p role="alert" tabIndex={-1} className={alertClasses('danger', 'mb-4')}>{moneyError || saveError}</p>}
           {isSaving && <p role="status" className="text-sm text-pos-muted mb-3">Saving changes...</p>}
           <fieldset disabled={isSaving || isDeleting} className="min-w-0">
             <div className="w-12 h-12 rounded-md bg-pos-danger-bg text-pos-danger-text flex items-center justify-center mx-auto mb-4">

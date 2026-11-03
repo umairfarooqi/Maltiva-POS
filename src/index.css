@@ -74,6 +74,13 @@
   }
 }
 
+/* Shared surface for cards, panels and dialogs. Pair with padding/layout utilities. */
+@utility pos-panel {
+  background-color: var(--pos-surface);
+  border: 1px solid var(--pos-border);
+  border-radius: var(--pos-radius-panel);
+}
+
 button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-pressed); }
 
 /* Custom subtle scrollbar */

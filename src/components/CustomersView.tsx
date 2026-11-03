@@ -27,7 +27,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-pos-canvas">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
+      <div className="pos-panel flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5">
         <div>
           <h1 className="text-xl font-bold text-pos-text tracking-tight">
             Customer Directory & Loyalty
@@ -60,7 +60,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         {filtered.map(cust => (
           <div
             key={cust.id}
-            className="bg-pos-surface p-4 rounded-lg border border-pos-border hover:border-pos-control transition-colors space-y-3"
+            className="pos-panel p-4 hover:border-pos-control transition-colors space-y-3"
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -71,14 +71,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   <h3 className="text-sm font-bold text-pos-text leading-tight">
                     {cust.name}
                   </h3>
-                  <div className="flex items-center gap-1 text-[11px] text-pos-accent font-semibold mt-0.5">
+                  <div className="flex items-center gap-1 text-xs text-pos-accent font-semibold mt-0.5">
                     <Award className="w-3 h-3" />
                     <span>VIP Diners Club</span>
                   </div>
                 </div>
               </div>
 
-              <span className="text-xs font-mono font-bold text-pos-text bg-pos-inset px-2.5 py-1 rounded-md border border-pos-control">
+              <span className="text-xs tabular-nums font-bold text-pos-text bg-pos-inset px-2.5 py-1 rounded-md border border-pos-control">
                 {formatPKR(cust.totalSpentPaisa)}
               </span>
             </div>

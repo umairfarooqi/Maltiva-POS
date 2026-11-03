@@ -19,6 +19,7 @@ import { normalizeProduct } from '../utils/normalizeProduct';
 import { ProductStockBadge } from './ProductStockBadge';
 import { Button } from './ui/Button';
 import { Input } from './ui/Field';
+import { QuantityStepper } from './ui/QuantityStepper';
 
 interface OrderLineViewProps {
   isLocked?: boolean;
@@ -114,7 +115,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
-            <div className="relative flex-1 sm:w-60 max-w-xs">
+            <div className="relative min-w-0 flex-1 sm:w-60 sm:max-w-xs">
               <Search className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <Input
                 type="text"
@@ -136,7 +137,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="hidden items-center gap-1 sm:flex">
               <Button variant="outline" size="icon"
                 onClick={() => scrollCategories('left')}
                 aria-label="Previous menu categories"
@@ -185,7 +186,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     {cleanCategoryLabel(cat.name)}
                   </h3>
                   <p
-                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${isSelected
+                    className={`text-xs tabular-nums font-bold px-1.5 py-0.5 rounded-md ${isSelected
                         ? 'bg-pos-surface text-pos-accent'
                         : 'bg-pos-raised text-pos-muted'
                       }`}
@@ -202,7 +203,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       {/* Scrollable Product Grid */}
       <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-24 lg:pb-3">
         {filteredProducts.length === 0 ? (
-          <div className="py-16 text-center bg-pos-surface rounded-xl border border-dashed border-pos-border">
+          <div className="pos-panel py-16 text-center border-dashed">
             <p className="text-sm font-semibold text-pos-secondary">No dishes available</p>
             <p className="text-xs text-pos-muted mt-1">Try another category or search term above.</p>
           </div>
@@ -263,12 +264,12 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
 
                         <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1">
                           {product.isDeal && (
-                          <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-semibold text-pos-warning-text leading-none">
+                          <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-xs font-semibold text-pos-warning-text leading-none">
                             Deal
                           </span>
                         )}
                         {hasVariations && (
-                          <span className="shrink-0 rounded-md bg-pos-raised border border-pos-border px-1.5 py-0.5 text-[9px] font-semibold text-pos-secondary leading-none">
+                          <span className="shrink-0 rounded-md bg-pos-raised border border-pos-border px-1.5 py-0.5 text-xs font-semibold text-pos-secondary leading-none">
                             Options
                           </span>
                         )}
@@ -278,7 +279,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
 
                         {/* Full-Width Category & Dish Name (No Side Cramping) */}
                         <div className="px-3 pt-3 pb-2 space-y-0.5">
-                          <span className="block truncate text-[10px] font-semibold text-pos-muted">
+                          <span className="block truncate text-xs font-semibold text-pos-muted">
                             {product.isDeal ? 'Combo Deal' : cleanCategoryLabel(product.categoryName)}
                           </span>
 
@@ -297,7 +298,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                         </h3>
 
                         {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && (
-                          <p className="text-[10px] font-medium text-pos-warning-text">Max stock in order</p>
+                          <p className="text-xs font-medium text-pos-warning-text">Max stock in order</p>
                         )}
                       </div>
                     </div>
@@ -323,29 +324,19 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                             <span className="text-sm font-bold">{hasVariations ? 'Choose' : 'Add'}</span>
                           </Button>
                         ) : (
-                          <div
-                            onClick={e => e.stopPropagation()}
-                            className="flex items-center gap-1 bg-pos-inset rounded-lg p-0.5 border border-pos-accent/50 shrink-0"
-                          >
-                            <Button variant="secondary" size="icon-compact"
-                              disabled={isLocked || plainQty === 0}
-                              title={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
-                              onClick={event => { event.stopPropagation(); onQuickDecrementFromCart(product); }}
-                              aria-label={`Remove one ${product.name}`}
-                            >
-                              <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                            </Button>
-                            <span className="text-xs font-black font-mono text-pos-accent min-w-[18px] text-center">
-                              {qtyInCart}
-                            </span>
-                            <Button variant="primary" size="icon-compact"
-                              disabled={cannotAdd}
-                              onClick={addItem}
-                              aria-label={`Add one ${product.name}`}
-                            >
-                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                            </Button>
-                          </div>
+                          <QuantityStepper
+                            size="compact"
+                            primaryIncrement
+                            className="border-pos-accent/50"
+                            value={qtyInCart}
+                            decrementLabel={`Remove one ${product.name}`}
+                            incrementLabel={`Add one ${product.name}`}
+                            decrementDisabled={isLocked || plainQty === 0}
+                            decrementTitle={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
+                            incrementDisabled={cannotAdd}
+                            onDecrement={() => onQuickDecrementFromCart(product)}
+                            onIncrement={() => addItem()}
+                          />
                         )}
                       </div>
                     </div>
@@ -363,11 +354,11 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                       aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
                       className="max-w-[calc(100vw-2rem)] gap-3! shadow-lg tabular-nums"
                     >
-                      <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-black">
+                      <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-bold">
                         {totalCartQty}
                       </span>
                       <span className="whitespace-nowrap">Checkout</span>
-                      <span className="text-base font-black whitespace-nowrap font-mono">{formatPKR(totalCartPrice)}</span>
+                      <span className="text-base font-bold whitespace-nowrap tabular-nums">{formatPKR(totalCartPrice)}</span>
                     </Button>
                   </div>
                 )

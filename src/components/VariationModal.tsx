@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { CartItem, Product, SelectedVariationItem, VariationGroup } from '../types/pos';
-import { Dialog } from './ui/Dialog';
+import { Dialog, DialogHeader } from './ui/Dialog';
 import { formatPKR } from '../utils/formatCurrency';
 import { Button } from './ui/Button';
 import { Input } from './ui/Field';
+import { QuantityStepper } from './ui/QuantityStepper';
 
 interface VariationModalProps {
   product: Product;
@@ -118,41 +119,28 @@ export const VariationModal: React.FC<VariationModalProps> = ({
   };
 
   return (
-    <Dialog label={initialItem ? `Edit ${product.name}` : `Customize ${product.name}`} onClose={onClose} className="bg-pos-surface rounded-lg max-w-md w-full overflow-hidden border border-pos-border flex flex-col max-h-[calc(100dvh-2rem)]">
+    <Dialog size="md" label={initialItem ? `Edit ${product.name}` : `Customize ${product.name}`} onClose={onClose}>
         {error && <p role="alert" className="p-4 text-sm text-pos-danger-text">{error}</p>}
         {/* Header */}
-        <div className="shrink-0 p-3 border-b border-pos-divider flex items-center justify-between">
-          <div className="min-w-0 flex-1 flex items-center gap-3">
-            <img
-              src={product.image}
-              alt={product.name}
-              referrerPolicy="no-referrer"
-              onError={event => {
-                if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
-                  event.currentTarget.src = '/placeholder-dish.svg';
-                }
-              }}
-              className="w-12 h-12 aspect-square rounded-xl object-cover border border-pos-border shrink-0"
-            />
-            <div className="min-w-0 break-words">
-              <span className="text-[11px] font-semibold text-pos-accent uppercase tracking-wider">
-                {product.categoryName}
-              </span>
-              <h3 className="text-base font-bold text-pos-text leading-tight">
-                {product.name}
-              </h3>
-              <p className="text-xs text-pos-muted">
-                Base price: {formatPKR(product.pricePaisa)}
-              </p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon"
-            onClick={onClose}
-            aria-label="Close item options"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+        <DialogHeader
+          className="border-b border-pos-divider p-3"
+          media={<img
+                src={product.image}
+                alt={product.name}
+                referrerPolicy="no-referrer"
+                onError={event => {
+                  if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                    event.currentTarget.src = '/placeholder-dish.svg';
+                  }
+                }}
+                className="size-12 shrink-0 rounded-pos-control border border-pos-border object-cover"
+              />}
+          eyebrow={product.categoryName}
+          title={product.name}
+          description={`Base price: ${formatPKR(product.pricePaisa)}`}
+          onClose={onClose}
+          closeLabel="Close item options"
+        />
 
         {/* Variations List (Scrollable) */}
         <div className="min-h-0 p-3 overflow-y-auto space-y-4 flex-1">
@@ -168,7 +156,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                   <h4 className="text-xs font-bold text-pos-text uppercase tracking-wider">
                     {group.name}
                   </h4>
-                  <span className="text-[11px] font-medium text-pos-muted">
+                  <span className="text-xs font-medium text-pos-muted">
                     {group.required ? 'Required' : 'Optional'}
                     {group.multiSelect && ' • Choose multiple'}
                   </span>
@@ -203,7 +191,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                           </div>
                           <span>{opt.name}</span>
                         </div>
-                        <span className={`font-mono ${isSelected ? 'text-pos-accent' : 'text-pos-muted'}`}>
+                        <span className={`tabular-nums ${isSelected ? 'text-pos-accent' : 'text-pos-muted'}`}>
                           {opt.priceDeltaPaisa > 0
                             ? `+${formatPKR(opt.priceDeltaPaisa)}`
                             : opt.priceDeltaPaisa < 0
@@ -236,25 +224,15 @@ export const VariationModal: React.FC<VariationModalProps> = ({
 
         {/* Footer: Quantity & Add Button */}
         <div className="shrink-0 p-3 border-t border-pos-divider bg-pos-inset/60 flex flex-wrap items-center justify-between gap-2">
-          <div className="shrink-0 flex items-center gap-2 bg-pos-surface border border-pos-control rounded-md p-1">
-            <Button variant="secondary" size="icon"
-              aria-label="Decrease item quantity"
-              disabled={quantity <= 1}
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            >
-              -
-            </Button>
-            <span className="w-6 text-center font-bold text-pos-text text-sm font-mono">
-              {quantity}
-            </span>
-            <Button variant="secondary" size="icon"
-              disabled={quantity >= maximumQuantity}
-              aria-label="Increase item quantity"
-              onClick={() => setQuantity(quantity + 1)}
-            >
-              +
-            </Button>
-          </div>
+          <QuantityStepper
+            value={quantity}
+            decrementLabel="Decrease item quantity"
+            incrementLabel="Increase item quantity"
+            decrementDisabled={quantity <= 1}
+            incrementDisabled={quantity >= maximumQuantity}
+            onDecrement={() => setQuantity(Math.max(1, quantity - 1))}
+            onIncrement={() => setQuantity(quantity + 1)}
+          />
 
           <Button variant="primary" size="checkout"
             onClick={handleAdd}
@@ -262,7 +240,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
             className="min-w-0 flex-1 justify-between! gap-3! px-4! tabular-nums"
           >
             <span>{initialItem ? 'Update item' : 'Add to Order'}</span>
-            <span className="font-mono">{formatPKR(totalPricePaisa)}</span>
+            <span className="tabular-nums">{formatPKR(totalPricePaisa)}</span>
           </Button>
         </div>
     </Dialog>

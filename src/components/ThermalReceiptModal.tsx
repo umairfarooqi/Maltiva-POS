@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Printer, Copy, Check, Scissors } from 'lucide-react';
-import { Dialog } from './ui/Dialog';
+import { Printer, Copy, Check, Scissors } from 'lucide-react';
+import { Dialog, DialogHeader } from './ui/Dialog';
 import { Order, PrinterSettings } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { assignedPickupToken } from '../utils/orderReference';
@@ -83,28 +83,16 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
   };
 
   return (
-    <Dialog label="Receipt preview" onClose={onClose} className="bg-pos-surface rounded-lg max-w-2xl w-full overflow-hidden border border-pos-border flex flex-col max-h-[calc(100dvh-2rem)]">
+    <Dialog size="2xl" label="Receipt preview" onClose={onClose}>
         {/* Modal Top Bar */}
         <div className="shrink-0 p-3 border-b border-pos-divider bg-pos-inset/80">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Printer className="w-5 h-5 text-pos-accent" />
-              <div>
-                <h3 className="text-sm font-bold text-pos-text">
-                  Takeaway Thermal Printer
-                </h3>
-                <p className="text-[11px] text-pos-muted">
-                  {referenceLabel} <span className="break-all">{order.orderNumber}</span> • Token {tokenLabel}
-                </p>
-              </div>
-            </div>
-            <Button variant="ghost" size="icon"
-              onClick={onClose}
-              aria-label="Close receipt preview"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+          <DialogHeader
+            media={<Printer className="size-5 shrink-0 text-pos-accent" aria-hidden="true" />}
+            title="Takeaway Thermal Printer"
+            description={<>{referenceLabel} <span className="break-all">{order.orderNumber}</span> • Token {tokenLabel}</>}
+            onClose={onClose}
+            closeLabel="Close receipt preview"
+          />
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             {/* Slip Filter Tabs */}
@@ -146,12 +134,12 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 paperWidth === '80mm' ? 'w-full max-w-[340px]' : 'w-full max-w-[260px]'
               }`}
             >
-              {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
+              {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-bold">{persistenceLabel}</p>}
               <div className="text-center pb-3 border-b border-dashed border-pos-control">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-pos-accent block mb-0.5">
                   Customer Receipt
                 </span>
-                <h2 className="text-base font-black tracking-tight text-pos-text">
+                <h2 className="text-base font-bold tracking-tight text-pos-text">
                   {settings.storeName || 'Maltiva Crust'}
                 </h2>
                 <p className="text-[11px] font-bold text-pos-secondary">
@@ -173,7 +161,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 <span className="text-[10px] text-pos-muted uppercase tracking-wider block">
                   Takeaway Pickup Token
                 </span>
-                <span className="text-2xl font-black text-pos-text tracking-tight">
+                <span className="text-2xl font-bold text-pos-text tracking-tight">
                   {tokenLabel}
                 </span>
                 <p className="text-[10px] text-pos-muted font-mono mt-0.5">
@@ -233,7 +221,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                     <span>{formatPKR(order.taxPaisa)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-black text-pos-text pt-1 border-t border-pos-border">
+                <div className="flex justify-between text-sm font-bold text-pos-text pt-1 border-t border-pos-border">
                   <span>{isPending ? 'TOTAL' : isDraft ? 'TOTAL (UNPAID)' : 'TOTAL PAID'}</span>
                   <span>{formatPKR(order.totalPaisa)}</span>
                 </div>
@@ -260,7 +248,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
           {activeTab === 'both' && (
             <div className="flex items-center gap-2 text-xs font-mono text-pos-muted w-full max-w-[340px]">
               <div className="flex-1 border-b-2 border-dashed border-pos-control" />
-              <div className="flex items-center gap-1 text-[11px] bg-pos-surface px-2 py-0.5 rounded border border-pos-border">
+              <div className="pos-panel flex items-center gap-1 text-[11px] px-2 py-0.5">
                 <Scissors className="w-3 h-3 text-pos-muted" />
                 <span>TEAR / SLIP 2</span>
               </div>
@@ -275,16 +263,16 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 paperWidth === '80mm' ? 'w-full max-w-[340px]' : 'w-full max-w-[260px]'
               }`}
             >
-              {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
+              {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-bold">{persistenceLabel}</p>}
               <div className="text-center pb-2 border-b-2 border-pos-control">
-                <span className="text-[11px] font-black uppercase tracking-wider block bg-pos-strong text-pos-strong-text py-0.5 rounded">
+                <span className="text-[11px] font-bold uppercase tracking-wider block bg-pos-strong text-pos-strong-text py-0.5 rounded">
                   *** KITCHEN ORDER SLIP ***
                 </span>
                 <p className="text-[10px] font-bold text-pos-secondary mt-1 uppercase">
                   TAKEAWAY COUNTER
                 </p>
                 <div className="my-2 py-2 bg-pos-raised rounded-md border border-pos-control">
-                  <span className="text-3xl font-black text-pos-text tracking-tight block">
+                  <span className="text-3xl font-bold text-pos-text tracking-tight block">
                     TOKEN {tokenLabel}
                   </span>
                   <p className="text-[11px] font-bold text-pos-secondary font-mono mt-0.5">
@@ -309,7 +297,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                         {it.quantity}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <span className="text-sm font-black text-pos-text leading-tight block">
+                        <span className="text-sm font-bold text-pos-text leading-tight block">
                           {it.productName.toUpperCase()}
                         </span>
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Menu, ShoppingCart } from 'lucide-react';
 import { User } from '../types/pos';
 import { Button } from './ui/Button';
+import { Avatar } from './ui/Avatar';
 
 interface HeaderProps {
   currentUser: User;
@@ -48,22 +49,12 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <div className="flex items-center gap-2.5">
-          {currentUser.avatar ? (
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              className="w-8 h-8 rounded-full object-cover border border-pos-border"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-pos-selected border border-pos-accent/40 text-pos-accent flex items-center justify-center text-xs font-bold">
-              {currentUser.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <Avatar name={currentUser.name} src={currentUser.avatar} />
           <div className="text-left leading-tight hidden sm:block">
             <h3 className="text-xs font-semibold text-pos-text">
               {currentUser.name}
             </h3>
-            <p className="text-[10px] text-pos-muted capitalize">
+            <p className="text-xs text-pos-muted capitalize">
               {currentUser.role}
             </p>
           </div>

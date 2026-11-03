@@ -169,7 +169,7 @@ export const CustomerDisplayWindow: React.FC = () => {
                 ))}
               </ul>
             </section>
-            <aside aria-label="Order total" className="bg-pos-surface border border-pos-border rounded-lg p-6 sm:p-8 lg:sticky lg:top-8">
+            <aside aria-label="Order total" className="pos-panel p-6 sm:p-8 lg:sticky lg:top-8">
               <p className="text-base text-pos-secondary">Total to pay</p>
               <p className="mt-3 text-4xl xl:text-5xl font-bold tracking-tight tabular-nums [overflow-wrap:anywhere]">{formatPKR(displayState.totalPaisa)}</p>
               <dl className="mt-6 border-t border-pos-border pt-5 space-y-3 text-base">

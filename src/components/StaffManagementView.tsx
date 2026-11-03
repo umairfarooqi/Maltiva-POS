@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { UserPlus, X, KeyRound, Check } from 'lucide-react';
+import { UserPlus, KeyRound, Check } from 'lucide-react';
 import { User, UserRole } from '../types/pos';
-import { Dialog } from './ui/Dialog';
+import { Dialog, DialogHeader } from './ui/Dialog';
 import { Button } from './ui/Button';
 import { Input, Select } from './ui/Field';
+import { alertClasses } from './ui/Alert';
 
 interface StaffManagementViewProps {
   users: User[];
@@ -121,7 +122,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-pos-canvas">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
+      <div className="pos-panel flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5">
         <div>
           <h1 className="text-xl font-bold text-pos-text tracking-tight">
             Staff & Role-Based Access Control
@@ -141,7 +142,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* Role Permissions Matrix Explainer Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-pos-success-text" />
             <h3 className="text-xs font-bold text-pos-text uppercase tracking-wider">
@@ -151,14 +152,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           <p className="text-xs text-pos-muted">
             Dedicated front-desk operator. Can view Order Line, take orders, customize items, and issue receipts.
           </p>
-          <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
+          <div className="text-xs text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Order Line / POS checkout</p>
             <p>✓ Thermal printer receipt</p>
             <p className="text-pos-danger-text">✕ No inventory edit or P&L access</p>
           </div>
         </div>
 
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-pos-info-text" />
             <h3 className="text-xs font-bold text-pos-text uppercase tracking-wider">
@@ -168,14 +169,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           <p className="text-xs text-pos-muted">
             Store supervisor. Manages dishes, variations, stock updates and daily sales. Store, tax and printer settings require an administrator.
           </p>
-          <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
+          <div className="text-xs text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Add & update menu dishes</p>
             <p>✓ Today & yesterday sales summary</p>
             <p className="text-pos-danger-text">✕ Confidential full P&L hidden</p>
           </div>
         </div>
 
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-pos-reserved-text" />
             <h3 className="text-xs font-bold text-pos-text uppercase tracking-wider">
@@ -185,7 +186,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           <p className="text-xs text-pos-muted">
             Full enterprise administrative privileges including financial reports, raw ingredient cost audits, and staff management.
           </p>
-          <div className="text-[11px] text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
+          <div className="text-xs text-pos-muted space-y-0.5 pt-1 border-t border-pos-divider">
             <p>✓ Complete P&L and raw cost data</p>
             <p>✓ Export reports & audit logs</p>
             <p>✓ Staff credentials & roles</p>
@@ -194,19 +195,19 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       </div>
 
       {listError && (
-        <div role="alert" className="p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">{listError}</div>
+        <div role="alert" className={alertClasses('danger')}>{listError}</div>
       )}
       {listSuccess && (
-        <div role="status" className="p-2.5 rounded-md bg-pos-success-bg border border-pos-success-border text-pos-success-text text-xs flex items-center gap-2">
+        <div role="status" className={alertClasses('success', 'flex items-center gap-2')}>
           <Check className="w-4 h-4 shrink-0" />
           <span>{listSuccess}</span>
         </div>
       )}
 
       {/* Staff Members List */}
-      <div className="bg-pos-surface rounded-lg border border-pos-border overflow-hidden">
+      <div className="pos-panel overflow-hidden">
         <table className="w-full text-xs text-left">
-          <thead className="bg-pos-inset border-b border-pos-border text-pos-muted font-semibold uppercase text-[10px]">
+          <thead className="bg-pos-inset border-b border-pos-border text-pos-muted font-semibold uppercase text-xs">
             <tr>
               <th className="p-4">Staff Member</th>
               <th className="p-4">Assigned Role</th>
@@ -235,7 +236,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     )}
                     <div>
                       <p className="font-bold text-pos-text">{u.name}</p>
-                      <p className="text-[11px] text-pos-muted font-mono">
+                      <p className="text-xs text-pos-muted tabular-nums">
                         @{u.username || u.name.toLowerCase().replace(/\s+/g, '')} • {u.email}
                       </p>
                     </div>
@@ -243,7 +244,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 </td>
                 <td className="p-4">
                   <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                    className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
                       u.role === 'admin'
                         ? 'bg-pos-reserved-bg text-pos-reserved-text'
                         : u.role === 'manager'
@@ -257,12 +258,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <td className="p-4 text-pos-secondary font-medium">
                   {u.branch || 'Branch #01'}
                 </td>
-                <td className="p-4 font-mono text-pos-muted">
+                <td className="p-4 tabular-nums text-pos-muted">
                   PIN & password set
                 </td>
                 <td className="p-4">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold ${
                       u.active ? 'text-pos-success-text bg-pos-success-bg' : 'text-pos-muted bg-pos-raised'
                     }`}
                   >
@@ -304,19 +305,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* MODAL: Add New Staff */}
       {isModalOpen && (
-        <Dialog label="Add staff member" busy={isSaving} onClose={() => setIsModalOpen(false)} className="bg-pos-surface rounded-lg max-w-md w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <h3 className="text-base font-bold text-pos-text">Add Staff Member</h3>
-              <Button variant="ghost" size="icon"
-                disabled={isSaving} onClick={() => setIsModalOpen(false)}
-                aria-label="Close staff editor"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+        <Dialog size="md" label="Add staff member" busy={isSaving} onClose={() => setIsModalOpen(false)} className="p-4">
+            <DialogHeader title="Add Staff Member" onClose={() => setIsModalOpen(false)} closeLabel="Close staff editor" closeDisabled={isSaving} className="mb-3" />
 
             {usernameError && (
-              <div role="alert" className="shrink-0 mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
+              <div role="alert" className={alertClasses('danger', 'shrink-0 mb-3')}>
                 {usernameError}
               </div>
             )}
@@ -348,7 +341,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   Unique Username * (Used for Sign In)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pos-muted text-xs font-mono">@</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-pos-muted text-xs tabular-nums">@</span>
                   <Input size="compact" id="staffmanagementview-field-2"
                     type="text"
                     required
@@ -361,7 +354,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                     className="w-full pl-7 pr-3 tabular-nums"
                   />
                 </div>
-                <p className="text-[10px] text-pos-muted mt-0.5">
+                <p className="text-xs text-pos-muted mt-0.5">
                   Staff will use this unique username to sign in to their terminal role.
                 </p>
               </div>
@@ -450,23 +443,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
       {/* MODAL: Reset Staff PIN / Password */}
       {resetTarget && (
-        <Dialog label="Reset staff PIN" busy={isResetting} onClose={() => setResetTarget(null)} className="bg-pos-surface rounded-lg max-w-sm w-full p-4 border border-pos-border max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <div>
-                <h3 className="text-base font-bold text-pos-text">Reset PIN & Unlock</h3>
-                <p className="text-xs text-pos-muted">{resetTarget.name} (@{resetTarget.username})</p>
-              </div>
-              <Button variant="ghost" size="icon"
-                type="button"
-                disabled={isResetting} onClick={() => setResetTarget(null)}
-                aria-label="Close PIN reset"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+        <Dialog size="sm" label="Reset staff PIN" busy={isResetting} onClose={() => setResetTarget(null)} className="p-4">
+            <DialogHeader title="Reset PIN & Unlock" description={`${resetTarget.name} (@${resetTarget.username})`}
+              onClose={() => setResetTarget(null)} closeLabel="Close PIN reset" closeDisabled={isResetting} className="mb-3" />
 
             {resetError && (
-              <div role="alert" className="shrink-0 mb-3 p-2.5 rounded-md bg-pos-danger-bg border border-pos-danger-border text-pos-danger-text text-xs">
+              <div role="alert" className={alertClasses('danger', 'shrink-0 mb-3')}>
                 {resetError}
               </div>
             )}

@@ -36,7 +36,7 @@ export function DatabaseMaintenance() {
     if (preview) void MaintenanceApi.discard(preview.token).catch(() => { /* expires automatically if the server is unavailable */ });
     closePreview();
   };
-  return <section aria-labelledby="database-backup-title" className="rounded-lg border border-pos-border bg-pos-surface p-5 space-y-4">
+  return <section aria-labelledby="database-backup-title" className="pos-panel p-5 space-y-4">
     <div>
       <h2 id="database-backup-title" className="text-sm font-bold">Database backup and restore</h2>
       <p className="mt-1 text-sm text-pos-secondary">Back up saved sales, payments, stock, menu, staff and settings from the server.</p>
@@ -74,7 +74,7 @@ export function DatabaseMaintenance() {
         </li>)}
       </ul>
     </div>}
-    {preview && <Dialog label="Restore database backup" busy={busy} onClose={cancelPreview} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-pos-border bg-pos-surface">
+    {preview && <Dialog size="xl" label="Restore database backup" busy={busy} onClose={cancelPreview}>
       <h2 className="shrink-0 border-b border-pos-divider p-4 font-bold">Restore database backup</h2>
       <form className="flex min-h-0 flex-col" onSubmit={event => { event.preventDefault(); void run(async () => { await MaintenanceApi.restore(preview, password, confirmation); closePreview(); }); }}>
         <div className="min-h-0 space-y-4 overflow-y-auto p-4">

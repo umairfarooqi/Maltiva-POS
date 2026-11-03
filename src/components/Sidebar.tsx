@@ -16,6 +16,7 @@ import { UserRole } from '../types/pos';
 import { Dialog } from './ui/Dialog';
 import { MaltivaLogo } from './MaltivaLogo';
 import { Button } from './ui/Button';
+import { Avatar } from './ui/Avatar';
 
 export type NavTab =
   | 'order_line'
@@ -37,6 +38,51 @@ interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
+type IconType = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>;
+
+/** One navigation row. Collapsed rows show only the icon and carry the label as their accessible name. */
+function NavItem({ icon: Icon, label, active = false, collapsed = false, tone = 'default', onClick }: {
+  icon: IconType; label: string; active?: boolean; collapsed?: boolean; tone?: 'default' | 'danger'; onClick: () => void;
+}) {
+  const state = active
+    ? 'bg-pos-selected text-pos-text font-semibold ring-1 ring-inset ring-pos-accent/40'
+    : tone === 'danger'
+      ? 'text-pos-secondary hover:bg-pos-danger-bg hover:text-pos-danger-text'
+      : 'text-pos-secondary hover:bg-pos-raised hover:text-pos-text';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? label : undefined}
+      title={collapsed ? label : undefined}
+      className={`flex w-full min-h-pos-touch items-center rounded-pos-control text-sm font-medium cursor-pointer transition-colors duration-[var(--pos-transition-fast)] ${
+        collapsed ? 'justify-center' : 'gap-3 px-3'
+      } ${state}`}
+    >
+      <Icon className={`size-5 shrink-0 ${active ? 'text-pos-accent' : 'text-pos-muted'}`} aria-hidden="true" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
+function UserCard({ name, role, avatar, collapsed = false }: { name: string; role: UserRole; avatar?: string; collapsed?: boolean }) {
+  return (
+    <div
+      title={collapsed ? `${name} (${role})` : undefined}
+      className={`mb-2 flex items-center rounded-pos-control border border-pos-border bg-pos-inset ${collapsed ? 'justify-center p-2' : 'gap-2.5 px-2.5 py-2'}`}
+    >
+      <Avatar name={name} src={avatar} />
+      {!collapsed && (
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-sm font-semibold text-pos-text">{name}</p>
+          <p className="mt-0.5 text-xs capitalize text-pos-muted">{role}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
@@ -48,9 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const isCashier = userRole === 'cashier';
-
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const isExpandedDesktop = !isCollapsed;
 
   // Pure Takeaway Navigation Items
   const navItems = [
@@ -72,7 +116,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : navItems
   ).filter(item => !('onlyAdmin' in item) || userRole === 'admin');
 
-  const userInitial = (userName || 'U').charAt(0).toUpperCase();
+  /** Navigation list and account footer, shared by the desktop rail and the mobile drawer. */
+  const renderNav = (collapsed: boolean) => (
+    <>
+      <nav className="space-y-1" aria-label="Main">
+        {visibleItems.map(item => (
+          <NavItem key={item.id} icon={item.icon} label={item.label} collapsed={collapsed}
+            active={activeTab === item.id} onClick={() => handleNavClick(item.id)} />
+        ))}
+      </nav>
+    </>
+  );
+  const renderFooter = (collapsed: boolean) => (
+    <div className="space-y-1 border-t border-pos-divider pt-4">
+      <UserCard name={userName} role={userRole} avatar={userAvatar} collapsed={collapsed} />
+      {!isCashier && (
+        <NavItem icon={Settings} label="Settings" collapsed={collapsed}
+          active={activeTab === 'settings'} onClick={() => handleNavClick('settings')} />
+      )}
+      <NavItem icon={LogOut} label="Logout" collapsed={collapsed} tone="danger" onClick={onLogout} />
+    </div>
+  );
 
   return (
     <>
@@ -80,235 +144,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className="hidden lg:block shrink-0 h-full overflow-y-auto transition-[width] duration-200 ease-out"
         style={{ width: isCollapsed ? 72 : 228 }}
       >
-        <div
-          className={`h-full w-full bg-pos-chrome border-r border-pos-divider flex flex-col justify-between py-4 select-none ${
-            isExpandedDesktop ? 'px-3' : 'px-2'
-          }`}
-        >
+        <div className={`flex h-full w-full select-none flex-col justify-between border-r border-pos-divider bg-pos-chrome py-4 ${isCollapsed ? 'px-2' : 'px-3'}`}>
           <div>
-            <div className={`flex items-center mb-5 ${isExpandedDesktop ? 'justify-between pl-1.5' : 'flex-col gap-2.5'}`}>
-              <MaltivaLogo
-                size="sm"
-                showSubtitle={false}
-                collapsed={isCollapsed}
-              />
-
-              <button
-                type="button"
+            <div className={`mb-5 flex items-center ${isCollapsed ? 'flex-col gap-2.5' : 'justify-between pl-1.5'}`}>
+              <MaltivaLogo size="sm" showSubtitle={false} collapsed={isCollapsed} />
+              <Button
+                variant="ghost"
+                size="icon-compact"
                 onClick={() => setIsCollapsed(prev => !prev)}
                 aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                className="p-2 rounded-lg text-pos-muted hover:text-pos-secondary hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
-                {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-              </button>
+                {isCollapsed ? <PanelLeft className="size-4" aria-hidden="true" /> : <PanelLeftClose className="size-4" aria-hidden="true" />}
+              </Button>
             </div>
-
-            {/* Primary Navigation Items */}
-            <nav className="space-y-1">
-              {visibleItems.map(item => {
-                const isActive = activeTab === item.id;
-                const Icon = item.icon;
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
-                    title={!isExpandedDesktop ? item.label : undefined}
-                    className={`w-full flex items-center rounded-lg transition cursor-pointer active:scale-[0.98] ${
-                      isExpandedDesktop
-                        ? 'gap-3 px-3 py-2.5 text-sm'
-                        : 'justify-center p-3'
-                    } ${
-                      isActive
-                        ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
-                        : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-5 h-5 shrink-0 ${
-                        isActive ? 'text-pos-accent' : 'text-pos-muted'
-                      }`}
-                    />
-                    {isExpandedDesktop && (
-                      <span className="truncate whitespace-nowrap animate-in fade-in duration-150">
-                        {item.label}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
+            {renderNav(isCollapsed)}
           </div>
-
-          {/* Bottom Navigation items: User Profile, Settings & Logout */}
-          <div className="space-y-1.5 pt-4 border-t border-pos-divider">
-            {/* Active User Badge */}
-            <div
-              title={!isExpandedDesktop ? `${userName} (${userRole})` : undefined}
-              className={`flex items-center rounded-lg bg-pos-inset/70 border border-pos-border/60 mb-2 ${
-                isExpandedDesktop ? 'gap-2.5 px-2.5 py-2' : 'justify-center p-2'
-              }`}
-            >
-              {userAvatar ? (
-                <img
-                  src={userAvatar}
-                  alt={userName}
-                  className="w-8 h-8 rounded-full object-cover border border-pos-border shrink-0"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-pos-selected border border-pos-accent/30 text-pos-accent flex items-center justify-center text-xs font-bold shrink-0">
-                  {userInitial}
-                </div>
-              )}
-              {isExpandedDesktop && (
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="text-xs font-semibold text-pos-text truncate">{userName}</p>
-                  <p className="text-[10px] font-medium text-pos-accent uppercase tracking-wider mt-0.5">{userRole}</p>
-                </div>
-              )}
-            </div>
-
-            {!isCashier && (
-              <button
-                onClick={() => handleNavClick('settings')}
-                title={!isExpandedDesktop ? 'Settings' : undefined}
-                className={`w-full flex items-center rounded-lg transition cursor-pointer active:scale-[0.98] ${
-                  isExpandedDesktop
-                    ? 'gap-3 px-3 py-2.5 text-sm'
-                    : 'justify-center p-2.5'
-                } ${
-                  activeTab === 'settings'
-                    ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
-                    : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
-                }`}
-              >
-                <Settings
-                  className={`w-5 h-5 shrink-0 ${
-                    activeTab === 'settings' ? 'text-pos-accent' : 'text-pos-muted'
-                  }`}
-                />
-                {isExpandedDesktop && (
-                  <span className="truncate whitespace-nowrap animate-in fade-in duration-150">
-                    Settings
-                  </span>
-                )}
-              </button>
-            )}
-
-            <button
-              onClick={onLogout}
-              title={!isExpandedDesktop ? 'Logout' : undefined}
-              className={`w-full flex items-center rounded-lg text-sm font-medium text-pos-secondary hover:text-pos-danger-text hover:bg-pos-danger-bg transition cursor-pointer active:scale-[0.98] ${
-                isExpandedDesktop
-                  ? 'gap-3 px-3 py-2.5'
-                  : 'justify-center p-2.5'
-              }`}
-            >
-              <LogOut className="w-5 h-5 shrink-0 text-pos-muted group-hover:text-pos-danger-text" />
-              {isExpandedDesktop && (
-                <span className="truncate whitespace-nowrap animate-in fade-in duration-150">
-                  Logout
-                </span>
-              )}
-            </button>
-          </div>
+          {renderFooter(isCollapsed)}
         </div>
       </aside>
 
-      {/* ======================================================== */}
-      {/* MOBILE / TABLET DRAWER (< lg)                            */}
-      {/* ======================================================== */}
+      {/* Mobile / tablet drawer (< lg) */}
       {isMobileOpen && (
-        <Dialog label="Navigation" onClose={() => onCloseMobile?.()} backdropClassName="!p-0 !justify-start" className="w-64 h-full overflow-y-auto bg-pos-chrome border-r border-pos-border flex flex-col justify-between py-5 px-4">
-            <div>
-              {/* Brand Logo & Close */}
-              <div className="flex items-center justify-between mb-6 pl-1">
-                <MaltivaLogo size="sm" showSubtitle={false} collapsed={false} />
-                {onCloseMobile && (
-                  <Button variant="ghost" size="icon"
-                    onClick={onCloseMobile}
-                    aria-label="Close navigation"
-                  >
-                    <X className="w-4 h-4" aria-hidden="true" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Navigation Items */}
-              <nav className="space-y-1">
-                {visibleItems.map(item => {
-                  const isActive = activeTab === item.id;
-                  const Icon = item.icon;
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavClick(item.id)}
-                      className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-medium transition cursor-pointer ${
-                        isActive
-                          ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
-                          : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
-                      }`}
-                    >
-                      <Icon
-                        className={`w-5 h-5 shrink-0 ${
-                          isActive ? 'text-pos-accent' : 'text-pos-muted'
-                        }`}
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="space-y-1.5 pt-4 border-t border-pos-divider">
-              <div className="flex items-center gap-2.5 px-3 py-2 mb-2 rounded-lg bg-pos-inset/70 border border-pos-border/60">
-                {userAvatar ? (
-                  <img
-                    src={userAvatar}
-                    alt={userName}
-                    className="w-8 h-8 rounded-full object-cover border border-pos-border shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-pos-selected border border-pos-accent/30 text-pos-accent flex items-center justify-center text-xs font-bold shrink-0">
-                    {userInitial}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1 leading-tight">
-                  <p className="text-xs font-semibold text-pos-text truncate">{userName}</p>
-                  <p className="text-[10px] font-medium text-pos-accent uppercase tracking-wider mt-0.5">{userRole}</p>
-                </div>
-              </div>
-
-              {!isCashier && (
-                <button
-                  onClick={() => handleNavClick('settings')}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${
-                    activeTab === 'settings'
-                      ? 'bg-pos-selected text-pos-accent font-semibold ring-1 ring-pos-accent/30'
-                      : 'text-pos-secondary hover:text-pos-text hover:bg-pos-inset'
-                  }`}
-                >
-                  <Settings
-                    className={`w-5 h-5 shrink-0 ${
-                      activeTab === 'settings' ? 'text-pos-accent' : 'text-pos-muted'
-                    }`}
-                  />
-                  <span>Settings</span>
-                </button>
+        <Dialog label="Navigation" onClose={() => onCloseMobile?.()} backdropClassName="!p-0 !justify-start"
+          className="flex h-full w-64 flex-col justify-between overflow-y-auto border-r border-pos-border bg-pos-chrome px-4 py-5">
+          <div>
+            <div className="mb-6 flex items-center justify-between pl-1">
+              <MaltivaLogo size="sm" showSubtitle={false} collapsed={false} />
+              {onCloseMobile && (
+                <Button variant="ghost" size="icon" onClick={onCloseMobile} aria-label="Close navigation">
+                  <X className="size-4" aria-hidden="true" />
+                </Button>
               )}
-
-              <button
-                onClick={onLogout}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-pos-secondary hover:text-pos-danger-text hover:bg-pos-danger-bg transition cursor-pointer"
-              >
-                <LogOut className="w-5 h-5 shrink-0 text-pos-muted" />
-                <span>Logout</span>
-              </button>
             </div>
+            {renderNav(false)}
+          </div>
+          {renderFooter(false)}
         </Dialog>
       )}
     </>

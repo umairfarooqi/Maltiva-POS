@@ -3,6 +3,7 @@ import { Dialog } from './ui/Dialog';
 import { parseRupees } from '../shared/money';
 import { formatPKR } from '../utils/formatCurrency';
 import { Button } from './ui/Button';
+import { Keypad, backspaceKey } from './ui/Keypad';
 
 export function CashKeypad({ totalPaisa, initialValue, busy, onClose, onConfirm }: {
   totalPaisa: number; initialValue: string; busy: boolean;
@@ -31,20 +32,15 @@ export function CashKeypad({ totalPaisa, initialValue, busy, onClose, onConfirm 
     return () => document.removeEventListener('keydown', keydown);
   }, [value, replace, busy]);
   return (
-    <Dialog label="Enter cash tendered" busy={busy} onClose={onClose}
-      className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-xl bg-pos-surface border border-pos-border p-4 text-pos-text">
+    <Dialog size="sm" label="Enter cash tendered" busy={busy} onClose={onClose}
+      className="overflow-y-auto! p-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Cash tendered</h2>
         <Button variant="ghost" type="button" disabled={busy} onClick={onClose}>Cancel</Button>
       </div>
       <p className="text-sm text-pos-secondary">Total {formatPKR(totalPaisa)}</p>
-      <output aria-label="Entered cash amount" aria-live="polite" className="block rounded-lg bg-pos-inset p-3 my-2 text-2xl font-mono font-bold">{value || '0'}</output>
-      <div className="grid grid-cols-3 gap-2">
-        {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'Backspace'].map(key => (
-          <button key={key} type="button" disabled={busy} onClick={() => press(key)}
-            className="h-12 rounded-lg bg-pos-inset hover:bg-pos-raised border border-pos-control font-bold">{key}</button>
-        ))}
-      </div>
+      <output aria-label="Entered cash amount" aria-live="polite" className="block rounded-lg bg-pos-inset p-3 my-2 text-2xl font-semibold tabular-nums">{value || '0'}</output>
+      <Keypad disabled={busy} onPress={press} bottomRow={[{ value: '.' }, { value: '0' }, backspaceKey('Backspace')]} />
       <p role="status" className="min-h-6 mt-2 text-sm text-pos-secondary">
         {valid ? `Change ${formatPKR(paisa! - totalPaisa)}` : 'Enter an amount that covers the total.'}
       </p>

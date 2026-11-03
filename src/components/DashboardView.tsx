@@ -100,7 +100,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 select-none bg-pos-canvas">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
+      <div className="pos-panel flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Badge tone="accent">
@@ -108,7 +108,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </Badge>
             <span className="text-xs text-pos-muted">Maltiva Crust • Phase 3 DHA Lahore</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-pos-text tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-pos-text tracking-tight">
             Daily Sales & Counter Reports
           </h1>
           <p className="text-xs text-pos-muted mt-0.5">
@@ -126,7 +126,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Date & Payment Filter Bar */}
-      <div className="bg-pos-surface p-3 rounded-lg border border-pos-border flex flex-wrap items-center justify-between gap-3">
+      <div className="pos-panel p-3 flex flex-wrap items-center justify-between gap-3">
         {/* Date Filter Tabs */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-bold text-pos-muted mr-1 flex items-center gap-1">
@@ -174,7 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Custom Date Pickers (if Custom Dates is selected) */}
       {dateFilter === 'custom' && (
-        <div className="bg-pos-surface p-3 rounded-lg border border-pos-border flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
+        <div className="pos-panel p-3 flex flex-wrap items-center gap-3 animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <label htmlFor="sales-from-date" className="text-xs font-bold text-pos-secondary">From Date:</label>
             <Input size="compact"
@@ -198,19 +198,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Sales */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal">
+            <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal">
               Total Takeaway Sales
             </span>
             <div className="w-8 h-8 rounded-md bg-pos-selected text-pos-accent flex items-center justify-center">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-pos-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-text tabular-nums tracking-tight">
             {formatPKR(totalSales)}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             {dateFilter === 'today'
               ? `Today: ${formatPKR(todayOnlySales)} vs Yest: ${formatPKR(yesterdayOnlySales)}`
               : `Calculated from ${totalOrdersCount} completed orders`}
@@ -218,55 +218,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 2: Total Orders */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal">
+            <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal">
               Orders Served
             </span>
             <div className="w-8 h-8 rounded-md bg-pos-selected text-pos-accent flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-pos-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-text tabular-nums tracking-tight">
             {totalOrdersCount}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             Average ticket size: <span className="font-bold text-pos-secondary">{formatPKR(averageOrderValue)}</span>
           </p>
         </div>
 
         {/* Card 3: Cash Received */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal">
+            <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal">
               Cash Drawer
             </span>
             <div className="w-8 h-8 rounded-md bg-pos-selected text-pos-accent flex items-center justify-center">
               <Banknote className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-pos-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-text tabular-nums tracking-tight">
             {formatPKR(cashTotal)}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             {cashOrders.length} cash orders processed
           </p>
         </div>
 
         {/* Card 4: Card / POS Terminal */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-2">
+        <div className="pos-panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal">
+            <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal">
               Card Terminal
             </span>
             <div className="w-8 h-8 rounded-md bg-pos-selected text-pos-accent flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-pos-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-text tabular-nums tracking-tight">
             {formatPKR(cardTotal)}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             {cardOrders.length} digital card orders
           </p>
         </div>
@@ -278,7 +278,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
       {filteredOrders.some(order => !['cash', 'card', 'scan'].includes(order.paymentMethod)) && <p className="text-sm text-pos-secondary">Other / legacy payments: <strong>{formatPKR(filteredOrders.filter(order => !['cash', 'card', 'scan'].includes(order.paymentMethod)).reduce((sum, order) => sum + order.totalPaisa, 0))}</strong></p>}
       {/* Filtered Orders Breakdown Table */}
-      <div className="bg-pos-surface rounded-lg border border-pos-border overflow-hidden">
+      <div className="pos-panel overflow-hidden">
         <div className="p-4 border-b border-pos-border flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-pos-text">
@@ -311,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-pos-inset border-b border-pos-divider text-pos-muted font-semibold uppercase text-[10px]">
+              <thead className="bg-pos-inset border-b border-pos-divider text-pos-muted font-semibold uppercase text-xs">
                 <tr>
                   <th className="p-4">Token #</th>
                   <th className="p-4">Order #</th>
@@ -326,15 +326,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <tbody className="divide-y divide-pos-divider">
                 {pageOrders.map(order => (
                   <tr key={order.id} className="hover:bg-pos-inset/70 transition">
-                    <td className="p-4 font-black text-pos-text font-mono">
+                    <td className="p-4 font-bold text-pos-text tabular-nums">
                       <span className="px-2.5 py-1 rounded-lg bg-pos-success-bg text-pos-success-text border border-pos-success-border">
                         #{order.tokenNumber || order.orderNumber.replace('#F', '')}
                       </span>
                     </td>
-                    <td className="p-4 font-mono font-bold text-pos-secondary">
+                    <td className="p-4 tabular-nums font-bold text-pos-secondary">
                       {order.orderNumber}
                     </td>
-                    <td className="p-4 text-pos-muted font-mono">
+                    <td className="p-4 text-pos-muted tabular-nums">
                       {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="p-4 text-pos-secondary font-medium">
@@ -348,7 +348,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {order.paymentMethod}
                       </Badge>
                     </td>
-                    <td className="p-4 text-right font-black font-mono text-pos-text text-sm">
+                    <td className="p-4 text-right font-bold tabular-nums text-pos-text text-sm">
                       {formatPKR(order.totalPaisa)}
                     </td>
                     <td className="p-4 text-center">

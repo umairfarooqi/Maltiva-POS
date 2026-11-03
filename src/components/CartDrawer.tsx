@@ -6,9 +6,11 @@ import { CartItem, PaymentMethod } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { computeTotals, parseRupees, rupeeText } from '../shared/money';
 import { Badge } from './ui/Badge';
+import { QuantityStepper } from './ui/QuantityStepper';
 import { Button } from './ui/Button';
 import { Input } from './ui/Field';
 import { SegmentedControl } from './ui/SegmentedControl';
+import { alertClasses } from './ui/Alert';
 
 interface CartDrawerProps {
   error?: string;
@@ -86,7 +88,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 {totalCount} {totalCount === 1 ? 'Item' : 'Items'}
               </Badge>
             </div>
-            <p className="text-[11px] text-pos-muted font-medium">
+            <p className="text-xs text-pos-muted font-medium">
               Takeaway Ticket
             </p>
           </div>
@@ -125,7 +127,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <ShoppingBag className="w-5 h-5" />
             </div>
             <p className="text-xs font-semibold text-pos-secondary">Cart is empty</p>
-            <p className="text-[11px] text-pos-muted mt-0.5">Tap any dish on the menu to add it here</p>
+            <p className="text-xs text-pos-muted mt-0.5">Tap any dish on the menu to add it here</p>
           </div>
         ) : (
           <div className="divide-y divide-pos-divider">
@@ -141,26 +143,27 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         aria-label={`Edit ${item.product.name}`}
                         className="min-h-pos-touch w-full text-left text-sm font-bold text-pos-text break-words leading-snug disabled:opacity-40">
                         {item.product.name} <Pencil aria-hidden="true" className="inline w-3 h-3 text-pos-muted" />
-                        <span className="block text-xs font-mono text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
+                        <span className="block text-xs tabular-nums text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
                       </button>
                     ) : (
                       <div className="text-sm font-bold text-pos-text break-words">
                         {item.product.name}
-                        <span className="block text-xs font-mono text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
+                        <span className="block text-xs tabular-nums text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <Button variant="secondary" size="icon" type="button" disabled={isProcessing} aria-label={`Decrease quantity of ${item.product.name}`}
-                      onClick={() => onUpdateQuantity(item.cartItemId, -1)}
-                      >-</Button>
-                    <span className="min-w-5 text-center text-sm font-bold font-mono text-pos-text" aria-label="Quantity">{item.quantity}</span>
-                    <Button variant="secondary" size="icon" type="button" disabled={isProcessing} aria-label={`Increase quantity of ${item.product.name}`}
-                      onClick={() => onUpdateQuantity(item.cartItemId, 1)}
-                      >+</Button>
+                    <QuantityStepper
+                      value={item.quantity}
+                      disabled={isProcessing}
+                      decrementLabel={`Decrease quantity of ${item.product.name}`}
+                      incrementLabel={`Increase quantity of ${item.product.name}`}
+                      onDecrement={() => onUpdateQuantity(item.cartItemId, -1)}
+                      onIncrement={() => onUpdateQuantity(item.cartItemId, 1)}
+                    />
                     <Button variant="ghost-destructive" size="icon" type="button" disabled={isProcessing} aria-label={`Remove ${item.product.name}`}
                       onClick={() => onRemoveItem(item.cartItemId)}
-                      >
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -174,7 +177,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         )}
 
         {isProcessing && (
-          <p role="status" className="text-xs font-medium text-pos-warning-text mt-3 p-2.5 rounded-lg bg-pos-warning-bg border border-pos-warning-border">
+          <p role="status" className={alertClasses('warning', 'mt-3')}>
             Checkout is locked while the sale is being confirmed. Wait for the result before changing this order.
           </p>
         )}
@@ -186,19 +189,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-pos-muted">Subtotal</span>
-            <span className="font-semibold font-mono text-pos-secondary">{formatPKR(subtotalPaisa)}</span>
+            <span className="font-semibold tabular-nums text-pos-secondary">{formatPKR(subtotalPaisa)}</span>
           </div>
 
           {taxBp > 0 && (
             <div className="flex items-center justify-between text-xs">
               <span className="text-pos-muted">Tax {taxInclusive ? 'included' : ''} ({taxBp / 100}%)</span>
-              <span className="font-semibold font-mono text-pos-secondary">{formatPKR(taxPaisa)}</span>
+              <span className="font-semibold tabular-nums text-pos-secondary">{formatPKR(taxPaisa)}</span>
             </div>
           )}
 
           <div className="pt-1 border-t border-pos-divider flex items-baseline justify-between">
             <span className="text-sm font-bold text-pos-text">Total Payable</span>
-            <span className="text-lg font-black font-mono text-pos-accent tracking-tight">{formatPKR(totalPayable)}</span>
+            <span className="text-lg font-bold tabular-nums text-pos-accent tracking-tight">{formatPKR(totalPayable)}</span>
           </div>
         </div>
 
@@ -207,7 +210,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <div className="space-y-1">
             <div className="grid grid-cols-2 gap-2.5 items-center">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1" htmlFor="cash-tendered">
+                <label className="block text-xs font-bold uppercase tracking-wider text-pos-muted mb-1" htmlFor="cash-tendered">
                   Cash Tendered
                 </label>
                 <Input
@@ -227,21 +230,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 />
               </div>
               <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1">
+                <span className="block text-xs font-bold uppercase tracking-wider text-pos-muted mb-1">
                   Change Due
                 </span>
-                <div className="h-pos-touch flex items-center justify-between rounded-md border border-pos-border bg-pos-inset px-2.5 text-sm font-black font-mono text-pos-accent">
+                <div className="h-pos-touch flex items-center justify-between rounded-pos-control border border-pos-border bg-pos-inset px-3 text-sm font-bold tabular-nums text-pos-accent">
                   <span>{formatPKR(changeDuePaisa)}</span>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-5 gap-1" aria-label="Quick cash amounts">
               {[null, 500, 1000, 2000, 5000].map(amount => (
-                <button key={amount ?? 'exact'} type="button" disabled={isProcessing || (amount !== null && amount * 100 < totalPayable)}
+                <Button key={amount ?? 'exact'} variant="outline" disabled={isProcessing || (amount !== null && amount * 100 < totalPayable)}
                   onClick={() => { const paisa = amount === null ? totalPayable : amount * 100; setCashTendered(paisa); setTenderText(rupeeText(paisa)); setInvalidTender(false); }}
-                  className="min-h-pos-touch rounded-md border border-pos-control bg-pos-inset text-xs font-bold text-pos-text disabled:opacity-40">
+                  className="px-0! tabular-nums">
                   {amount === null ? 'Exact' : amount}
-                </button>
+                </Button>
               ))}
             </div>
             {!cashPaymentValid && (
@@ -270,7 +273,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             type="button"
             disabled={isProcessing || (cart.length === 0 && !canReprintLastOrder)}
             onClick={onOpenPrintModal}
-            className="h-pos-touch px-3.5 rounded-lg border border-pos-border bg-pos-surface hover:bg-pos-raised text-pos-secondary hover:text-pos-text text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 active:scale-95"
+            className="pos-panel h-pos-touch px-3.5 hover:bg-pos-raised text-pos-secondary hover:text-pos-text text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 active:scale-95"
           >
             <Printer className="w-4 h-4" />
             <span>{cart.length === 0 && canReprintLastOrder ? 'Last receipt' : 'Print'}</span>
@@ -281,9 +284,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             onClick={() => onPlaceOrder(cashTenderedPaisa, paymentMethod)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
             className="flex-1"
+            aria-label={isProcessing ? undefined : `Complete Order (${paymentMethod === 'scan' ? 'Scan' : paymentMethod === 'card' ? 'Card' : 'Cash'})`}
           >
-            <Power className="w-4 h-4" />
-            <span>{isProcessing ? 'Processing...' : `Complete Order (${paymentMethod === 'scan' ? 'Scan' : paymentMethod === 'card' ? 'Card' : 'Cash'})`}</span>
+            <Power className="w-4 h-4" aria-hidden="true" />
+            <span>{isProcessing ? 'Processing...' : 'Complete Order'}</span>
           </Button>
         </div>
       </div>
@@ -305,7 +309,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         onClose={() => setKeypadOpen(false)} onConfirm={value => {
           setCashTendered(parseRupees(value)); setTenderText(rupeeText(parseRupees(value))); setInvalidTender(false); setKeypadOpen(false);
         }} />}
-      {confirmClear && <Dialog label="Clear current order?" onClose={() => setConfirmClear(false)} className="w-full max-w-sm rounded-xl border border-pos-border bg-pos-surface p-5">
+      {confirmClear && <Dialog size="sm" label="Clear current order?" onClose={() => setConfirmClear(false)} className="p-5">
         <h2 className="font-bold text-pos-text">Clear current order?</h2>
         <p className="text-sm text-pos-muted mt-2">This removes every item and its instructions from this order.</p>
         <div className="flex justify-end gap-3 mt-5">

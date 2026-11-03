@@ -39,7 +39,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
   if (userRole !== 'admin') {
     return (
       <div className="flex-1 flex items-center justify-center p-8 bg-pos-canvas">
-        <div className="max-w-md w-full bg-pos-surface p-6 rounded-lg border border-pos-border text-center">
+        <div className="pos-panel max-w-md w-full p-6 text-center">
           <div className="w-12 h-12 rounded-md bg-pos-danger-bg text-pos-danger-text flex items-center justify-center mx-auto mb-4">
             <TrendingUp className="w-6 h-6" />
           </div>
@@ -179,7 +179,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
       {orders.some(order => order.persistenceState === 'saved' && order.profitIncomplete) &&
         <p role="status" className="text-sm text-pos-warning-text">Some historical sales have missing cost snapshots and are excluded from profit calculations.</p>}
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
+      <div className="pos-panel flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-pos-selected text-pos-accent">
@@ -187,7 +187,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             </span>
             <span className="text-xs text-pos-muted">Maltiva Crust • Phase 3 DHA Lahore</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-pos-text tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-pos-text tracking-tight">
             Profit & Loss Audit
           </h1>
           <p className="text-xs text-pos-muted mt-0.5">
@@ -213,7 +213,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
       </div>
 
       {/* Date Filter & Category Selection */}
-      <div className="bg-pos-surface p-3 rounded-lg border border-pos-border flex flex-wrap items-center justify-between gap-3">
+      <div className="pos-panel p-3 flex flex-wrap items-center justify-between gap-3">
         {/* Date Filters */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-bold text-pos-muted mr-1 flex items-center gap-1">
@@ -265,67 +265,67 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
           {(['cash', 'card', 'scan', 'other'] as const).map(method => <p key={method}><span className="capitalize">{method}</span>: <strong>{formatPKR(scopedOrders.filter(order => (method === 'other' ? !['cash', 'card', 'scan'].includes(order.paymentMethod) : order.paymentMethod === method)).reduce((sum, order) => sum + scopedItems(order).reduce((amount, item) => amount + (item.netRevenuePaisa ?? item.totalPricePaisa), 0), 0))}</strong></p>)}
         </div>
         <div className="hidden print:block border-b border-pos-control pb-4">
-          <h1 className="text-2xl font-black text-pos-text">Profit &amp; Loss Audit</h1>
+          <h1 className="text-2xl font-bold text-pos-text">Profit &amp; Loss Audit</h1>
           <p className="text-sm text-pos-secondary">Maltiva Crust • Phase 3 DHA Lahore</p>
         </div>
 
         {/* Primary KPI Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Selling Revenue */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-1.5">
-          <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal block">
+        <div className="pos-panel p-4 space-y-1.5">
+          <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal block">
             Customer Selling Revenue
           </span>
-          <p className="text-2xl font-black text-pos-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-text tabular-nums tracking-tight">
             {formatPKR(totalRevenue)}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             Revenue excluding tax across {scopedOrders.length} orders
           </p>
         </div>
 
         {/* Total Raw Material Cost */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-1.5">
-          <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal block">
+        <div className="pos-panel p-4 space-y-1.5">
+          <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal block">
             Raw Material Food Cost
           </span>
-          <p className="text-2xl font-black text-pos-danger-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-danger-text tabular-nums tracking-tight">
             {formatPKR(totalRawCost)}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             Raw ingredient expense to prepare items
           </p>
         </div>
 
         {/* Net Gross Profit */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-1.5">
-          <span className="text-[11px] font-bold text-pos-accent uppercase tracking-normal block">
+        <div className="pos-panel p-4 space-y-1.5">
+          <span className="text-xs font-bold text-pos-accent uppercase tracking-normal block">
             Net Gross Profit (PKR)
           </span>
-          <p className="text-2xl font-black text-pos-accent font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-accent tabular-nums tracking-tight">
             {formatPKR(totalGrossProfit)}
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             Revenue minus raw material costs
           </p>
         </div>
 
         {/* Profit Margin % */}
-        <div className="bg-pos-surface p-4 rounded-lg border border-pos-border space-y-1.5">
-          <span className="text-[11px] font-bold text-pos-secondary uppercase tracking-normal block">
+        <div className="pos-panel p-4 space-y-1.5">
+          <span className="text-xs font-bold text-pos-secondary uppercase tracking-normal block">
             Overall Profit Margin
           </span>
-          <p className="text-2xl font-black text-pos-text font-mono tracking-tight">
+          <p className="text-2xl font-bold text-pos-text tabular-nums tracking-tight">
             {overallMarginPercent.toFixed(1)}%
           </p>
-          <p className="text-[11px] text-pos-muted">
+          <p className="text-xs text-pos-muted">
             Effective gross margin on takeaway menu
           </p>
         </div>
         </div>
 
         {/* Itemized Profit & Loss Table */}
-        <div className="bg-pos-surface rounded-lg border border-pos-border overflow-hidden">
+        <div className="pos-panel overflow-hidden">
         <div className="p-4 border-b border-pos-border flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-pos-text">
@@ -335,7 +335,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
               Exact raw material cost, selling price, and net profit per item sold
             </p>
           </div>
-          <span className="text-xs font-bold text-pos-muted font-mono">
+          <span className="text-xs font-bold text-pos-muted tabular-nums">
             {itemsList.length} menu items sold
           </span>
         </div>
@@ -347,7 +347,7 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
         ) : (
           <div tabIndex={0} role="region" aria-label="Profit breakdown table" className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-pos-inset border-b border-pos-divider text-pos-muted font-semibold uppercase text-[10px]">
+              <thead className="bg-pos-inset border-b border-pos-divider text-pos-muted font-semibold uppercase text-xs">
                 <tr>
                   <th className="p-4">Dish / Deal Name</th>
                   <th className="p-4">Category</th>
@@ -372,30 +372,30 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
                       <td className="p-4 text-pos-muted">
                         {item.categoryName}
                       </td>
-                      <td className="p-4 text-center font-bold font-mono">
+                      <td className="p-4 text-center font-bold tabular-nums">
                         {item.quantity}
                       </td>
-                      <td className="p-4 text-right font-mono text-pos-danger-text font-semibold">
+                      <td className="p-4 text-right tabular-nums text-pos-danger-text font-semibold">
                         {formatPKR(item.avgCostPrice)}
                       </td>
-                      <td className="p-4 text-right font-mono text-pos-text font-semibold">
+                      <td className="p-4 text-right tabular-nums text-pos-text font-semibold">
                         {formatPKR(item.avgSellingPrice)}
                       </td>
-                      <td className="p-4 text-right font-mono font-bold text-pos-accent">
+                      <td className="p-4 text-right tabular-nums font-bold text-pos-accent">
                         +{formatPKR(unitProfit)}
                       </td>
-                      <td className="p-4 text-right font-mono font-bold text-pos-text">
+                      <td className="p-4 text-right tabular-nums font-bold text-pos-text">
                         {formatPKR(item.totalRevenue)}
                       </td>
-                      <td className="p-4 text-right font-mono text-pos-danger-text">
+                      <td className="p-4 text-right tabular-nums text-pos-danger-text">
                         {formatPKR(item.totalCostPaisa)}
                       </td>
-                      <td className="p-4 text-right font-mono font-black text-pos-accent">
+                      <td className="p-4 text-right tabular-nums font-bold text-pos-accent">
                         {formatPKR(item.grossProfit)}
                       </td>
                       <td className="p-4 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
                             item.profitMarginPercent >= 50
                               ? 'bg-pos-success-bg text-pos-success-text'
                               : item.profitMarginPercent >= 30

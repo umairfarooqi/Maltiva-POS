@@ -96,20 +96,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="min-w-0 min-h-0 flex-1 flex flex-col overflow-hidden bg-pos-canvas">
       <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5">
       {/* Top Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
+      <header className="pos-panel flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-pos-selected text-pos-accent">
+            <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-pos-selected text-pos-accent">
               System Administration
             </span>
           </div>
-          <h1 className="text-2xl font-black text-pos-text tracking-tight">Management Console</h1>
+          <h1 className="text-2xl font-bold text-pos-text tracking-tight">Management Console</h1>
           <p className="text-xs text-pos-muted">Configure your store, hardware, and professional business rules.</p>
         </div>
 
       </header>
 
-      <section aria-labelledby="appearance-title" className="bg-pos-surface p-5 rounded-lg border border-pos-border">
+      <section aria-labelledby="appearance-title" className="pos-panel p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 id="appearance-title" className="text-sm font-bold text-pos-text">Appearance</h2>
@@ -130,14 +130,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <fieldset disabled={currentUser.role !== 'admin'} className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         
         {/* SECTION 1: STORE IDENTITY */}
-        <section className="bg-pos-surface p-5 rounded-lg border border-pos-border space-y-5">
+        <section className="pos-panel p-5 space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-pos-divider">
             <div className="p-2 bg-pos-success-bg rounded-lg">
               <Store className="w-5 h-5 text-pos-accent" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-pos-text">Store Identity</h2>
-              <p className="text-[11px] text-pos-muted">Brand details printed on receipts</p>
+              <p className="text-xs text-pos-muted">Brand details printed on receipts</p>
             </div>
           </div>
 
@@ -197,7 +197,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
 
         {/* SECTION 2: HARDWARE CONFIGURATION */}
-        <section className="bg-pos-surface p-5 rounded-lg border border-pos-border space-y-5">
+        <section className="pos-panel p-5 space-y-5">
           <div className="flex items-center justify-between pb-4 border-b border-pos-divider">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-pos-selected rounded-md">
@@ -205,7 +205,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <div>
                 <h2 className="text-sm font-bold text-pos-text">Hardware & Terminal</h2>
-                <p className="text-[11px] text-pos-muted">Printer and dual-screen optimization</p>
+                <p className="text-xs text-pos-muted">Printer and dual-screen optimization</p>
               </div>
             </div>
             <Button variant="secondary" size="compact"
@@ -231,7 +231,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <ChefHat className="w-4 h-4 text-pos-muted group-hover:text-pos-info-text transition-colors" />
                   <div>
                     <p className="text-xs font-bold text-pos-secondary">Kitchen Printer</p>
-                    <p className="text-[10px] text-pos-muted">Send separate slips to the kitchen</p>
+                    <p className="text-xs text-pos-muted">Send separate slips to the kitchen</p>
                   </div>
                 </div>
                 <input
@@ -242,7 +242,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
               </label>
 
-              <p className="text-[10px] text-pos-muted">Orders open a receipt preview. Use its Print button to select a printer and print.</p>
+              <p className="text-xs text-pos-muted">Orders open a receipt preview. Use its Print button to select a printer and print.</p>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-pos-selected border border-pos-success-border rounded-md">
@@ -262,14 +262,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </section>
 
         {/* SECTION 3: BUSINESS RULES (The KFC Level) */}
-        <section className="bg-pos-surface p-5 rounded-lg border border-pos-border space-y-5">
+        <section className="pos-panel p-5 space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-pos-divider">
               <div className="p-2 bg-pos-selected rounded-md">
                 <ShieldCheck className="w-5 h-5 text-pos-accent" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-pos-text">Business Operations</h2>
-              <p className="text-[11px] text-pos-muted">Permissions, shifts, and inventory rules</p>
+              <p className="text-xs text-pos-muted">Permissions, shifts, and inventory rules</p>
             </div>
           </div>
 
@@ -283,7 +283,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       disabled
                       key={role}
                       onClick={() => setFormData({ ...formData, voidOrderPermission: role })}
-                      className={`py-2 px-1 rounded-lg border text-[10px] font-bold capitalize transition-all cursor-pointer ${
+                      className={`py-2 px-1 rounded-lg border text-xs font-bold capitalize transition-all cursor-pointer ${
                         formData.voidOrderPermission === role
                           ? 'border-pos-accent bg-pos-selected text-pos-accent'
                           : 'border-pos-control text-pos-secondary hover:bg-pos-inset'
@@ -301,7 +301,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <Settings2 className="w-4 h-4 text-pos-muted group-hover:text-pos-accent transition-colors" />
                     <div>
                       <p className="text-xs font-bold text-pos-secondary">Shift Tracking (unavailable)</p>
-                      <p className="text-[10px] text-pos-muted">Shift sessions are not implemented yet.</p>
+                      <p className="text-xs text-pos-muted">Shift sessions are not implemented yet.</p>
                     </div>
                   </div>
                   <input
@@ -332,7 +332,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
               <div className="flex items-end">
-                <p className="text-[10px] text-pos-muted italic">Used for new dishes and deals. Existing per-product thresholds take precedence.</p>
+                <p className="text-xs text-pos-muted italic">Used for new dishes and deals. Existing per-product thresholds take precedence.</p>
               </div>
             </div>
           </div>
@@ -343,14 +343,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {currentUser.role === 'admin' && <DatabaseMaintenance />}
       {/* DATABASE MAINTENANCE (Bottom Bar) */}
-      <footer className="bg-pos-surface p-5 rounded-lg border border-pos-border flex flex-col md:flex-row items-center justify-between gap-5">
+      <footer className="pos-panel p-5 flex flex-col md:flex-row items-center justify-between gap-5">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-pos-raised rounded-lg">
             <HardDrive className="w-5 h-5 text-pos-secondary" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-pos-text">System Maintenance</h3>
-            <p className="text-[11px] text-pos-muted">Export or clear the browser cache. Server sales remain intact.</p>
+            <p className="text-xs text-pos-muted">Export or clear the browser cache. Server sales remain intact.</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -381,7 +381,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </Button>
       </div>
       {isWipeSalesDialogOpen && (
-        <Dialog role="alertdialog" label="Clear cached sales?" onClose={() => setIsWipeSalesDialogOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 border border-pos-border text-center">
+        <Dialog size="sm" role="alertdialog" label="Clear cached sales?" onClose={() => setIsWipeSalesDialogOpen(false)} className="p-6 text-center">
             <div className="w-12 h-12 rounded-md bg-pos-danger-bg text-pos-danger-text flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>

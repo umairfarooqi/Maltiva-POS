@@ -33,6 +33,7 @@ import {
   PaymentMethod,
   SelectedVariationItem,
 } from './types/pos';
+import { alertClasses } from './components/ui/Alert';
 
 export default function App() {
   // Check if this window was opened as Customer Display for Dual-Screen POS hardware
@@ -982,9 +983,9 @@ export default function App() {
         {(pendingOfflineCount > 0 || recoveryError || saleFeedback || orders.some(order => order.persistenceState === 'rejected')) && (
           <section aria-label="Sale notifications" tabIndex={0} className="shrink-0 max-h-[20dvh] overflow-y-auto">
         {pendingBadge}
-        {recoveryError && <div role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">{recoveryError}</div>}
+        {recoveryError && <div role="alert" className={alertClasses('warning')}>{recoveryError}</div>}
         {orders.filter(order => order.persistenceState === 'pending' && order.recoveryBlockedReason).map(order => (
-          <div key={`blocked-${order.id}`} role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">
+          <div key={`blocked-${order.id}`} role="alert" className={alertClasses('warning')}>
             Pending {order.orderNumber}: {order.recoveryBlockedReason}
           </div>
         ))}
@@ -998,7 +999,7 @@ export default function App() {
           </div>
         )}
         {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
-          <div key={order.id} role="alert" className="bg-pos-warning-bg px-4 py-2 text-sm">
+          <div key={order.id} role="alert" className={alertClasses('warning')}>
             Rejected {order.orderNumber}: {order.rejectionReason}
             <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-pos-success-text">Review rejected order {order.orderNumber}</button>
             {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
@@ -1109,7 +1110,7 @@ export default function App() {
       </div>
       </div>
 
-      {cartError && !variationModalProduct && !isMobileCartOpen && <div role="alert" className="fixed top-20 left-1/2 -translate-x-1/2 z-50 rounded-md border border-pos-danger-border bg-pos-danger-bg text-pos-danger-text p-3 text-sm flex items-center gap-3 max-w-[calc(100vw-2rem)]">{cartError}<button type="button" aria-label="Dismiss stock message" onClick={() => setCartError('')}>Dismiss</button></div>}
+      {cartError && !variationModalProduct && !isMobileCartOpen && <div role="alert" className={alertClasses('danger', 'fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 max-w-[calc(100vw-2rem)]')}>{cartError}<button type="button" aria-label="Dismiss stock message" onClick={() => setCartError('')}>Dismiss</button></div>}
       {/* Variation Customizer Modal */}
       {variationModalProduct && (
         <VariationModal
@@ -1133,7 +1134,7 @@ export default function App() {
       )}
 
       {isLogoutConfirmOpen && (
-        <Dialog role="alertdialog" label="Log out?" onClose={() => setIsLogoutConfirmOpen(false)} className="w-full max-w-sm rounded-lg border border-pos-border bg-pos-surface p-6">
+        <Dialog size="sm" role="alertdialog" label="Log out?" onClose={() => setIsLogoutConfirmOpen(false)} className="p-6">
             <h2 id="logout-confirm-title" className="mb-2 text-lg font-bold text-pos-text">
               Log out?
             </h2>

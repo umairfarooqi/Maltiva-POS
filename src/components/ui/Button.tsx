@@ -25,6 +25,8 @@ export const buttonSizes = {
   'icon-compact': 'size-pos-compact shrink-0',
   /** No box: for link-style buttons sitting inside text or section headers. */
   inline: 'px-1 py-0.5 text-xs',
+  /** Number pad keys (PIN login, cash tendered). */
+  key: 'h-13 text-lg tabular-nums',
 } as const;
 
 export type ButtonVariant = keyof typeof buttonVariants;

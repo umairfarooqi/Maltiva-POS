@@ -41,7 +41,7 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
   return (
     <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5 bg-pos-canvas">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
+      <div className="pos-panel flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-5">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-pos-text tracking-tight">
             Floor Plan & Table Management
@@ -73,11 +73,11 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
           return (
             <div
               key={table.id}
-              className="bg-pos-surface rounded-lg p-4 border border-pos-border hover:border-pos-control transition-colors flex flex-col justify-between"
+              className="pos-panel p-4 hover:border-pos-control transition-colors flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.bg}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${badge.bg}`}>
                     {badge.label}
                   </span>
                   <div className="flex items-center gap-1 text-pos-muted text-xs">
@@ -87,7 +87,7 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
                 </div>
 
                 <div className="text-center py-4">
-                  <h3 className="text-2xl font-black text-pos-text tracking-tight">
+                  <h3 className="text-2xl font-bold text-pos-text tracking-tight">
                     {table.number}
                   </h3>
                   {activeOrder ? (
@@ -95,7 +95,7 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
                       <p className="font-bold text-pos-accent">
                         Order {activeOrder.orderNumber}
                       </p>
-                      <p className="text-[11px] text-pos-muted font-mono">
+                      <p className="text-xs text-pos-muted tabular-nums">
                         {formatPKR(activeOrder.totalPaisa)} • {activeOrder.items.length} items
                       </p>
                     </div>
@@ -125,7 +125,7 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
                   </Button>
                 )}
 
-                <div className="grid grid-cols-3 gap-1 text-[10px]">
+                <div className="grid grid-cols-3 gap-1 text-xs">
                   <button
                     onClick={() => onUpdateTableStatus(table.id, 'available')}
                     className="py-1 rounded bg-pos-inset hover:bg-pos-success-bg hover:text-pos-success-text text-pos-secondary font-medium transition"
