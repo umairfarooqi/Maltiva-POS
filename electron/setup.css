@@ -1,0 +1,23 @@
+:root { color-scheme: dark; font-family: 'Segoe UI', system-ui, sans-serif; color: #f3f6f8; background: #0b0e11; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 520px; margin: 0 auto; padding: 28px 32px; }
+.brand { color: #52dec6; font-size: 16px; font-weight: 700; }
+h1 { margin: 16px 0 8px; font-size: 26px; line-height: 1.2; }
+header p, footer { color: #c4ced8; font-size: 14px; line-height: 1.5; }
+header p { margin: 0 0 20px; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
+input { width: 100%; min-height: 44px; padding: 10px 12px; color: #f3f6f8; background: #161b20; border: 1px solid #606d7a; border-radius: 8px; font: inherit; }
+input:hover { border-color: #98a4b0; }
+input:focus-visible, button:focus-visible { outline: 2px solid #52dec6; outline-offset: 3px; }
+.hint { color: #98a4b0; font-size: 12px; line-height: 1.5; margin: 6px 0 0; }
+button { width: 100%; min-height: 56px; margin-top: 24px; border: 0; border-radius: 8px; background: #00836e; color: #fff; font: inherit; font-weight: 600; cursor: pointer; transition: background 120ms; }
+button:hover { background: #007462; }
+button:active { background: #006756; }
+fieldset:disabled { opacity: .65; }
+fieldset:disabled button { cursor: wait; }
+#error { padding: 12px; margin: 16px 0 0; background: #381e25; color: #f5a8b8; border-radius: 8px; font-size: 14px; }
+footer { margin-top: 16px; font-size: 12px; }
+@media (max-width: 480px) { main { padding: 24px 20px; } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }

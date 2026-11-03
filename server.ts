@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'node:fs';
+import type { Server } from 'node:http';
 import { AccountLockouts } from './src/services/accountLockouts';
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
@@ -204,7 +206,7 @@ async function startServer() {
   const PORT = process.env.PORT || 3000;
   const backups = new DatabaseBackups(db);
 
-  app.use(express.json());
+  app.use(express.json({ inflate: false }));
 
   // Role authorization middlewares
   const requireAdmin = (req: Request, res: Response, next: any) => {
@@ -753,16 +755,67 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(process.cwd(), 'dist')));
+    // __dirname is the bundled dist-server directory; tsx uses the source entry.
+    const serverDirectory = typeof __dirname === 'string' ? __dirname : path.dirname(path.resolve(process.argv[1]));
+    const rendererDirectory = process.env.MALTIVA_POS_RENDERER_DIR || path.resolve(serverDirectory, path.basename(serverDirectory) === 'dist-server' ? '../dist' : 'dist');
+    if (!fs.existsSync(path.join(rendererDirectory, 'index.html'))) throw new Error('POS interface is missing. Reinstall the application.');
+    app.use((_req, res, next) => {
+      res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'");
+      next();
+    });
+    app.use(express.static(rendererDirectory));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(process.cwd(), 'dist', 'index.html'));
+      res.sendFile(path.join(rendererDirectory, 'index.html'));
     });
   }
 
   const HOST = process.env.HOST || '127.0.0.1';
-  app.listen(Number(PORT), HOST, () => {
-    console.log(`Maltiva Professional POS running on http://${HOST}:${PORT}`);
+  return await new Promise<Server>((resolve, reject) => {
+    const server = app.listen(Number(PORT), HOST);
+    server.once('error', reject);
+    server.once('listening', () => {
+      server.removeListener('error', reject);
+      console.log(`Maltiva Professional POS running on http://${HOST}:${PORT}`);
+      resolve(server);
+    });
   });
 }
 
-initDb().then(() => { seedDatabase(); return startServer(); }).catch(error => { console.error(error); process.exitCode = 1; });
+export async function startPosServer() {
+  await initDb();
+  seedDatabase();
+  return startServer();
+}
+
+export function needsInitialOwner() {
+  return (db.prepare('SELECT count(*) n FROM users').get() as { n: number }).n === 0;
+}
+
+// Available only to the desktop utility process, never exposed as an HTTP route.
+export function provisionInitialOwner(input: any) {
+  const name = typeof input?.name === 'string' ? input.name.trim() : '';
+  const username = typeof input?.username === 'string' ? input.username.trim().toLowerCase() : '';
+  const password = typeof input?.password === 'string' ? input.password : '';
+  const pin = typeof input?.pin === 'string' ? input.pin : '';
+  if (!name || name.length > 100 || !/^[a-z0-9._-]{3,32}$/.test(username) || password.length < 10 || password.length > 128 || !/^\d{4}$/.test(pin)) {
+    throw new Error('Enter your name, a valid username, a password of 10–128 characters, and a four-digit PIN.');
+  }
+  const passwordHash = hashSecret(password), pinHash = hashSecret(pin);
+  db.transaction(() => {
+    if (!needsInitialOwner()) throw new Error('Owner setup is already complete. Sign in with an existing account.');
+    db.prepare("INSERT INTO users (id,name,username,password,pin,role,active,avatar) VALUES (?,?,?,?,?,'admin',1,'')")
+      .run(`user-${randomUUID()}`, name, username, passwordHash, pinHash);
+  })();
+}
+
+export async function stopPosServer(server: Server) {
+  await new Promise<void>((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+    server.closeIdleConnections();
+  });
+  db.close();
+}
+
+if (process.env.MALTIVA_POS_MANAGED !== '1') {
+  startPosServer().catch(error => { console.error(error); db.close(); process.exitCode = 1; });
+}

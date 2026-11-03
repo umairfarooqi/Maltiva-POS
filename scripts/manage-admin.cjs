@@ -1,7 +1,7 @@
 // Out-of-band administrator provisioning and credential reset tool.
 // Usage:
 //   npm run admin:setup -- --username admin --name "Ibrahim Kadri" --pin 1234 --password admin123
-//   npm run admin:setup   (uses defaults or environment variables MALTIVA_ADMIN_*)
+// Credentials must be explicit arguments or MALTIVA_ADMIN_* environment variables.
 const Database = require('better-sqlite3');
 const path = require('path');
 const { randomUUID, randomBytes, scryptSync } = require('crypto');
@@ -28,8 +28,8 @@ function parseArgs(argv) {
 const args = parseArgs(process.argv.slice(2));
 const username = String(args.username || process.env.MALTIVA_ADMIN_USERNAME || 'admin').trim().toLowerCase();
 const name = String(args.name || process.env.MALTIVA_ADMIN_NAME || 'System Administrator').trim();
-const pin = String(args.pin || process.env.MALTIVA_ADMIN_PIN || '1234').trim();
-const password = String(args.password || process.env.MALTIVA_ADMIN_PASSWORD || 'admin123').trim();
+const pin = String(args.pin || process.env.MALTIVA_ADMIN_PIN || '').trim();
+const password = String(args.password || process.env.MALTIVA_ADMIN_PASSWORD || '').trim();
 const branch = String(args.branch || process.env.MALTIVA_ADMIN_BRANCH || 'Phase 3 DHA Lahore').trim();
 const email = String(args.email || `${username}@maltivacrust.com`).trim();
 
@@ -47,6 +47,7 @@ if (password.length < 6) {
 }
 
 const dbDir = process.env.MALTIVA_POS_DB_DIR || process.cwd();
+require('node:fs').mkdirSync(dbDir, { recursive: true });
 const dbPath = path.join(dbDir, 'maltiva_pos.db');
 const db = new Database(dbPath);
 

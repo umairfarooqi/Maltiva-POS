@@ -3,12 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>
-      try {
-        document.documentElement.dataset.theme = localStorage.getItem('maltiva-theme') === 'light' ? 'light' : 'dark';
-      } catch { document.documentElement.dataset.theme = 'dark'; }
-      document.documentElement.style.colorScheme = document.documentElement.dataset.theme;
-    </script>
+    <script src="/theme-init.js"></script>
     <style>
       html { background: #121416; color: #eef1f4; }
       html[data-theme="light"] { background: #f4f6f5; color: #18211f; }
@@ -19,9 +14,6 @@
     <meta property="og:description" content="Maltiva restaurant point of sale and inventory management system with real-time stock sync, offline capabilities, and thermal receipt printing." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300A389' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/%3E%3Cpath d='M2 12h20'/%3E%3C/svg%3E" />
   </head>
   <body class="bg-pos-canvas text-pos-text antialiased">

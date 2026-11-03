@@ -17,3 +17,9 @@ coverage/
 *.bak-wal
 *.before-money-v2.db
 /backups/
+
+# Keep the Electron audit summaries and ignore local evidence.
+/docs/audits/electron-2026-11-02/*
+!/docs/audits/electron-2026-11-02/report.md
+/docs/audits/electron-fixes-2026-11-02/*
+!/docs/audits/electron-fixes-2026-11-02/report.md

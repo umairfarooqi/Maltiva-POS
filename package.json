@@ -1,37 +1,37 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --outfile=dist-server/server.cjs --external:better-sqlite3 --external:vite",
-    "build:electron": "npm run build && npm run build:server",
+    "build:electron": "node scripts/prepare-electron.cjs && npm run build && npm run build:server",
     "start": "node dist-server/server.cjs",
-    "clean": "rm -rf dist dist-server server.js",
+    "clean": "node scripts/clean.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:electron": "node tests/electron-config.test.mjs",
+    "test:electron": "node --test tests/electron-config.test.mjs tests/electron-runtime.test.cjs",
     "admin:setup": "node scripts/manage-admin.cjs",
     "electron:start": "npm run build:electron && electron .",
-    "electron:build": "npm run build:electron && electron-builder"
+    "electron:build": "npm run build:electron && electron-builder --win nsis --x64 --publish never",
+    "electron:pack": "npm run build:electron && electron-builder --win --x64 --dir --publish never",
+    "electron:portable": "npm run build:electron && electron-builder --win portable --x64 --publish never",
+    "test:desktop": "node scripts/smoke-electron.cjs"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-react": "^6.1.1",
     "better-sqlite3": "^13.0.3",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
+    "express": "4.22.3",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "vite": "^8.3.0"
+    "react-dom": "^19.0.1"
   },
   "devDependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
@@ -39,8 +39,9 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.21",
-    "electron": "^44.5.1",
+    "electron": "44.10.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.0",
     "fake-indexeddb": "^6.2.5",
@@ -48,6 +49,7 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",
+    "vite": "8.3.5",
     "vitest": "^5.0.3"
   },
   "main": "electron/main.cjs",
@@ -56,8 +58,14 @@
     "productName": "Maltiva POS",
     "win": {
       "target": [
-        "portable"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icon.ico"
     },
     "directories": {
       "output": "dist_electron"
@@ -67,6 +75,23 @@
       "dist-server/**",
       "electron/**",
       "package.json"
-    ]
-  }
+    ],
+    "electronVersion": "44.10.1",
+    "asar": true,
+    "npmRebuild": false,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/prebuilds/*.node"
+    ],
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "electronDist": "node_modules/electron/dist"
+  },
+  "description": "Maltiva restaurant point of sale",
+  "author": "Maltiva Crust"
 }
