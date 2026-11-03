@@ -95,8 +95,44 @@
   --pos-strong-text: #ffffff;
 }
 
+/* On-screen paper preview (receipt modal). Plain CSS cannot share this block with
+   @media print below, so keep the two palettes in sync when editing. */
+.theme-paper {
+  color-scheme: light;
+  --pos-canvas: #ffffff;
+  --pos-chrome: #ffffff;
+  --pos-surface: #ffffff;
+  --pos-raised: #f5f5f5;
+  --pos-inset: #ffffff;
+  --pos-text: #000000;
+  --pos-secondary: #262626;
+  --pos-muted: #454545;
+  --pos-border: #999999;
+  --pos-control: #666666;
+  --pos-divider: #999999;
+  --pos-accent: #000000;
+  --pos-selected: #e5e5e5;
+  --pos-strong: #1a1a1a;
+  --pos-strong-text: #ffffff;
+  --pos-success-bg: var(--pos-raised);
+  --pos-success-text: var(--pos-print-ink);
+  --pos-success-border: var(--pos-print-rule);
+  --pos-warning-bg: var(--pos-raised);
+  --pos-warning-text: var(--pos-print-ink);
+  --pos-warning-border: var(--pos-print-rule);
+  --pos-danger-bg: var(--pos-raised);
+  --pos-danger-text: var(--pos-print-ink);
+  --pos-danger-border: var(--pos-print-rule);
+  --pos-info-bg: var(--pos-raised);
+  --pos-info-text: var(--pos-print-ink);
+  --pos-info-border: var(--pos-print-rule);
+  --pos-reserved-bg: var(--pos-raised);
+  --pos-reserved-text: var(--pos-print-ink);
+  --pos-reserved-border: var(--pos-print-rule);
+}
+
 @media print {
-  :root[data-theme], :root, #thermal-receipt-print-area, #profit-loss-print-area {
+  :root[data-theme], :root, .theme-paper, #thermal-receipt-print-area, #profit-loss-print-area {
     color-scheme: light !important;
     --pos-canvas: #ffffff;
     --pos-chrome: #ffffff;

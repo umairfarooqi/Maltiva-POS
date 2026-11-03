@@ -66,6 +66,17 @@ function contrast(a: string, b: string) {
   const [low, high] = [luminance(a), luminance(b)].sort((a, b) => a - b);
   return (high + .05) / (low + .05);
 }
+describe('paper palette', () => {
+  it('keeps the on-screen receipt preview identical to printed output', () => {
+    const vars = (body: string) => [...body.matchAll(/(--pos-[\w-]+):\s*([^;]+);/g)].map(match => `${match[1]}:${match[2].trim()}`).sort();
+    const paper = css.match(/\.theme-paper\s*\{([^}]+)\}/)?.[1];
+    const print = css.match(/@media print\s*\{[^{]+\{([^}]+)\}/)?.[1];
+    expect(paper, '.theme-paper block').toBeDefined();
+    expect(print, '@media print block').toBeDefined();
+    expect(vars(paper!)).toEqual(vars(print!));
+  });
+});
+
 describe('theme contrast', () => {
   it.each(['dark', 'light'])('keeps text, status labels and controls readable in %s', theme => {
     const selector = theme === 'dark' ? /:root\s*\{([^}]+)\}/ : /:root\[data-theme="light"\]\s*\{([^}]+)\}/;
