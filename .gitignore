@@ -23,3 +23,8 @@ coverage/
 !/docs/audits/electron-2026-11-02/report.md
 /docs/audits/electron-fixes-2026-11-02/*
 !/docs/audits/electron-fixes-2026-11-02/report.md
+
+# Live POS data holds credential hashes and the session signing key. Never commit it.
+*.db
+*.sqlite
+server-db.json

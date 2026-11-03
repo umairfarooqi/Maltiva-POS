@@ -52,7 +52,11 @@ function authSecret(): string {
   return secret;
 }
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
-function signToken(userId: string, ttlMs = TOKEN_TTL_MS, scope = 'session'): { token: string; expiresAt: number } {
+/** A password sign-in opens a staff session with the account's role. A 4-digit
+ * PIN sign-in opens a till session that only ever carries cashier permissions. */
+type SessionScope = 'staff' | 'till';
+const SESSION_SCOPES: readonly string[] = ['staff', 'till'];
+function signToken(userId: string, scope: SessionScope, ttlMs = TOKEN_TTL_MS): { token: string; expiresAt: number } {
   const sid = randomUUID();
   const exp = Date.now() + ttlMs;
   db.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(Date.now());
@@ -61,7 +65,12 @@ function signToken(userId: string, ttlMs = TOKEN_TTL_MS, scope = 'session'): { t
   const payload = Buffer.from(JSON.stringify({ sub: userId, scope, sid, exp })).toString('base64url');
   return { token: `${payload}.${createHmac('sha256', authSecret()).update(payload).digest('base64url')}`, expiresAt: exp };
 }
-function userFromToken(header?: string, expectedScope = 'session'): any | null {
+/** The identity a session acts as. Till sessions are capped at cashier. */
+function sessionUser(user: any, scope: SessionScope) {
+  const authMethod = scope === 'till' ? 'pin' : 'password';
+  return { ...user, role: scope === 'till' ? 'cashier' : user.role, accountRole: user.role, authMethod };
+}
+function userFromToken(header?: string): any | null {
   const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
   const [payload, sig, extra] = token.split('.');
   if (!payload || !sig || extra !== undefined) return null;
@@ -71,12 +80,12 @@ function userFromToken(header?: string, expectedScope = 'session'): any | null {
   if (suppliedSignature.length !== expectedSignature.length || !timingSafeEqual(suppliedSignature, expectedSignature)) return null;
   try {
     const { sub, exp, scope, sid } = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (!sub || !sid || !Number.isSafeInteger(exp) || exp <= Date.now() || scope !== expectedScope) return null;
+    if (!sub || !sid || !Number.isSafeInteger(exp) || exp <= Date.now() || !SESSION_SCOPES.includes(scope)) return null;
     const session = db.prepare('SELECT id FROM auth_sessions WHERE id=? AND user_id=? AND scope=? AND expires_at=?')
       .get(sid, sub, scope, exp);
     if (!session) return null;
     const user = db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(sub) as any;
-    return user ? { ...user, authSessionId: sid, authExpiresAt: exp } : null;
+    return user ? { ...sessionUser(user, scope), authSessionId: sid, authExpiresAt: exp } : null;
   } catch { return null; }
 }
 
@@ -521,7 +530,7 @@ async function startServer() {
     res.json({ orderCount: orders.length, totalRevenuePaisa, totalCostPaisa, totalProfitPaisa, orders });
   });
 
-  // AUTHENTICATION (Spec Section 7: login, logout, approve — no self-signup or self-reset)
+  // AUTHENTICATION (Spec Section 7: login and logout — no self-signup or self-reset)
   const insertUser = (b: any, role: string) => {
     const id = `user-${randomUUID()}`;
     const username = String(b.username).trim().toLowerCase();
@@ -540,16 +549,21 @@ async function startServer() {
     const lockKey = lockouts.key(user?.id, username);
     if (isLocked(lockKey)) { res.status(429).json({ error: 'Account locked for 5 minutes due to failed attempts. Contact an administrator.' }); return; }
 
-    if (user && (verifySecret(user.password, secret) || verifySecret(user.pin, secret))) {
+    // The password is checked first so the stronger credential decides the session scope.
+    const scope: SessionScope | null = !user ? null
+      : verifySecret(user.password, secret) ? 'staff'
+      : verifySecret(user.pin, secret) ? 'till' : null;
+    if (user && scope) {
       clearFailures(lockKey);
+      // Hash legacy plaintext values in place. An empty credential stays empty: a PIN
+      // must never be copied into the password column, or it would open staff sessions.
+      const upgrade = (stored: string | null) => !stored || isHashed(stored) ? stored : hashSecret(stored);
       if (!isHashed(user.password) || !isHashed(user.pin) || !isHashed(user.securityAnswer)) {
         db.prepare('UPDATE users SET password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
-          isHashed(user.password) ? user.password : hashSecret(user.password || secret),
-          isHashed(user.pin) ? user.pin : hashSecret(user.pin || secret),
-          isHashed(user.securityAnswer) ? user.securityAnswer : hashSecret(user.securityAnswer || user.pin || secret), user.id);
+          upgrade(user.password), upgrade(user.pin), upgrade(user.securityAnswer), user.id);
       }
-      const session = signToken(user.id);
-      res.json({ success: true, user: publicUser(user), ...session });
+      const session = signToken(user.id, scope);
+      res.json({ success: true, user: publicUser(sessionUser(user, scope)), ...session });
     } else {
       recordFailure(lockKey);
       res.status(401).json({ error: 'Invalid credentials' });
@@ -564,30 +578,6 @@ async function startServer() {
   app.post('/api/auth/logout', (req: Request, res: Response) => {
     db.prepare('DELETE FROM auth_sessions WHERE id=?').run((req as any).caller.authSessionId);
     res.json({ success: true });
-  });
-
-  // Manager / Admin PIN override check (Spec Section 3 & 7)
-  app.post('/api/auth/approve', (req: Request, res: Response) => {
-    const username = String(req.body?.username || '').trim().toLowerCase();
-    const pin = String(req.body?.pin || '');
-    const user = db.prepare('SELECT * FROM users WHERE lower(username) = ? AND active = 1').get(username) as any;
-    const lockKey = lockouts.key(user?.id, username);
-    if (isLocked(lockKey)) { res.status(429).json({ error: 'Too many failed override attempts. Try again in 5 minutes.' }); return; }
-    if (!user || (!verifySecret(user.pin, pin) && !verifySecret(user.password, pin))) {
-      recordFailure(lockKey);
-      res.status(401).json({ error: 'Invalid manager PIN.' });
-      return;
-    }
-    if (user.role !== 'admin' && user.role !== 'manager') {
-      res.status(403).json({ error: 'Manager or administrator PIN required.' });
-      return;
-    }
-    clearFailures(lockKey);
-    res.json({
-      approved: true,
-      approver: publicUser(user),
-      approvalToken: signToken(user.id, 5 * 60_000, 'override').token,
-    });
   });
 
   // USER MANAGEMENT (administrators only)
@@ -741,6 +731,11 @@ async function startServer() {
       res.set('X-POS-Database-Restored', 'true');
       res.json(result);
     } catch (error) { next(error); }
+  });
+
+  // Unknown or removed API routes never fall through to the interface handler.
+  app.use('/api', (_req: Request, res: Response) => {
+    res.status(404).json({ error: 'Not found' });
   });
 
   app.use((error: any, _req: Request, res: Response, _next: any) => {

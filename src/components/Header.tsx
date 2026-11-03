@@ -55,7 +55,9 @@ export const Header: React.FC<HeaderProps> = ({
               {currentUser.name}
             </h3>
             <p className="text-xs text-pos-muted capitalize">
-              {currentUser.role}
+              {currentUser.accountRole && currentUser.accountRole !== currentUser.role
+                ? `${currentUser.accountRole} · Till`
+                : currentUser.role}
             </p>
           </div>
         </div>

@@ -23,7 +23,7 @@ describe('default-deny API access and confidential response fields', () => {
       { name: 'Manager', username: 'manager', password: 'manager-secret', pin: '2468', role: 'manager' });
     expect(created.status).toBe(201);
     managerToken = (await (await call('POST', '/api/auth/login', undefined,
-      { username: 'manager', pin: '2468' })).json()).token;
+      { username: 'manager', password: 'manager-secret' })).json()).token;
   }, 30000);
   afterAll(async () => { db?.close(); await server?.cleanup(); });
 
@@ -35,7 +35,7 @@ describe('default-deny API access and confidential response fields', () => {
     ['POST', '/api/orders/quote'], ['POST', '/api/orders'], ['GET', '/api/reports/profit'],
     ['GET', '/api/users'], ['POST', '/api/users'], ['PUT', '/api/users/user-cashier'],
     ['POST', '/api/users/user-cashier/reset-pin'], ['GET', '/api/settings/printer'],
-    ['PUT', '/api/settings/printer'], ['POST', '/api/auth/approve'], ['POST', '/api/auth/logout'],
+    ['PUT', '/api/settings/printer'], ['POST', '/api/auth/logout'],
     ['GET', '/api/future-route'],
   ];
   it.each(protectedRoutes)('requires authentication for %s %s', async (method, route) => {

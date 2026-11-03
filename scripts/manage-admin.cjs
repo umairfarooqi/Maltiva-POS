@@ -1,6 +1,6 @@
 // Out-of-band administrator provisioning and credential reset tool.
 // Usage:
-//   npm run admin:setup -- --username admin --name "Ibrahim Kadri" --pin 1234 --password admin123
+//   npm run admin:setup -- --username admin --name "Ibrahim Kadri" --pin <4 digits> --password <your password>
 // Credentials must be explicit arguments or MALTIVA_ADMIN_* environment variables.
 const Database = require('better-sqlite3');
 const path = require('path');

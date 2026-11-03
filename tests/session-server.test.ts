@@ -62,16 +62,14 @@ describe('persisted session lifecycle', () => {
     expect(db.prepare('SELECT count(*) AS n FROM auth_sessions WHERE user_id=?').get(id)).toEqual({ n: 0 });
   });
 
-  it('resets all sessions and manager approval tokens atomically with a PIN reset', async () => {
+  it('resets staff and till sessions atomically with a PIN reset', async () => {
     const id = await createUser('reset-manager', 'manager');
     const token = await login('reset-manager', 'staff-secret');
-    const approved = await request('/api/auth/approve', server.token, 'POST', { username: 'reset-manager', pin: '2468' });
-    expect(approved.status).toBe(200);
-    const override = (await approved.json()).approvalToken;
-    expect((await request('/api/auth/session', override)).status).toBe(401);
+    const till = await login('reset-manager', '2468');
+    expect((await (await request('/api/auth/session', till)).json()).user).toMatchObject({ role: 'cashier', accountRole: 'manager' });
     expect(db.prepare('SELECT count(*) AS n FROM auth_sessions WHERE user_id=?').get(id)).toEqual({ n: 2 });
     expect((await request(`/api/users/${id}/reset-pin`, server.token, 'POST', { pin: '9999' })).status).toBe(200);
-    expect((await request('/api/auth/session', token)).status).toBe(401);
+    for (const revoked of [token, till]) expect((await request('/api/auth/session', revoked)).status).toBe(401);
     expect(db.prepare('SELECT count(*) AS n FROM auth_sessions WHERE user_id=?').get(id)).toEqual({ n: 0 });
     const renewed = await login('reset-manager', '9999');
     expect((await request('/api/auth/session', renewed)).status).toBe(200);

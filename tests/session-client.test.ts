@@ -27,8 +27,8 @@ describe('client session enforcement', () => {
     } finally { window.removeEventListener(SESSION_ENDED, ended); }
   });
 
-  it.each([['/api/products', 403, {}], ['/api/auth/approve', 401, { error: 'Invalid manager PIN.' }]])(
-    'does not log out a valid session for a permission/credential error on %s', async (url, status, body) => {
+  it.each([['/api/products', 403, {}], ['/api/users', 403, { error: 'Administrator access required.' }]])(
+    'does not log out a valid session for a permission error on %s', async (url, status, body) => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(body, status)));
       expect((await sessionFetch(url, { headers: { Authorization: 'Bearer current-token' } })).status).toBe(status);
       expect(PosStorage.getToken()).toBe('current-token');

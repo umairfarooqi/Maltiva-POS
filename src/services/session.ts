@@ -46,12 +46,8 @@ export async function sessionFetch(url: string, init: RequestInit = {}, options:
     endSession(token, 'The server database was restored or changed. Sign in again. Recovery copies are retained for administrator review.');
     throw Object.assign(new Error('Database changed. Sign in again.'), { name: 'SessionChangedError' });
   }
-  if (response.status === 401 && token) {
-    // Invalid manager credentials also use 401, but do not invalidate the
-    // requesting cashier's valid session. Middleware identifies session failures.
-    const body = await response.clone().json().catch(() => ({}));
-    if (url !== '/api/auth/approve' || body.code === 'SESSION_INVALID') endSession(token);
-  }
+  // Authenticated routes answer 401 only when the session itself is no longer valid.
+  if (response.status === 401 && token) endSession(token);
   const delivered = captureSession();
   // A Response resolves before its body. Keep the guard through JSON/blob decoding,
   // including cloned responses. The sole stale-body exception is a safe canonical

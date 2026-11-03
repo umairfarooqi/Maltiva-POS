@@ -341,6 +341,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     </>
                   )}
                 </Button>
+                <p className="text-xs text-pos-muted text-center">
+                  PIN opens the till. Use Password for manager and admin tools.
+                </p>
               </form>
             ) : (
               /* Form: Password Mode */

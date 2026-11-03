@@ -553,23 +553,6 @@ export const PosApi = {
     await flushSessionRevocations();
   },
 
-  async approveOverride(username: string, pin: string): Promise<{ approved: boolean; approvalToken?: string; approver?: User; error?: string }> {
-    const owner = captureSession();
-    try {
-      const res = await sessionFetch('/api/auth/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ username: username.trim().toLowerCase(), pin: pin.trim() }),
-      });
-      const data = await res.json();
-      owner.assertCurrent();
-    return res.ok ? { approved: true, approvalToken: data.approvalToken, approver: data.approver } : { approved: false, error: data.error || 'Manager approval failed.' };
-    } catch {
-      owner.assertCurrent();
-    return { approved: false, error: 'Cannot reach the POS server.' };
-    }
-  },
-
   // USER MANAGEMENT (admin token required by the server)
   async listUsers(): Promise<User[]> {
     const owner = captureSession();

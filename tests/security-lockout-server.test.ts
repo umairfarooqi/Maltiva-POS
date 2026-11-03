@@ -33,13 +33,12 @@ describe('persistent canonical account lockout', () => {
     expect((await login('cashier', '7351', 'pin')).status).toBe(200);
     expect((await login('cashier@maltivacrust.com', '7351', 'pin')).status).toBe(200);
   });
-  it('manager approvals and login aliases share failures without invalidating the requesting admin session', async () => {
+  it('manager login aliases share failures without invalidating the signed-in admin session', async () => {
     const created = await server.request('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Guard Manager', username: 'guard-manager', email: 'guard-manager@fixture.test', role: 'manager', password: 'fixture-manager-secret', pin: '6194' }) });
     expect(created.status).toBe(201);
     for (let i = 0; i < 3; i++) expect((await login('guard-manager@fixture.test', 'wrong-fixture')).status).toBe(401);
-    const approve = (pin: string) => server.request('/api/auth/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'guard-manager', pin }) });
-    for (let i = 0; i < 2; i++) expect((await approve('wrong-fixture')).status).toBe(401);
-    expect((await approve('6194')).status).toBe(429);
+    for (let i = 0; i < 2; i++) expect((await login('GUARD-MANAGER', '0000', 'pin')).status).toBe(401);
+    expect((await login('guard-manager', '6194', 'pin')).status).toBe(429);
     expect((await login('guard-manager', 'fixture-manager-secret')).status).toBe(429);
     expect((await server.request('/api/auth/session')).status).toBe(200);
   });

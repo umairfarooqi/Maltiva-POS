@@ -148,7 +148,12 @@ export interface User {
   email: string;
   password?: string;
   pin?: string;
+  /** The role this session acts as. A PIN (till) session is always 'cashier'. */
   role: UserRole;
+  /** The account's assigned role, present on signed-in session users. */
+  accountRole?: UserRole;
+  /** How the current session signed in. 'pin' sessions are limited to the till. */
+  authMethod?: 'pin' | 'password';
   avatar: string;
   active: boolean;
   branch: string;

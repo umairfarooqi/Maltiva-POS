@@ -56,18 +56,35 @@ describe('authentication, admin provisioning and role guards', () => {
     expect(row.password).toMatch(/^s1\$/);
     expect(row.pin).toMatch(/^s1\$/);
 
+    // A PIN opens a till session only: cashier permissions, even for an administrator.
     const pinLogin = await fetch(`${server.url}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'admin', pin: '4321' }),
     });
     expect(pinLogin.status).toBe(200);
-    const body = await pinLogin.json();
+    const till = await pinLogin.json();
+    expect(till.user).toMatchObject({ username: 'admin', role: 'cashier', accountRole: 'admin', authMethod: 'pin', active: true });
+    const tillHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${till.token}` };
+    expect((await fetch(`${server.url}/api/users`, { headers: tillHeaders })).status).toBe(403);
+    expect((await fetch(`${server.url}/api/maintenance/backups`, { headers: tillHeaders })).status).toBe(403);
+    expect((await fetch(`${server.url}/api/reports/profit`, { headers: tillHeaders })).status).toBe(403);
+    const tillSession = await (await fetch(`${server.url}/api/auth/session`, { headers: tillHeaders })).json();
+    expect(tillSession.user).toMatchObject({ role: 'cashier', accountRole: 'admin', authMethod: 'pin' });
+
+    const passwordLogin = await fetch(`${server.url}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'adminSecret123' }),
+    });
+    expect(passwordLogin.status).toBe(200);
+    const body = await passwordLogin.json();
     expect(body.token).toBeTruthy();
-    expect(body.user).toMatchObject({ username: 'admin', role: 'admin', active: true });
+    expect(body.user).toMatchObject({ username: 'admin', role: 'admin', accountRole: 'admin', authMethod: 'password', active: true });
     expect(body.user.password).toBeUndefined();
     expect(body.user.pin).toBeUndefined();
     adminToken = body.token;
+    expect((await fetch(`${server.url}/api/users`, { headers: { Authorization: `Bearer ${adminToken}` } })).status).toBe(200);
   });
 
   it('allows admin to create manager and cashier accounts and blocks duplicate usernames', async () => {
@@ -97,7 +114,7 @@ describe('authentication, admin provisioning and role guards', () => {
     const mgrLogin = await fetch(`${server.url}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'manager1', pin: '2222' }),
+      body: JSON.stringify({ username: 'manager1', password: 'managerPass' }),
     });
     managerToken = (await mgrLogin.json()).token;
 
@@ -212,23 +229,34 @@ describe('authentication, admin provisioning and role guards', () => {
     cashierToken = (await unlocked.json()).token;
   });
 
-  it('verifies manager/admin PIN for overrides and rejects cashier PINs', async () => {
-    const cashierApprove = await fetch(`${server.url}/api/auth/approve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cashierToken}` },
-      body: JSON.stringify({ username: 'cashier1', pin: '5555' }),
-    });
-    expect(cashierApprove.status).toBe(403);
-
-    const managerApprove = await fetch(`${server.url}/api/auth/approve`, {
+  it('offers no PIN approval endpoint that could test or lock staff PINs', async () => {
+    const approve = await fetch(`${server.url}/api/auth/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cashierToken}` },
       body: JSON.stringify({ username: 'manager1', pin: '2222' }),
     });
-    expect(managerApprove.status).toBe(200);
-    const body = await managerApprove.json();
-    expect(body.approved).toBe(true);
-    expect(body.approvalToken).toBeTruthy();
+    expect(approve.status).toBe(404);
+    expect((await approve.json()).approvalToken).toBeUndefined();
+  });
+
+  it('never stores a PIN as the password when upgrading a legacy account', async () => {
+    db.prepare(`INSERT INTO users (id, name, username, password, pin, role, active)
+      VALUES ('legacy-manager', 'Legacy Manager', 'legacy.manager', NULL, '8642', 'manager', 1)`).run();
+    const login = await fetch(`${server.url}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'legacy.manager', pin: '8642' }),
+    });
+    expect((await login.json()).user).toMatchObject({ role: 'cashier', authMethod: 'pin' });
+    const row = db.prepare("SELECT password, pin FROM users WHERE id = 'legacy-manager'").get() as any;
+    expect(row.password).toBeNull();
+    expect(row.pin).toMatch(/^s1\$/);
+    const again = await fetch(`${server.url}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'legacy.manager', password: '8642' }),
+    });
+    expect((await again.json()).user).toMatchObject({ role: 'cashier', authMethod: 'pin' });
   });
 });
 
