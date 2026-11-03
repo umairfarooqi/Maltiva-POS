@@ -2,13 +2,17 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// One version for the installer and the interface: package.json.
+const { version } = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')) as { version: string };
 
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    define: { __APP_VERSION__: JSON.stringify(version) },
     build: {
       // Keep even small font subsets compatible with the POS font-src policy.
       assetsInlineLimit: file => /\.woff2?$/i.test(file) ? false : undefined,

@@ -424,7 +424,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* -------------------------------------------------------- */}
       <footer className="w-full max-w-4xl flex items-center justify-between text-xs text-pos-muted z-10 shrink-0 py-1">
         <span>Station #01 &bull; Front Counter</span>
-        <span>Maltiva POS Core v2.4</span>
+        <span>Maltiva POS v{__APP_VERSION__}</span>
       </footer>
     </div>
   );

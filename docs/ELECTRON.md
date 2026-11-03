@@ -13,7 +13,7 @@ npm run test:electron
 npm run electron:build
 ```
 
-The installer is `dist_electron/Maltiva POS-0.1.0-x64.exe`. `npm run electron:pack` produces an unpacked directory for QA. `npm run electron:portable` builds the optional portable target. `npm run electron:start` runs the built application from source.
+The installer is `dist_electron/Maltiva POS-<version>-x64.exe` (for example `Maltiva POS-1.5.5-x64.exe`; the version comes from `package.json`). `npm run electron:pack` produces an unpacked directory for QA. `npm run electron:portable` builds the optional portable target. `npm run electron:start` runs the built application from source.
 
 Electron is pinned in both the manifest and builder configuration. `scripts/prepare-electron.cjs` verifies those versions and installs the matching local runtime if needed. Builder copies that distribution instead of downloading/extracting another copy. This avoids the extraction-directory rename failures reproduced on this Windows machine.
 
