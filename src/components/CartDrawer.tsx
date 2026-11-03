@@ -92,7 +92,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           <button
             onClick={() => setConfirmClear(true)}
             disabled={cart.length === 0 || isProcessing}
-            className="min-w-11 min-h-11 p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-lg hover:bg-pos-danger-bg cursor-pointer active:scale-95"
+            className="min-w-pos-touch min-h-pos-touch p-2 text-pos-danger-text hover:text-pos-danger-text disabled:opacity-30 transition rounded-lg hover:bg-pos-danger-bg cursor-pointer active:scale-95"
             title="Clear Order"
             aria-label="Clear order"
           >
@@ -103,7 +103,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               type="button"
               disabled={isProcessing}
               onClick={onCloseMobile}
-              className="min-w-11 min-h-11 p-2 text-pos-muted hover:text-pos-text transition rounded-lg hover:bg-pos-raised cursor-pointer"
+              className="min-w-pos-touch min-h-pos-touch p-2 text-pos-muted hover:text-pos-text transition rounded-lg hover:bg-pos-raised cursor-pointer"
               title="Close order drawer"
               aria-label="Close order drawer"
             >
@@ -119,7 +119,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         {cart.length === 0 ? (
           <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-center px-4 py-8">
-            <div className="w-11 h-11 rounded-full bg-pos-inset border border-pos-border flex items-center justify-center text-pos-muted mb-2.5">
+            <div className="w-pos-touch h-pos-touch rounded-full bg-pos-inset border border-pos-border flex items-center justify-center text-pos-muted mb-2.5">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <p className="text-xs font-semibold text-pos-secondary">Cart is empty</p>
@@ -137,7 +137,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     {onEditItem ? (
                       <button type="button" disabled={isProcessing} onClick={() => onEditItem(item)}
                         aria-label={`Edit ${item.product.name}`}
-                        className="min-h-11 w-full text-left text-sm font-bold text-pos-text break-words leading-snug disabled:opacity-40">
+                        className="min-h-pos-touch w-full text-left text-sm font-bold text-pos-text break-words leading-snug disabled:opacity-40">
                         {item.product.name} <Pencil aria-hidden="true" className="inline w-3 h-3 text-pos-muted" />
                         <span className="block text-xs font-mono text-pos-secondary">{formatPKR(item.totalPricePaisa)}</span>
                       </button>
@@ -151,14 +151,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   <div className="flex shrink-0 items-center gap-1">
                     <button type="button" disabled={isProcessing} aria-label={`Decrease quantity of ${item.product.name}`}
                       onClick={() => onUpdateQuantity(item.cartItemId, -1)}
-                      className="w-11 h-11 rounded-lg bg-pos-inset text-pos-text font-bold disabled:opacity-40">-</button>
+                      className="w-pos-touch h-pos-touch rounded-lg bg-pos-inset text-pos-text font-bold disabled:opacity-40">-</button>
                     <span className="min-w-5 text-center text-sm font-bold font-mono text-pos-text" aria-label="Quantity">{item.quantity}</span>
                     <button type="button" disabled={isProcessing} aria-label={`Increase quantity of ${item.product.name}`}
                       onClick={() => onUpdateQuantity(item.cartItemId, 1)}
-                      className="w-11 h-11 rounded-lg bg-pos-inset text-pos-accent font-bold disabled:opacity-40">+</button>
+                      className="w-pos-touch h-pos-touch rounded-lg bg-pos-inset text-pos-accent font-bold disabled:opacity-40">+</button>
                     <button type="button" disabled={isProcessing} aria-label={`Remove ${item.product.name}`}
                       onClick={() => onRemoveItem(item.cartItemId)}
-                      className="w-11 h-11 flex items-center justify-center rounded-lg text-pos-danger-text hover:bg-pos-danger-bg disabled:opacity-40">
+                      className="w-pos-touch h-pos-touch flex items-center justify-center rounded-lg text-pos-danger-text hover:bg-pos-danger-bg disabled:opacity-40">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -221,14 +221,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     try { setCashTendered(parseRupees(event.target.value)); setInvalidTender(false); }
                     catch { setInvalidTender(true); }
                   }}
-                  className="w-full h-11 rounded-md border border-pos-control bg-pos-inset px-2.5 text-sm font-bold font-mono text-pos-text focus-visible:border-pos-accent"
+                  className="w-full h-pos-touch rounded-md border border-pos-control bg-pos-inset px-2.5 text-sm font-bold font-mono text-pos-text focus-visible:border-pos-accent"
                 />
               </div>
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-pos-muted mb-1">
                   Change Due
                 </span>
-                <div className="h-11 flex items-center justify-between rounded-md border border-pos-border bg-pos-inset px-2.5 text-sm font-black font-mono text-pos-accent">
+                <div className="h-pos-touch flex items-center justify-between rounded-md border border-pos-border bg-pos-inset px-2.5 text-sm font-black font-mono text-pos-accent">
                   <span>{formatPKR(changeDuePaisa)}</span>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               {[null, 500, 1000, 2000, 5000].map(amount => (
                 <button key={amount ?? 'exact'} type="button" disabled={isProcessing || (amount !== null && amount * 100 < totalPayable)}
                   onClick={() => { const paisa = amount === null ? totalPayable : amount * 100; setCashTendered(paisa); setTenderText(rupeeText(paisa)); setInvalidTender(false); }}
-                  className="min-h-11 rounded-md border border-pos-control bg-pos-inset text-xs font-bold text-pos-text disabled:opacity-40">
+                  className="min-h-pos-touch rounded-md border border-pos-control bg-pos-inset text-xs font-bold text-pos-text disabled:opacity-40">
                   {amount === null ? 'Exact' : amount}
                 </button>
               ))}
@@ -259,7 +259,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 disabled={isProcessing}
                 aria-pressed={paymentMethod === value}
                 onClick={() => onSelectPaymentMethod(value)}
-                className={`h-11 flex items-center justify-center gap-1.5 rounded-md text-xs font-bold transition cursor-pointer active:scale-95 ${
+                className={`h-pos-touch flex items-center justify-center gap-1.5 rounded-md text-xs font-bold transition cursor-pointer active:scale-95 ${
                   paymentMethod === value
                     ? 'bg-pos-selected text-pos-accent border border-pos-accent/60'
                     : ' border border-transparent text-pos-secondary hover:text-pos-text hover:bg-pos-surface/60'
@@ -278,7 +278,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             type="button"
             disabled={isProcessing || (cart.length === 0 && !canReprintLastOrder)}
             onClick={onOpenPrintModal}
-            className="h-11 px-3.5 rounded-lg border border-pos-border bg-pos-surface hover:bg-pos-raised text-pos-secondary hover:text-pos-text text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 active:scale-95"
+            className="h-pos-touch px-3.5 rounded-lg border border-pos-border bg-pos-surface hover:bg-pos-raised text-pos-secondary hover:text-pos-text text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 active:scale-95"
           >
             <Printer className="w-4 h-4" />
             <span>{cart.length === 0 && canReprintLastOrder ? 'Last receipt' : 'Print'}</span>
@@ -288,7 +288,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             type="button"
             onClick={() => onPlaceOrder(cashTenderedPaisa, paymentMethod)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
-            className="h-11 flex-1 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
+            className="h-pos-touch flex-1 rounded-lg bg-pos-action hover:bg-pos-action-hover text-pos-action-text text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
           >
             <Power className="w-4 h-4" />
             <span>{isProcessing ? 'Processing...' : `Complete Order (${paymentMethod === 'scan' ? 'Scan' : paymentMethod === 'card' ? 'Card' : 'Cash'})`}</span>

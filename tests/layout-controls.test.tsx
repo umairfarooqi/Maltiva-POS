@@ -209,7 +209,7 @@ describe('layout controls', () => {
 
     const productGrid = screen.getByRole('heading', { name: 'Test Dish' }).closest('div.grid');
 
-    expect(productGrid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))]');
+    expect(productGrid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))]');
   });
 
   it('removes decorative emoji from category labels', () => {

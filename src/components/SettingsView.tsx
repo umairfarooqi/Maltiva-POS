@@ -266,7 +266,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 aria-label="Open customer display"
                 onClick={handleOpenCustomerDisplay}
-                className="p-2 bg-pos-surface border border-pos-success-border text-pos-accent rounded-md hover:bg-pos-action hover:text-white transition-colors cursor-pointer"
+                className="p-2 bg-pos-surface border border-pos-success-border text-pos-accent rounded-md hover:bg-pos-action hover:text-pos-action-text transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
@@ -390,7 +390,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <button
           disabled={isSaving || currentUser.role !== 'admin'}
           onClick={handleSave}
-          className="flex items-center gap-2 px-5 py-3 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-5 py-3 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition-colors cursor-pointer"
         >
           {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
           <span>{isSaving ? 'Saving...' : saved ? 'Settings Applied!' : 'Apply All Changes'}</span>
@@ -418,7 +418,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleClearDemoOrders}
-                className="px-4 py-2 bg-pos-danger-action hover:bg-pos-danger-hover text-white rounded-md text-xs font-bold transition"
+                className="px-4 py-2 bg-pos-danger-action hover:bg-pos-danger-hover text-pos-danger-action-text rounded-md text-xs font-bold transition"
               >
                 Clear cached sales
               </button>

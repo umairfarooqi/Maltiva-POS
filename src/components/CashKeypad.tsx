@@ -34,7 +34,7 @@ export function CashKeypad({ totalPaisa, initialValue, busy, onClose, onConfirm 
       className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-xl bg-pos-surface border border-pos-border p-4 text-pos-text">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Cash tendered</h2>
-        <button type="button" disabled={busy} onClick={onClose} className="min-h-11 px-3 rounded-lg hover:bg-pos-raised">Cancel</button>
+        <button type="button" disabled={busy} onClick={onClose} className="min-h-pos-touch px-3 rounded-lg hover:bg-pos-raised">Cancel</button>
       </div>
       <p className="text-sm text-pos-secondary">Total {formatPKR(totalPaisa)}</p>
       <output aria-label="Entered cash amount" aria-live="polite" className="block rounded-lg bg-pos-inset p-3 my-2 text-2xl font-mono font-bold">{value || '0'}</output>
@@ -48,9 +48,9 @@ export function CashKeypad({ totalPaisa, initialValue, busy, onClose, onConfirm 
         {valid ? `Change ${formatPKR(paisa! - totalPaisa)}` : 'Enter an amount that covers the total.'}
       </p>
       <div className="flex gap-2 mt-2">
-        <button type="button" disabled={busy} onClick={() => press('Clear')} className="min-h-11 px-4 rounded-lg border border-pos-control">Clear</button>
+        <button type="button" disabled={busy} onClick={() => press('Clear')} className="min-h-pos-touch px-4 rounded-lg border border-pos-control">Clear</button>
         <button type="button" disabled={busy || !valid} onClick={() => onConfirm(value)}
-          className="min-h-11 flex-1 rounded-lg bg-pos-action text-white font-bold disabled:opacity-40">Use amount</button>
+          className="min-h-pos-touch flex-1 rounded-lg bg-pos-action text-pos-action-text font-bold disabled:opacity-40">Use amount</button>
       </div>
     </Dialog>
   );

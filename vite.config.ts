@@ -9,6 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    build: {
+      // Keep even small font subsets compatible with the POS font-src policy.
+      assetsInlineLimit: file => /\.woff2?$/i.test(file) ? false : undefined,
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

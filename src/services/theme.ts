@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 export type Theme = 'dark' | 'light';
 export const THEME_STORAGE_KEY = 'maltiva-theme';
+const THEME_MIGRATION_KEY = 'maltiva-theme-palette-v2';
 const listeners = new Set<() => void>();
 const normalizeTheme = (value: string | null): Theme => value === 'light' ? 'light' : 'dark';
 
@@ -21,7 +22,15 @@ export function setTheme(theme: Theme) {
 }
 
 export function initializeTheme() {
-  try { applyTheme(normalizeTheme(localStorage.getItem(THEME_STORAGE_KEY))); }
+  try {
+    if (localStorage.getItem(THEME_MIGRATION_KEY) !== 'complete') {
+      // The previous light palette was beige/brown. Move existing installs to
+      // the requested charcoal palette once; users can still choose Light later.
+      if (localStorage.getItem(THEME_STORAGE_KEY) === 'light') localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+      localStorage.setItem(THEME_MIGRATION_KEY, 'complete');
+    }
+    applyTheme(normalizeTheme(localStorage.getItem(THEME_STORAGE_KEY)));
+  }
   catch { applyTheme('dark'); }
 }
 

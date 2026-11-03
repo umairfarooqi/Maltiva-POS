@@ -1151,7 +1151,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={confirmLogout}
-                className="rounded-md bg-pos-danger-hover px-4 py-2 text-sm font-semibold text-white hover:bg-pos-danger-hover"
+                className="rounded-md bg-pos-danger-hover px-4 py-2 text-sm font-semibold text-pos-danger-action-text hover:bg-pos-danger-hover"
               >
                 Log out
               </button>

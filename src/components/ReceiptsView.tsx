@@ -3,7 +3,7 @@ import { ReceiptsApi, ReceiptFilters, ReceiptSummary } from '../services/receipt
 import { Order } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 
-const control = 'min-h-11 rounded-md border border-pos-control bg-pos-inset px-3 py-2 text-sm disabled:opacity-50';
+const control = 'min-h-pos-touch rounded-md border border-pos-control bg-pos-inset px-3 py-2 text-sm disabled:opacity-50';
 export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order: Order) => void; onBack: () => void }) {
   const [filters, setFilters] = useState<ReceiptFilters>({});
   const [applied, setApplied] = useState<ReceiptFilters>({});
@@ -60,7 +60,7 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
         <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-to">To business date<input id="receipt-to" type="date" max={today || undefined} className={control} value={filters.to || ''} onChange={event => change('to', event.target.value)} /></label>
         <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor="receipt-reference">Order reference<input id="receipt-reference" type="text" placeholder="e.g. 0001" maxLength={200} className={control} value={filters.reference || ''} onChange={event => change('reference', event.target.value)} /></label>
         <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-token">Token<input id="receipt-token" type="text" inputMode="numeric" maxLength={16} className={`${control} w-28`} value={filters.token || ''} onChange={event => change('token', event.target.value)} /></label>
-        <button type="submit" disabled={busy} className={`${control} bg-pos-action text-white font-semibold`}>Search receipts</button>
+        <button type="submit" disabled={busy} className={`${control} bg-pos-action text-pos-action-text font-semibold`}>Search receipts</button>
         {Object.values(filters).some(value => value.trim()) && <button type="button" className={control} onClick={clear}>Clear filters</button>}
       </form>
       <p className="text-xs text-pos-secondary">Dates follow the store business day. Blank dates mean today; choose up to 31 days. Enter any part of the order reference to search across all dates. A token needs one business date.</p>

@@ -147,7 +147,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close item options"
-            className="w-11 h-11 shrink-0 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary hover:bg-pos-raised flex items-center justify-center transition"
+            className="w-pos-touch h-pos-touch shrink-0 rounded-md bg-pos-raised text-pos-muted hover:text-pos-secondary hover:bg-pos-raised flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -194,7 +194,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
                           <div
                             className={`w-4 h-4 ${group.multiSelect ? 'rounded-md' : 'rounded-full'} flex items-center justify-center border ${
                               isSelected
-                                ? 'bg-pos-action border-pos-accent text-white'
+                                ? 'bg-pos-action border-pos-accent text-pos-action-text'
                                 : 'border-pos-control'
                             }`}
                           >
@@ -240,7 +240,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               aria-label="Decrease item quantity"
               disabled={quantity <= 1}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-11 h-11 rounded-lg flex items-center justify-center text-pos-secondary hover:bg-pos-raised font-bold transition"
+              className="w-pos-touch h-pos-touch rounded-lg flex items-center justify-center text-pos-secondary hover:bg-pos-raised font-bold transition"
             >
               -
             </button>
@@ -251,7 +251,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
               disabled={quantity >= maximumQuantity}
               aria-label="Increase item quantity"
               onClick={() => setQuantity(quantity + 1)}
-              className="w-11 h-11 rounded-lg flex items-center justify-center text-pos-accent hover:bg-pos-selected font-bold transition"
+              className="w-pos-touch h-pos-touch rounded-lg flex items-center justify-center text-pos-accent hover:bg-pos-selected font-bold transition"
             >
               +
             </button>
@@ -260,7 +260,7 @@ export const VariationModal: React.FC<VariationModalProps> = ({
           <button
             onClick={handleAdd}
             disabled={maximumQuantity < 1 || quantity > maximumQuantity}
-            className="min-w-[160px] min-h-11 flex-1 py-3 px-3 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-sm font-bold flex flex-wrap gap-2 items-center justify-between transition disabled:opacity-40"
+            className="min-w-[160px] min-h-pos-touch flex-1 py-3 px-3 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-sm font-bold flex flex-wrap gap-2 items-center justify-between transition disabled:opacity-40"
           >
             <span>{initialItem ? 'Update item' : 'Add to Order'}</span>
             <span className="font-mono">{formatPKR(totalPricePaisa)}</span>

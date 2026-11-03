@@ -74,6 +74,7 @@
       "dist/**",
       "dist-server/**",
       "electron/**",
+      "public/pos-theme.css",
       "package.json"
     ],
     "electronVersion": "44.10.1",

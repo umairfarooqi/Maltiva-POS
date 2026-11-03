@@ -120,14 +120,14 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Quick search dish..."
                 aria-label="Search menu items"
-                className="w-full h-11 pl-9 pr-12 rounded-lg bg-pos-inset border border-pos-border text-xs text-pos-text placeholder:text-pos-muted focus-visible:border-pos-accent transition"
+                className="w-full h-pos-touch pl-9 pr-12 rounded-lg bg-pos-inset border border-pos-border text-xs text-pos-text placeholder:text-pos-muted focus-visible:border-pos-accent transition"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 min-w-11 min-h-11 flex items-center justify-center p-1 text-pos-muted hover:text-pos-text rounded"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 min-w-pos-touch min-h-pos-touch flex items-center justify-center p-1 text-pos-muted hover:text-pos-text rounded"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -138,14 +138,14 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
               <button
                 onClick={() => scrollCategories('left')}
                 aria-label="Previous menu categories"
-                className="w-11 h-11 rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
+                className="w-pos-touch h-pos-touch rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => scrollCategories('right')}
                 aria-label="Next menu categories"
-                className="w-11 h-11 rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
+                className="w-pos-touch h-pos-touch rounded-lg border border-pos-border bg-pos-surface flex items-center justify-center text-pos-muted hover:text-pos-text hover:bg-pos-raised transition cursor-pointer active:scale-95"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -174,7 +174,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 key={cat.id}
                 onClick={() => setActiveCategoryId(cat.id)}
                 aria-pressed={isSelected}
-                className={`h-11 px-3 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${isSelected
+                className={`h-pos-touch px-3 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${isSelected
                     ? 'border-pos-accent bg-pos-selected text-pos-accent shadow-xs'
                     : 'border-pos-border bg-pos-surface text-pos-secondary hover:border-pos-control hover:text-pos-text'
                   }`}
@@ -186,7 +186,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                   </h3>
                   <p
                     className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${isSelected
-                        ? 'bg-pos-action text-white'
+                        ? 'bg-pos-surface text-pos-accent'
                         : 'bg-pos-raised text-pos-muted'
                       }`}
                   >
@@ -207,7 +207,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
             <p className="text-xs text-pos-muted mt-1">Try another category or search term above.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-3">
             {filteredProducts.map(rawProduct => {
               const product = normalizeProduct(rawProduct);
               const qtyInCart = getProductCartQty(product.id);
@@ -228,20 +228,15 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 <div
                   key={product.id}
                   onClick={addItem}
-                  className={`group h-full bg-pos-surface rounded-xl p-3 border transition-all duration-150 flex flex-col justify-between relative overflow-hidden ${cannotAdd ? 'cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
+                  className={`group h-full bg-pos-surface rounded-lg border transition-colors duration-150 flex flex-col justify-between relative overflow-hidden ${cannotAdd ? 'cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
                     } ${qtyInCart > 0
-                      ? 'border-pos-accent bg-pos-selected/25 ring-1 ring-pos-accent/40'
+                      ? 'border-pos-control'
                       : 'border-pos-border hover:border-pos-control hover:bg-pos-raised/40'
                     }`}
                 >
-                  {/* Top Active Accent Bar when in Cart */}
-                  {qtyInCart > 0 && (
-                    <div className="absolute inset-x-0 top-0 h-1 bg-pos-action z-20" />
-                  )}
-
                   <div>
                       {/* Top Row: 1:1 Image + Badges */}
-                      <div className="flex items-start justify-between gap-2 mb-2.5">
+                      <div className="relative">
                         <button
                           type="button"
                           disabled={cannotAdd}
@@ -250,24 +245,26 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                             e.stopPropagation();
                             addItem();
                           }}
-                          className="relative w-14 h-14 aspect-square shrink-0 rounded-xl overflow-hidden bg-pos-inset border border-pos-border/70 block disabled:opacity-60"
+                          className="block aspect-[2/1] max-h-32 w-full overflow-hidden bg-pos-inset disabled:opacity-60"
                         >
                           <img
-                            src={product.image}
+                            src={product.image || '/placeholder-dish.svg'}
+                            loading="lazy"
+                            decoding="async"
                             alt={product.name}
                             onError={event => {
                               if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
                                 event.currentTarget.src = '/placeholder-dish.svg';
                               }
                             }}
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                            className={`h-full w-full ${product.image ? 'object-cover' : 'object-contain p-5'}`}
                           />
                         </button>
 
-                        <div className="flex flex-col items-end gap-1 min-w-0">
+                        <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1">
                           {product.isDeal && (
-                          <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text leading-none">
-                            DEAL
+                          <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-semibold text-pos-warning-text leading-none">
+                            Deal
                           </span>
                         )}
                         {hasVariations && (
@@ -280,12 +277,12 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     </div>
 
                         {/* Full-Width Category & Dish Name (No Side Cramping) */}
-                        <div className="mb-2.5 space-y-0.5">
-                          <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-pos-accent">
+                        <div className="px-3 pt-3 pb-2 space-y-0.5">
+                          <span className="block truncate text-[10px] font-semibold text-pos-muted">
                             {product.isDeal ? 'Combo Deal' : cleanCategoryLabel(product.categoryName)}
                           </span>
 
-                        <h3 className="min-h-10 text-sm font-bold leading-snug text-pos-text">
+                        <h3 className="min-h-10 text-[15px] font-bold leading-snug text-pos-text">
                           <button
                             type="button"
                             disabled={cannotAdd}
@@ -306,8 +303,8 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     </div>
 
                       {/* Bottom Bar: Price on Left + Touch Action Controls on Right */}
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider/80">
-                        <span className="text-base font-black text-pos-text font-mono tracking-tight whitespace-nowrap">
+                      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-pos-divider px-3 py-2">
+                        <span className="text-base font-bold text-pos-text tabular-nums whitespace-nowrap">
                           {formatPKR(product.pricePaisa)}
                         </span>
 
@@ -320,9 +317,10 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                               e.stopPropagation();
                               addItem();
                             }}
-                            className="w-10 h-10 shrink-0 rounded-lg bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                            className="min-h-pos-touch gap-1.5 px-3 shrink-0 rounded-lg bg-pos-action hover:bg-pos-action-hover text-pos-action-text flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                           >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4" aria-hidden="true" />
+                            <span className="text-sm font-bold">{hasVariations ? 'Choose' : 'Add'}</span>
                           </button>
                         ) : (
                           <div
@@ -345,7 +343,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                               disabled={cannotAdd}
                               onClick={addItem}
                               aria-label={`Add one ${product.name}`}
-                              className="w-9 h-9 rounded-md bg-pos-action hover:bg-pos-action-hover text-white flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                              className="w-9 h-9 rounded-md bg-pos-action hover:bg-pos-action-hover text-pos-action-text flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                             >
                               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                             </button>
@@ -365,7 +363,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     <button
                       onClick={onOpenMobileCart}
                       aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
-                      className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-pos-action hover:bg-pos-action-hover text-white py-3 px-4 rounded-xl border border-pos-accent font-bold text-sm transition active:scale-[0.98] cursor-pointer"
+                      className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-pos-action hover:bg-pos-action-hover text-pos-action-text py-3 px-4 rounded-xl border border-pos-accent font-bold text-sm transition active:scale-[0.98] cursor-pointer"
                     >
                       <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-black">
                         {totalCartQty}

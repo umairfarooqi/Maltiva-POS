@@ -2,8 +2,8 @@ import React, { useRef, useState } from 'react';
 import { MaintenanceApi, BackupFile, RestorePreview } from '../services/maintenanceApi';
 import { Dialog } from './ui/Dialog';
 
-const button = 'min-h-11 rounded-md border border-pos-control px-4 py-2 text-sm font-semibold disabled:opacity-50';
-const input = 'mt-1 min-h-11 w-full rounded-md border border-pos-control bg-pos-inset px-3 py-2';
+const button = 'min-h-pos-touch rounded-md border border-pos-control px-4 py-2 text-sm font-semibold disabled:opacity-50';
+const input = 'mt-1 min-h-pos-touch w-full rounded-md border border-pos-control bg-pos-inset px-3 py-2';
 export function DatabaseMaintenance() {
   const [files, setFiles] = useState<BackupFile[]>([]);
   const [directory, setDirectory] = useState('');
@@ -40,7 +40,7 @@ export function DatabaseMaintenance() {
       <p className="mt-1 text-xs text-pos-secondary">Supports this POS database version, up to 64 MB.</p>
     </div>
     <div className="flex flex-wrap gap-3">
-      <button type="button" disabled={busy} className={`${button} bg-pos-action text-white`} onClick={() => void run(async () => {
+      <button type="button" disabled={busy} className={`${button} bg-pos-action text-pos-action-text`} onClick={() => void run(async () => {
         const backup = await MaintenanceApi.create();
         setDirectory(backup.directory);
         setNotice(`Backup saved on server: ${backup.filename}. Download it below.`);
@@ -90,7 +90,7 @@ export function DatabaseMaintenance() {
         </div>
         <div className="flex shrink-0 justify-end gap-3 border-t border-pos-divider p-4">
           <button type="button" className={button} disabled={busy} onClick={cancelPreview}>Cancel restore</button>
-          <button type="submit" disabled={busy || confirmation !== 'RESTORE' || !password} className={`${button} bg-pos-danger-action text-white`}>{busy ? 'Restoring…' : 'Restore database'}</button>
+          <button type="submit" disabled={busy || confirmation !== 'RESTORE' || !password} className={`${button} bg-pos-danger-action text-pos-danger-action-text`}>{busy ? 'Restoring…' : 'Restore database'}</button>
         </div>
       </form>
     </Dialog>}

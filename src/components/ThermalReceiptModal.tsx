@@ -99,7 +99,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             <button
               onClick={onClose}
               aria-label="Close receipt preview"
-              className="w-11 h-11 shrink-0 rounded-md bg-pos-raised/80 text-pos-muted hover:bg-pos-control flex items-center justify-center transition"
+              className="w-pos-touch h-pos-touch shrink-0 rounded-md bg-pos-raised/80 text-pos-muted hover:bg-pos-control flex items-center justify-center transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -139,7 +139,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               <button
                 aria-pressed={paperWidth === '80mm'} onClick={() => setPaperWidth('80mm')}
                 className={`px-2 py-1 rounded font-mono font-semibold transition ${
-                  paperWidth === '80mm' ? 'bg-pos-action text-white' : 'text-pos-muted'
+                  paperWidth === '80mm' ? 'bg-pos-action text-pos-action-text' : 'text-pos-muted'
                 }`}
               >
                 80mm
@@ -147,7 +147,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               <button
                 aria-pressed={paperWidth === '58mm'} onClick={() => setPaperWidth('58mm')}
                 className={`px-2 py-1 rounded font-mono font-semibold transition ${
-                  paperWidth === '58mm' ? 'bg-pos-action text-white' : 'text-pos-muted'
+                  paperWidth === '58mm' ? 'bg-pos-action text-pos-action-text' : 'text-pos-muted'
                 }`}
               >
                 58mm
@@ -302,7 +302,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             >
               {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-black">{persistenceLabel}</p>}
               <div className="text-center pb-2 border-b-2 border-pos-control">
-                <span className="text-[11px] font-black uppercase tracking-wider block bg-pos-strong text-white py-0.5 rounded">
+                <span className="text-[11px] font-black uppercase tracking-wider block bg-pos-strong text-pos-strong-text py-0.5 rounded">
                   *** KITCHEN ORDER SLIP ***
                 </span>
                 <p className="text-[10px] font-bold text-pos-secondary mt-1 uppercase">
@@ -330,7 +330,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                 {order.items.map(it => (
                   <div key={it.id} className="border-b border-dashed border-pos-border pb-2 last:border-none">
                     <div className="flex items-start gap-2">
-                      <span className="w-5 h-5 rounded bg-pos-strong text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <span className="w-5 h-5 rounded bg-pos-strong text-pos-strong-text flex items-center justify-center font-bold text-xs shrink-0">
                         {it.quantity}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -394,7 +394,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             <button
               onClick={handlePrint}
               disabled={isPrinting}
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
             >
               <Printer className="w-4 h-4" />
               <span>Print {activeTab === 'both' ? 'Both Slips (2)' : activeTab === 'customer' ? 'Customer Slip' : 'Kitchen Slip'}</span>

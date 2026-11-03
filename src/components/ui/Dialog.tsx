@@ -66,7 +66,7 @@ export function Dialog({ children, label, onClose, busy = false, className = '',
     };
   }, []);
   return createPortal(
-    <div className={`fixed inset-0 z-[70] bg-black/65 flex items-center justify-center p-4 ${backdropClassName}`}
+    <div className={`fixed inset-0 z-[70] bg-pos-overlay flex items-center justify-center p-4 ${backdropClassName}`}
       onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
       <div ref={ref} data-pos-dialog role={role} aria-modal="true" aria-label={label} aria-busy={busy} tabIndex={-1} className={className}>
         {children}

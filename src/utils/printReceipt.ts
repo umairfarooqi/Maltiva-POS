@@ -1,8 +1,8 @@
 function receiptLayout(paperWidth: '58mm' | '80mm'): string {
   return `
-    html, body { width: ${paperWidth}; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: white; }
-    #thermal-receipt-print-area { position: static !important; display: flex !important; flex-direction: column; align-items: stretch; flex: none !important; width: ${paperWidth} !important; max-width: ${paperWidth} !important; height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; box-sizing: border-box; margin: 0 !important; padding: 2mm !important; gap: 3mm !important; background: white !important; color: black !important; page: auto !important; }
-    #thermal-receipt-print-area > div { width: 100% !important; max-width: none !important; flex-shrink: 0; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: white !important; box-shadow: none !important; }
+    html, body { width: ${paperWidth}; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: var(--pos-print-paper); }
+    #thermal-receipt-print-area { position: static !important; display: flex !important; flex-direction: column; align-items: stretch; flex: none !important; width: ${paperWidth} !important; max-width: ${paperWidth} !important; height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; box-sizing: border-box; margin: 0 !important; padding: 2mm !important; gap: 3mm !important; background: var(--pos-print-paper) !important; color: var(--pos-print-ink) !important; page: auto !important; }
+    #thermal-receipt-print-area > div { width: 100% !important; max-width: none !important; flex-shrink: 0; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: var(--pos-print-paper) !important; box-shadow: none !important; }
     #thermal-receipt-print-area, #thermal-receipt-print-area * { visibility: visible !important; }
   `;
 }

@@ -560,13 +560,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       : 'bg-pos-surface border-pos-border/70 text-pos-secondary hover:border-pos-control hover:bg-pos-surface'
                     }`}
                 >
-                  <button type="button" onClick={() => setSelectedCategoryId(cat.id)} aria-pressed={isSelected} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 truncate text-left">
+                  <button type="button" onClick={() => setSelectedCategoryId(cat.id)} aria-pressed={isSelected} className="flex min-h-pos-touch min-w-0 flex-1 items-center gap-2 truncate text-left">
                     <span className="w-6 text-center text-base shrink-0">{cat.icon || '🍽'}</span>
                     <span className="truncate">{cat.name}</span>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono transition-opacity ${isSelected ? 'bg-pos-action text-white' : 'bg-pos-raised text-pos-muted'
+                      className={`min-w-5 text-center text-[10px] px-1.5 py-0.5 rounded-full font-mono transition-opacity ${isSelected ? 'bg-pos-action text-pos-action-text' : 'bg-pos-raised text-pos-muted'
                         } `}
                     >
                       {actualCount}
@@ -578,7 +578,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         type="button"
                         onClick={e => openEditCategoryModal(cat, e)}
                         aria-label={`Edit ${cat.name}`}
-                        className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-accent transition"
+                        className="min-w-pos-touch min-h-pos-touch flex items-center justify-center text-pos-muted hover:text-pos-accent transition"
                       >
                         <Edit2 className="w-3 h-3" />
                       </button>
@@ -586,7 +586,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         type="button"
                         onClick={e => handleDeleteCategoryClick(cat.id, e)}
                         aria-label={`Delete ${cat.name}`}
-                        className="min-w-11 min-h-11 flex items-center justify-center text-pos-muted hover:text-pos-danger-text transition"
+                        className="min-w-pos-touch min-h-pos-touch flex items-center justify-center text-pos-muted hover:text-pos-danger-text transition"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -599,7 +599,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         </div>
         <button
           onClick={openCreateCategoryModal}
-          className="w-full py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2"
+          className="w-full py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Category
@@ -636,7 +636,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             </button>
             <button
               onClick={openCreateDishModal}
-              className="px-3.5 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-2"
+              className="px-3.5 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Add New Dish
@@ -886,7 +886,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <button
                 onClick={() => setIsDishModalOpen(false)}
                 aria-label="Close dish editor"
-                className="min-h-11 min-w-11 p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
+                className="min-h-pos-touch min-w-pos-touch p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1069,13 +1069,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsDishModalOpen(false)}
-                  className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                  className="min-h-pos-touch px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
+                  className="min-h-pos-touch px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer"
                 >
                   Save Dish
                 </button>
@@ -1098,7 +1098,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <button
                 onClick={() => setIsDealModalOpen(false)}
                 aria-label="Close deal editor"
-                className="min-h-11 min-w-11 p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
+                className="min-h-pos-touch min-w-pos-touch p-2 text-pos-muted hover:text-pos-secondary rounded-md hover:bg-pos-raised transition cursor-pointer"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1207,7 +1207,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <button
                         type="button"
                         onClick={handleAddProductToDeal}
-                        className="px-3 py-2 bg-pos-strong text-white rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
+                        className="px-3 py-2 bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
                       >
                         Add
                       </button>
@@ -1224,7 +1224,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <button
                         type="button"
                         onClick={handleAddCustomItemToDeal}
-                        className="px-3 py-2 bg-pos-strong text-white rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
+                        className="px-3 py-2 bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold hover:bg-pos-strong transition cursor-pointer"
                       >
                         Custom
                       </button>
@@ -1283,13 +1283,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsDealModalOpen(false)}
-                  className="min-h-11 px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
+                  className="min-h-pos-touch px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="min-h-11 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition cursor-pointer"
+                  className="min-h-pos-touch px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer"
                 >
                   Save Deal
                 </button>
@@ -1370,7 +1370,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
+                  className="px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
                 >
                   Save
                 </button>
@@ -1451,7 +1451,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-pos-strong hover:bg-pos-strong text-white rounded-md text-xs font-bold"
+                  className="px-4 py-2 bg-pos-strong hover:bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold"
                 >
                   Apply
                 </button>
@@ -1486,7 +1486,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <button
                 onClick={handleExecuteDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-pos-danger-action hover:bg-pos-danger-hover text-white rounded-md text-xs font-bold transition"
+                className="px-4 py-2 bg-pos-danger-action hover:bg-pos-danger-hover text-pos-danger-action-text rounded-md text-xs font-bold transition"
               >
                 {isDeleting ? 'Deleting...' : 'Yes, Delete'}
               </button>

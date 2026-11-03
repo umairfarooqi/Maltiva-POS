@@ -131,7 +131,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
+          className="flex items-center gap-1.5 px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span>Add Staff Member</span>
@@ -441,7 +441,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2.5 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
+                  className="px-5 py-2.5 bg-pos-action text-pos-action-text rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
                 >
                   {isSaving ? 'Creating...' : 'Create Staff Account'}
                 </button>
@@ -521,7 +521,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                 <button
                   type="submit"
                   disabled={isResetting}
-                  className="px-5 py-2 bg-pos-action text-white rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
+                  className="px-5 py-2 bg-pos-action text-pos-action-text rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
                 >
                   {isResetting ? 'Updating...' : 'Save New PIN'}
                 </button>

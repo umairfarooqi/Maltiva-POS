@@ -113,14 +113,14 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
                 {table.status === 'occupied' ? (
                   <button
                     onClick={() => onSelectTableForOrder(table)}
-                    className="w-full py-2 bg-pos-action hover:bg-pos-action-hover text-white rounded-md text-xs font-bold transition"
+                    className="w-full py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
                   >
                     View / Edit Bill
                   </button>
                 ) : (
                   <button
                     onClick={() => onSelectTableForOrder(table)}
-                    className="w-full py-2 bg-pos-selected hover:bg-pos-action text-pos-accent hover:text-white rounded-md text-xs font-bold transition"
+                    className="w-full py-2 bg-pos-selected hover:bg-pos-action text-pos-accent hover:text-pos-action-text rounded-md text-xs font-bold transition"
                   >
                     Seat & Start Order
                   </button>

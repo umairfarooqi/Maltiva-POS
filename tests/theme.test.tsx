@@ -17,11 +17,15 @@ describe('device theme preference', () => {
     expect(getTheme()).toBe('dark');
     expect(document.documentElement.style.colorScheme).toBe('dark');
   });
-  it('restores the saved light preference on startup', () => {
+  it('migrates the previous brown theme once while allowing a later Light choice', () => {
+    localStorage.clear(); // beforeEach already marked the migration complete
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    document.documentElement.dataset.theme = 'light'; initializeTheme();
+    expect(getTheme()).toBe('dark');
+    expect(document.documentElement.style.colorScheme).toBe('dark');
     setTheme('light');
-    document.documentElement.dataset.theme = 'dark'; initializeTheme();
+    initializeTheme();
     expect(getTheme()).toBe('light');
-    expect(document.documentElement.style.colorScheme).toBe('light');
   });
   it('switches immediately in Settings without saving business settings', async () => {
     const save = vi.fn(); const user = userEvent.setup();
@@ -52,7 +56,7 @@ describe('device theme preference', () => {
   });
 });
 
-const css = readFileSync('src/index.css', 'utf8');
+const css = readFileSync('public/pos-theme.css', 'utf8');
 function luminance(hex: string) {
   const rgb = [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16) / 255)
     .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
@@ -64,7 +68,7 @@ function contrast(a: string, b: string) {
 }
 describe('theme contrast', () => {
   it.each(['dark', 'light'])('keeps text, status labels and controls readable in %s', theme => {
-    const selector = theme === 'dark' ? /:root\s*\{([^}]+)\}/ : /:root\[data-theme="light"\]\s*,\s*\.theme-paper\s*\{([^}]+)\}/;
+    const selector = theme === 'dark' ? /:root\s*\{([^}]+)\}/ : /:root\[data-theme="light"\]\s*\{([^}]+)\}/;
     const block = css.match(selector)?.[1];
     expect(block, `${theme} theme variables`).toBeDefined();
     const colors = Object.fromEntries([...block!.matchAll(/--pos-([\w-]+): (#[\da-f]+);/g)].map(match => [match[1], match[2]]));
@@ -72,7 +76,13 @@ describe('theme contrast', () => {
       for (const surface of ['surface', 'canvas', 'raised', 'inset']) expect(contrast(colors[text], colors[surface]), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);
     }
     for (const status of ['success', 'warning', 'danger', 'info', 'reserved']) expect(contrast(colors[`${status}-text`], colors[`${status}-bg`])).toBeGreaterThanOrEqual(4.5);
-    expect(contrast('#ffffff', colors.action)).toBeGreaterThanOrEqual(4.5);
+    for (const state of ['action', 'action-hover', 'action-pressed']) {
+      expect(contrast(colors['action-text'], colors[state]), state).toBeGreaterThanOrEqual(4.5);
+    }
     expect(contrast(colors.control, colors.inset)).toBeGreaterThanOrEqual(3);
+    expect(contrast(colors.accent, colors.selected), 'accent on selected').toBeGreaterThanOrEqual(4.5);
+    expect(colors.selected, 'selected differs from raised').not.toBe(colors.raised);
+    expect(colors['warning-text'], 'warning differs from primary action').not.toBe(colors.action);
+    expect(colors.action, 'primary differs from destructive').not.toBe(colors['danger-action']);
   });
 });

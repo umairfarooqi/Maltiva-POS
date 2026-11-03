@@ -13,6 +13,15 @@
   --color-pos-border: var(--pos-border);
   --color-pos-control: var(--pos-control);
   --color-pos-divider: var(--pos-divider);
+  --color-pos-action-text: var(--pos-action-text);
+  --color-pos-strong-text: var(--pos-strong-text);
+  --color-pos-danger-action-text: var(--pos-danger-action-text);
+  --color-pos-overlay: var(--pos-overlay);
+  --spacing-pos-compact: var(--pos-size-compact);
+  --spacing-pos-touch: var(--pos-size-touch);
+  --spacing-pos-checkout: var(--pos-size-checkout);
+  --radius-pos-control: var(--pos-radius-control);
+  --radius-pos-panel: var(--pos-radius-panel);
   --color-pos-action: var(--pos-action);
   --color-pos-action-hover: var(--pos-action-hover);
   --color-pos-accent: var(--pos-accent);
@@ -37,93 +46,17 @@
   --color-pos-reserved-border: var(--pos-reserved-border);
 }
 
-:root {
-  --pos-canvas: #0b0e11;
-  --pos-chrome: #101418;
-  --pos-surface: #161b20;
-  --pos-raised: #20272f;
-  --pos-inset: #12161b;
-  --pos-text: #f3f6f8;
-  --pos-secondary: #c4ced8;
-  --pos-muted: #98a4b0;
-  --pos-border: #262e37;
-  --pos-control: #606d7a;
-  --pos-divider: #1f262e;
-  --pos-action: #00836e;
-  --pos-action-hover: #007462;
-  --pos-accent: #52dec6;
-  --pos-selected: #13352f;
-  --pos-strong: #2c353f;
-  --pos-success-bg: #143327;
-  --pos-success-text: #8ce0b1;
-  --pos-success-border: #2f5b42;
-  --pos-warning-bg: #362814;
-  --pos-warning-text: #f3cb7e;
-  --pos-warning-border: #684c24;
-  --pos-danger-bg: #381e25;
-  --pos-danger-text: #f5a8b8;
-  --pos-danger-border: #6c3a45;
-  --pos-danger-action: #be123c;
-  --pos-danger-hover: #9f1239;
-  --pos-info-bg: #182b3f;
-  --pos-info-text: #9ecbf7;
-  --pos-info-border: #365472;
-  --pos-reserved-bg: #2b213b;
-  --pos-reserved-text: #cfb4f0;
-  --pos-reserved-border: #583f72;
-  --pos-focus: var(--pos-accent);
-  --pos-radius-control: 0.5rem;
-  --pos-radius-panel: 0.625rem;
-}
-
-:root[data-theme="light"],
-.theme-paper {
-  --pos-canvas: #f1f4f6;
-  --pos-chrome: #f8fafb;
-  --pos-surface: #ffffff;
-  --pos-raised: #eef2f6;
-  --pos-inset: #f4f7f9;
-  --pos-text: #111820;
-  --pos-secondary: #43515e;
-  --pos-muted: #586776;
-  --pos-border: #dce3e8;
-  --pos-control: #748291;
-  --pos-divider: #e5ebf0;
-  --pos-action: #00836e;
-  --pos-action-hover: #007462;
-  --pos-accent: #007462;
-  --pos-selected: #e6f7f5;
-  --pos-strong: #1e293b;
-  --pos-success-bg: #ecfdf5;
-  --pos-success-text: #166534;
-  --pos-success-border: #86efac;
-  --pos-warning-bg: #fffbeb;
-  --pos-warning-text: #92400e;
-  --pos-warning-border: #fcd34d;
-  --pos-danger-bg: #fff1f2;
-  --pos-danger-text: #9f1239;
-  --pos-danger-border: #fda4af;
-  --pos-danger-action: #be123c;
-  --pos-danger-hover: #9f1239;
-  --pos-info-bg: #eff6ff;
-  --pos-info-text: #1d4ed8;
-  --pos-info-border: #93c5fd;
-  --pos-reserved-bg: #faf5ff;
-  --pos-reserved-text: #7e22ce;
-  --pos-reserved-border: #d8b4fe;
-  color-scheme: light;
-}
 
 @layer base {
 
   *,
   *::before,
   *::after {
-    font-family: 'Plus Jakarta Sans Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--pos-font-ui);
   }
 
   body {
-    font-family: 'Plus Jakarta Sans Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--pos-font-ui);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--pos-canvas);
@@ -131,8 +64,8 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--pos-focus);
-    outline-offset: 2px;
+    outline: var(--pos-focus-width) solid var(--pos-focus);
+    outline-offset: var(--pos-focus-offset);
   }
 
   input[type='checkbox'],
@@ -140,6 +73,8 @@
     accent-color: var(--pos-action);
   }
 }
+
+button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-pressed); }
 
 /* Custom subtle scrollbar */
 ::-webkit-scrollbar {
@@ -202,8 +137,8 @@
     box-sizing: border-box;
     margin: 0;
     padding: 2mm;
-    background: #fff;
-    color: #000;
+    background: var(--pos-print-paper);
+    color: var(--pos-print-ink);
   }
 
   #thermal-receipt-print-area[data-paper-width='58mm'] {
@@ -219,8 +154,8 @@
     box-sizing: border-box;
     margin: 0;
     padding: 12mm;
-    background: #fff;
-    color: #000;
+    background: var(--pos-print-paper);
+    color: var(--pos-print-ink);
   }
 
   #profit-loss-print-area table {
@@ -230,7 +165,7 @@
 
   #profit-loss-print-area th,
   #profit-loss-print-area td {
-    border-bottom: 1px solid #cbd5e1;
+    border-bottom: 1px solid var(--pos-print-rule);
   }
 
   #thermal-receipt-print-area {
@@ -266,51 +201,7 @@
   color: var(--pos-accent);
 }
 
-.theme-switch-thumb {
-  background-color: #ffffff;
-}
-
-@media print {
-
-  :root,
-  #thermal-receipt-print-area,
-  #profit-loss-print-area {
-    --pos-canvas: #f4f6f5;
-    --pos-chrome: #f8fafa;
-    --pos-surface: #ffffff;
-    --pos-raised: #f1f5f9;
-    --pos-inset: #f8fafc;
-    --pos-text: #18211f;
-    --pos-secondary: #52605c;
-    --pos-muted: #5f6e82;
-    --pos-border: #d9e0df;
-    --pos-control: #7b8998;
-    --pos-divider: #e2e8f0;
-    --pos-action: #00836e;
-    --pos-action-hover: #007462;
-    --pos-accent: #007462;
-    --pos-selected: #e6f7f5;
-    --pos-strong: #1e293b;
-    --pos-success-bg: #ecfdf5;
-    --pos-success-text: #166534;
-    --pos-success-border: #86efac;
-    --pos-warning-bg: #fffbeb;
-    --pos-warning-text: #92400e;
-    --pos-warning-border: #fcd34d;
-    --pos-danger-bg: #fff1f2;
-    --pos-danger-text: #9f1239;
-    --pos-danger-border: #fda4af;
-    --pos-danger-action: #be123c;
-    --pos-danger-hover: #9f1239;
-    --pos-info-bg: #eff6ff;
-    --pos-info-text: #1d4ed8;
-    --pos-info-border: #93c5fd;
-    --pos-reserved-bg: #faf5ff;
-    --pos-reserved-text: #7e22ce;
-    --pos-reserved-border: #d8b4fe;
-    color-scheme: light !important;
-  }
-}
+.theme-switch-thumb { background-color: var(--pos-switch-thumb); }
 
 /* Portal ancestors must not clip the print-only receipt. */
 @media print {
@@ -339,10 +230,10 @@
 
 @media screen and (any-pointer: coarse) {
   :where(button, input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select) {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: var(--pos-size-touch);
+    min-width: var(--pos-size-touch);
   }
-  :where(label:has(input[type="checkbox"]), label:has(input[type="radio"])) { min-height: 44px; }
+  :where(label:has(input[type="checkbox"]), label:has(input[type="radio"])) { min-height: var(--pos-size-touch); }
 }
 /* Native selects must be allowed to shrink around long option labels. */
 .pos-editor :where(input, select, textarea), .pos-editor .grid > div { min-width: 0; max-width: 100%; }
@@ -354,18 +245,4 @@
   .customer-confirmation > p { margin-top: 12px; font-size: 16px; line-height: 24px; }
   .customer-confirmation > p.text-7xl { font-size: 64px; line-height: 1; }
   main:has(> .customer-confirmation) { padding: 16px; }
-}
-
-/* Authentication keeps its existing dark branding independently of the POS theme. */
-.login-screen {
-  --pos-text: #f3f6f8;
-  --pos-muted: #98a4b0;
-  --pos-focus: #52dec6;
-  color-scheme: dark;
-}
-
-.login-notice {
-  --pos-surface: #161b20;
-  --pos-border: #262e37;
-  --pos-success-text: #8ce0b1;
 }
