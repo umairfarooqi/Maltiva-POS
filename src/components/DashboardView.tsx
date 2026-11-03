@@ -40,6 +40,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const filterKey = JSON.stringify([dateFilter, paymentFilter, customStartDate, customEndDate]);
 
   const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
   const range = dateRange(dateFilter, customStartDate, customEndDate, now);
   const todayRange = dateRange('today', '', '', now);
   const yesterdayRange = dateRange('yesterday', '', '', now);
@@ -187,9 +188,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center gap-2">
             <label htmlFor="sales-from-date" className="text-xs font-bold text-pos-secondary">From Date:</label>
             <input
-              id="sales-from-date" type="date"
+              id="sales-from-date" type="date" max={today}
               value={customStartDate}
-              onChange={e => { setCustomStartDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
+              onChange={e => { if (e.target.value > today) return; setCustomStartDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
               className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
             />
           </div>
@@ -197,9 +198,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center gap-2">
             <label htmlFor="sales-to-date" className="text-xs font-bold text-pos-secondary">To Date:</label>
             <input
-              id="sales-to-date" type="date"
+              id="sales-to-date" type="date" max={today}
               value={customEndDate}
-              onChange={e => { setCustomEndDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
+              onChange={e => { if (e.target.value > today) return; setCustomEndDate(e.target.value); setPagination({ filter: '', page: 0 }); }}
               className="px-3 py-1.5 border border-pos-control rounded-md text-xs text-pos-secondary focus-visible:border-pos-accent"
             />
           </div>

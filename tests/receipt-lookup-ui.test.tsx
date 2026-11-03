@@ -20,16 +20,30 @@ describe('cashier receipt search', () => {
   it('pages using the server cursor and the same business-date filters', async () => {
     vi.mocked(ReceiptsApi.search).mockResolvedValueOnce({ ...page, nextCursor: 'cursor-A' }).mockResolvedValueOnce({ ...page, receipts: [{ ...summary, id: 'older', orderNumber: '#OLDER' }] });
     const user = userEvent.setup(); render(<ReceiptsView onOpenReceipt={vi.fn()} onBack={vi.fn()} />);
-    await user.click(await screen.findByRole('button', { name: 'Older results' }));
+    const older = await screen.findByRole('button', { name: 'Older results' });
+    await user.type(screen.getByLabelText('Order reference'), '123');
+    expect(screen.getByText('#OLD-RECEIPT')).toBeVisible();
+    expect(ReceiptsApi.search).toHaveBeenCalledOnce();
+    await user.click(older);
     expect(await screen.findByText('#OLDER')).toBeVisible(); expect(screen.getByText('#OLD-RECEIPT')).toBeVisible();
     expect(ReceiptsApi.search).toHaveBeenLastCalledWith({ from: '2026-10-02', to: '2026-10-02' }, 'cursor-A', expect.any(AbortSignal));
   });
-  it('ignores delayed results when filters change and aborts the obsolete request', async () => {
+  it('keeps draft edits during a pending lookup and applies them only on search', async () => {
     let resolve!: (value: typeof page) => void; vi.mocked(ReceiptsApi.search).mockReturnValueOnce(new Promise(done => { resolve = done; }));
     const user = userEvent.setup(); render(<ReceiptsView onOpenReceipt={vi.fn()} onBack={vi.fn()} />);
     const signal = vi.mocked(ReceiptsApi.search).mock.calls[0][2];
-    await user.type(screen.getByLabelText('Full order reference'), '#OTHER'); expect(signal.aborted).toBe(true);
-    await act(async () => resolve(page)); expect(screen.queryByText('#OLD-RECEIPT')).not.toBeInTheDocument();
+    const reference = screen.getByLabelText('Order reference');
+    await user.type(reference, '123');
+    expect(signal.aborted).toBe(false);
+    await act(async () => resolve(page));
+    expect(screen.getByText('#OLD-RECEIPT')).toBeVisible();
+    expect(reference).toHaveValue('123');
+    expect(screen.getByLabelText('From business date')).toHaveAttribute('max', page.today);
+    await user.click(screen.getByRole('button', { name: 'Search receipts' }));
+    expect(ReceiptsApi.search).toHaveBeenLastCalledWith({ reference: '123' }, null, expect.any(AbortSignal));
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(reference).toHaveValue('');
+    expect(ReceiptsApi.search).toHaveBeenLastCalledWith({}, null, expect.any(AbortSignal));
   });
   it('shows a retryable server error without presenting cached history as complete', async () => {
     vi.mocked(ReceiptsApi.search).mockRejectedValueOnce(new Error('POS server unavailable. Retry lookup.'));

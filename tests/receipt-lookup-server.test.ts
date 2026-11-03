@@ -67,7 +67,9 @@ describe('cashier saved receipt lookup', () => {
     const first = await json('from=2026-10-01&token=7'); expect(first.receipts.map((r: any) => r.id)).toEqual(['sale-lookup-template']);
     const second = await json('from=2026-10-02&token=7'); expect(second.receipts.map((r: any) => r.id)).toEqual(['page-006', 'legacy-midnight']);
     expect(second.receipts[1].createdAt).toBe('2026-10-01T20:00:00Z');
-    expect((await json('reference=%23F001')).receipts[0].id).toBe('legacy-midnight');
+    expect((await json('reference=%23f001')).receipts[0].id).toBe('legacy-midnight');
+    expect((await json('reference=001')).receipts.map((row: any) => row.id)).toContain('legacy-midnight');
+    expect(() => findReceipts(db, { from: '2026-10-03' }, new Date('2026-10-02T12:00:00Z'))).toThrow(/future/);
   });
   it('paginates equal timestamps without repeats while a new sale is inserted ahead of the cursor', async () => {
     const first = await json('from=2026-10-02');

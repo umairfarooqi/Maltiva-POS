@@ -6,32 +6,45 @@ import { formatPKR } from '../utils/formatCurrency';
 const control = 'min-h-11 rounded-md border border-pos-control bg-pos-inset px-3 py-2 text-sm disabled:opacity-50';
 export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order: Order) => void; onBack: () => void }) {
   const [filters, setFilters] = useState<ReceiptFilters>({});
+  const [applied, setApplied] = useState<ReceiptFilters>({});
+  const [today, setToday] = useState('');
   const [rows, setRows] = useState<ReceiptSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [zone, setZone] = useState('Asia/Karachi');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  const retry = useRef<() => void>(() => {});
   const request = useRef(0), controller = useRef<AbortController | null>(null);
   const begin = () => { controller.current?.abort(); const abort = new AbortController(); controller.current = abort; return { id: ++request.current, abort }; };
   const load = async (chosen: ReceiptFilters, page: string | null = null) => {
     const { id, abort } = begin(); setBusy(true); setError('');
-    if (!page) { setRows([]); setCursor(null); setSearched(false); }
+    retry.current = () => void load(chosen, page);
     try {
       const result = await ReceiptsApi.search(chosen, page, abort.signal);
       if (id !== request.current || abort.signal.aborted) return;
       setRows(previous => page ? [...previous, ...result.receipts.filter(row => !previous.some(old => old.id === row.id))] : result.receipts);
-      setFilters({ ...chosen, from: result.from, to: result.to }); setZone(result.timeZone); setCursor(result.nextCursor); setSearched(true);
+      if (!page) {
+        const normalized = { ...chosen, from: result.from, to: result.to };
+        setApplied(normalized);
+        setFilters(previous => previous === chosen ? normalized : previous);
+      }
+      setToday(result.today); setZone(result.timeZone); setCursor(result.nextCursor); setSearched(true);
     } catch (error) {
       if (id === request.current && !abort.signal.aborted) setError((error as Error).message || 'Receipt lookup needs the POS server. Keep your cart and retry.');
     } finally { if (id === request.current) setBusy(false); }
   };
-  useEffect(() => { void load({}); return () => { request.current++; controller.current?.abort(); }; }, []);
+  useEffect(() => { void load(filters); return () => { request.current++; controller.current?.abort(); }; }, []);
   const change = (key: keyof ReceiptFilters, value: string) => {
-    request.current++; controller.current?.abort(); setBusy(false); setRows([]); setCursor(null); setSearched(false); setError('');
     setFilters(previous => ({ ...previous, [key]: value }));
   };
+  const clear = () => {
+    const defaults = {};
+    setFilters(defaults);
+    void load(defaults);
+  };
   const open = async (id: string) => {
+    retry.current = () => void open(id);
     const current = begin(); setBusy(true); setError('');
     try {
       const order = await ReceiptsApi.get(id, current.abort.signal);
@@ -47,15 +60,16 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 space-y-4" tabIndex={0} role="region" aria-label="Receipt search and results">
       <form onSubmit={event => { event.preventDefault(); void load(filters); }} className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-from">From business date<input id="receipt-from" type="date" className={control} value={filters.from || ''} onChange={event => change('from', event.target.value)} /></label>
-        <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-to">To business date<input id="receipt-to" type="date" className={control} value={filters.to || ''} onChange={event => change('to', event.target.value)} /></label>
-        <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor="receipt-reference">Full order reference<input id="receipt-reference" type="text" maxLength={200} className={control} value={filters.reference || ''} onChange={event => change('reference', event.target.value)} /></label>
+        <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-from">From business date<input id="receipt-from" type="date" max={today || undefined} className={control} value={filters.from || ''} onChange={event => change('from', event.target.value)} /></label>
+        <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-to">To business date<input id="receipt-to" type="date" max={today || undefined} className={control} value={filters.to || ''} onChange={event => change('to', event.target.value)} /></label>
+        <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor="receipt-reference">Order reference<input id="receipt-reference" type="text" placeholder="e.g. 0001" maxLength={200} className={control} value={filters.reference || ''} onChange={event => change('reference', event.target.value)} /></label>
         <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-token">Token<input id="receipt-token" type="text" inputMode="numeric" maxLength={16} className={`${control} w-28`} value={filters.token || ''} onChange={event => change('token', event.target.value)} /></label>
         <button type="submit" disabled={busy} className={`${control} bg-pos-action text-white font-semibold`}>Search receipts</button>
+        <button type="button" className={control} onClick={clear}>Clear filters</button>
       </form>
-      <p className="text-xs text-pos-secondary">Dates follow the store business day. Blank dates mean today; choose up to 31 days. A full order reference searches all dates. A token needs one business date.</p>
+      <p className="text-xs text-pos-secondary">Dates follow the store business day. Blank dates mean today; choose up to 31 days. Enter any part of the order reference to search across all dates. A token needs one business date.</p>
       {busy && <p role="status">Loading saved receipts…</p>}
-      {error && <div role="alert" className="text-sm text-pos-danger-text">{error} <button type="button" disabled={busy} className={control} onClick={() => void load(filters)}>Retry lookup</button></div>}
+      {error && <div role="alert" className="text-sm text-pos-danger-text">{error} <button type="button" disabled={busy} className={control} onClick={() => retry.current()}>Retry lookup</button></div>}
       {!busy && searched && !rows.length && !error && <p role="status">No saved receipts found. Check the date, order reference or token.</p>}
       {rows.length > 0 && <ul className="divide-y divide-pos-divider border-y border-pos-divider">
         {rows.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -65,7 +79,7 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
           <button type="button" disabled={busy} className={control} aria-label={`Open receipt ${row.orderNumber}`} onClick={() => void open(row.id)}>Open receipt</button>
         </li>)}
       </ul>}
-      {cursor && <button type="button" className={control} disabled={busy} onClick={() => void load(filters, cursor)}>Older results</button>}
+      {cursor && <button type="button" className={control} disabled={busy} onClick={() => void load(applied, cursor)}>Older results</button>}
     </div>
   </section>;
 }

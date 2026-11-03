@@ -37,6 +37,7 @@ export function findReceipts(db: Db, query: Record<string, unknown>, now = new D
   let today: string;
   try { today = businessDate(now, zone, cutoff); } catch { problem('Review the store time zone and business-day cutoff.', 500); }
   const from = day(query.from ?? today), to = day(query.to ?? from);
+  if (from > today || to > today) problem('Receipt dates cannot be in the future.');
   if (to < from || Date.parse(to) - Date.parse(from) >= 31 * 86400000) problem('Choose a date range of up to 31 days.');
   const reference = text(query.reference, 'order reference'), tokenText = text(query.token, 'token', 16);
   if (reference && tokenText) problem('Search by an order reference or a token, not both.');
@@ -58,7 +59,7 @@ export function findReceipts(db: Db, query: Record<string, unknown>, now = new D
   }
   const parameters: any[] = [];
   let where = "status != 'cancelled'";
-  if (reference) { where += ' AND orderNumber=?'; parameters.push(reference); }
+  if (reference) { where += ' AND instr(lower(orderNumber), lower(?)) > 0'; parameters.push(reference); }
   else {
     const nextDate = new Date(Date.parse(to) + 86400000).toISOString().slice(0, 10);
     where += ' AND ((businessDate>=? AND businessDate<=?) OR (businessDate IS NULL AND julianday(createdAt)>=julianday(?) AND julianday(createdAt)<julianday(?)))';
