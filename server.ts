@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'node:fs';
 import type { Server } from 'node:http';
 import { AccountLockouts } from './src/services/accountLockouts';
+import { listStaffEvents, recordStaffEvent, SETUP_ACTOR, type StaffActor } from './src/services/staffEvents';
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { fromMoneyRow, toMoneyRow } from './src/services/moneyMigration';
 import { quoteSale, loadProduct, productSnapshot, taxSettings, problem } from './src/services/pricing';
@@ -213,7 +214,21 @@ async function startServer() {
   const app = express();
   lockouts = new AccountLockouts(db);
   const PORT = process.env.PORT || 3000;
+  const HOST = process.env.HOST || '127.0.0.1';
   const backups = new DatabaseBackups(db);
+
+  // DNS-rebinding guard: a web page in any browser on this machine could point its
+  // own hostname at 127.0.0.1. Only answer requests addressed to a known host name.
+  // Add LAN names or addresses with MALTIVA_POS_ALLOWED_HOSTS=pos.local,192.168.1.20
+  const allowedHosts = new Set(['127.0.0.1', 'localhost', '[::1]',
+    ...(['0.0.0.0', '::'].includes(HOST) ? [] : [HOST.toLowerCase()]),
+    ...(process.env.MALTIVA_POS_ALLOWED_HOSTS || '').split(',').map(name => name.trim().toLowerCase()).filter(Boolean)]);
+  app.use((req, res, next) => {
+    const host = String(req.headers.host || '').toLowerCase();
+    const hostname = host.startsWith('[') ? host.slice(0, host.indexOf(']') + 1) : host.split(':')[0];
+    if (!allowedHosts.has(hostname)) { res.status(421).json({ error: 'This POS does not answer to that host name.' }); return; }
+    next();
+  });
 
   app.use(express.json({ inflate: false }));
 
@@ -546,8 +561,13 @@ async function startServer() {
     const username = String(req.body?.username || '').trim().toLowerCase();
     const secret = String(req.body?.pin ?? req.body?.password ?? '');
     const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(username, username) as any;
-    const lockKey = lockouts.key(user?.id, username);
-    if (isLocked(lockKey)) { res.status(429).json({ error: 'Account locked for 5 minutes due to failed attempts. Contact an administrator.' }); return; }
+    const lockKey = lockouts.signInKey(user?.id, username, secret);
+    if (isLocked(lockKey)) {
+      res.status(429).json({ error: lockKey.endsWith(':pin')
+        ? 'PIN sign-in is locked for 5 minutes after failed attempts. Sign in with your password or ask an administrator.'
+        : 'Password sign-in is locked for 5 minutes after failed attempts. Ask an administrator to reset it.' });
+      return;
+    }
 
     // The password is checked first so the stronger credential decides the session scope.
     const scope: SessionScope | null = !user ? null
@@ -580,9 +600,33 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // USER MANAGEMENT (administrators only)
+  // USER MANAGEMENT (administrators only). Every change is recorded in staff_events
+  // inside the same transaction, so no account change can happen without a record.
+  const actorOf = (caller: any): StaffActor => ({ id: caller.id, username: caller.username });
+  const subjectOf = (user: any) => ({ id: user.id, username: user.username });
+
+  /** Changing your own PIN or password needs your current password, so an unlocked
+   * admin screen cannot be used to take the account over. */
+  const confirmOwnCredentialChange = (caller: any, target: any, b: any, res: Response) => {
+    if (target.id !== caller.id || (!b.pin && !b.password)) return true;
+    const key = `reauth:${caller.id}`;
+    if (isLocked(key)) { res.status(429).json({ error: 'Too many incorrect passwords. Wait five minutes.' }); return false; }
+    if (!verifySecret(caller.password, b.currentPassword)) {
+      recordFailure(key);
+      res.status(400).json({ code: 'CURRENT_PASSWORD_REQUIRED', error: 'Enter your current password to change your own PIN or password.' });
+      return false;
+    }
+    clearFailures(key);
+    return true;
+  };
+
   app.get('/api/users', requireAdmin, (_req: Request, res: Response) => {
     res.json((db.prepare('SELECT * FROM users ORDER BY createdAt').all() as any[]).map(publicUser));
+  });
+
+  app.get('/api/users/events', requireAdmin, (req: Request, res: Response) => {
+    const limit = Number(req.query.limit ?? 100);
+    res.json({ events: listStaffEvents(db, Number.isSafeInteger(limit) ? limit : 100) });
   });
 
   app.post('/api/users', requireAdmin, (req: Request, res: Response) => {
@@ -596,7 +640,12 @@ async function startServer() {
     if (db.prepare('SELECT 1 FROM users WHERE lower(username) = ?').get(username)) {
       res.status(409).json({ error: `Username "${username}" is already taken.` }); return;
     }
-    res.status(201).json(publicUser(insertUser(b, b.role)));
+    const created = db.transaction(() => {
+      const user = insertUser(b, b.role);
+      recordStaffEvent(db, actorOf((req as any).caller), subjectOf(user), 'created', b.role);
+      return user;
+    })();
+    res.status(201).json(publicUser(created));
   });
 
   app.put('/api/users/:id', requireAdmin, (req: Request, res: Response) => {
@@ -604,7 +653,8 @@ async function startServer() {
     if (!target) { res.status(404).json({ error: 'User not found.' }); return; }
     const b = req.body || {};
     const caller = (req as any).caller;
-    const nextActive = b.active === undefined ? Boolean(target.active) : Boolean(b.active);
+    if (b.active !== undefined && typeof b.active !== 'boolean') { res.status(400).json({ error: 'Account status must be true or false.' }); return; }
+    const nextActive = b.active === undefined ? Boolean(target.active) : b.active;
     const nextRole = b.role === undefined ? target.role : b.role;
     if (!['admin', 'manager', 'cashier'].includes(nextRole)) { res.status(400).json({ error: 'Choose a valid role.' }); return; }
     const losesAdmin = target.role === 'admin' && (!nextActive || nextRole !== 'admin');
@@ -615,18 +665,27 @@ async function startServer() {
     }
     const invalid = validateNewCredentials(b, false);
     if (invalid) { res.status(400).json({ error: invalid }); return; }
+    const nextName = b.name ? String(b.name).trim() : target.name;
+    if (b.name && nextName.length > 100) { res.status(400).json({ error: 'Full name must be 100 characters or fewer.' }); return; }
+    if (!confirmOwnCredentialChange(caller, target, b, res)) return;
     const nextPin = b.pin ? hashSecret(b.pin) : target.pin;
     const nextSecurityAnswer = b.pin ? nextPin : target.securityAnswer;
     db.transaction(() => {
       db.prepare('UPDATE users SET name = ?, role = ?, active = ?, password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
-        b.name ? String(b.name).trim() : target.name, nextRole, nextActive ? 1 : 0,
+        nextName, nextRole, nextActive ? 1 : 0,
         b.password ? hashSecret(b.password) : target.password, nextPin, nextSecurityAnswer, target.id);
       if (b.pin || b.password || nextRole !== target.role || nextActive !== Boolean(target.active)) {
         db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(target.id);
       }
+      const actor = actorOf(caller), subject = subjectOf(target);
+      if (nextName !== target.name) recordStaffEvent(db, actor, subject, 'renamed', `${target.name} to ${nextName}`);
+      if (nextRole !== target.role) recordStaffEvent(db, actor, subject, 'role_changed', `${target.role} to ${nextRole}`);
+      if (nextActive !== Boolean(target.active)) recordStaffEvent(db, actor, subject, nextActive ? 'reactivated' : 'suspended');
+      if (b.password) recordStaffEvent(db, actor, subject, 'password_changed');
+      if (b.pin) recordStaffEvent(db, actor, subject, 'pin_changed');
     })();
     if (b.pin || b.password || (b.active !== undefined && nextActive)) {
-      clearFailures(`account:${target.id}`);
+      lockouts.clearAccount(target.id);
     }
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
@@ -644,14 +703,18 @@ async function startServer() {
       res.status(400).json({ error: 'Password must be at least 6 characters.' });
       return;
     }
+    const caller = (req as any).caller;
+    if (!confirmOwnCredentialChange(caller, target, b, res)) return;
     const nextPin = hashSecret(b.pin);
     const nextPassword = b.password ? hashSecret(b.password) : target.password;
     db.transaction(() => {
       db.prepare('UPDATE users SET pin = ?, password = ?, securityAnswer = ? WHERE id = ?').run(
         nextPin, nextPassword, nextPin, target.id);
       db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(target.id);
+      recordStaffEvent(db, actorOf(caller), subjectOf(target), 'pin_changed', 'reset and unlocked');
+      if (b.password) recordStaffEvent(db, actorOf(caller), subjectOf(target), 'password_changed');
     })();
-    clearFailures(`account:${target.id}`);
+    lockouts.clearAccount(target.id);
     res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(target.id)));
   });
 
@@ -764,7 +827,6 @@ async function startServer() {
     });
   }
 
-  const HOST = process.env.HOST || '127.0.0.1';
   return await new Promise<Server>((resolve, reject) => {
     const server = app.listen(Number(PORT), HOST);
     server.once('error', reject);
@@ -798,8 +860,10 @@ export function provisionInitialOwner(input: any) {
   const passwordHash = hashSecret(password), pinHash = hashSecret(pin);
   db.transaction(() => {
     if (!needsInitialOwner()) throw new Error('Owner setup is already complete. Sign in with an existing account.');
+    const id = `user-${randomUUID()}`;
     db.prepare("INSERT INTO users (id,name,username,password,pin,role,active,avatar) VALUES (?,?,?,?,?,'admin',1,'')")
-      .run(`user-${randomUUID()}`, name, username, passwordHash, pinHash);
+      .run(id, name, username, passwordHash, pinHash);
+    recordStaffEvent(db, SETUP_ACTOR, { id, username }, 'created', 'admin');
   })();
 }
 

@@ -28,7 +28,10 @@ describe('dialog keyboard and pending state', () => {
     await user.click(screen.getByRole('button', { name: 'Reset PIN' }));
     const pin = screen.getByLabelText('New 4-Digit PIN *');
     await user.type(pin, '9876');
+    // Resetting your own PIN requires your current password.
+    await user.type(screen.getByLabelText('Your Current Password *'), 'current-secret');
     await user.click(screen.getByRole('button', { name: 'Save New PIN' }));
+    expect(reset).toHaveBeenCalledWith(INITIAL_USERS[0].id, '9876', undefined, 'current-secret');
     expect(pin).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Close PIN reset' })).toBeDisabled();
     await user.keyboard('{Escape}');

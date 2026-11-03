@@ -11,11 +11,14 @@ const filePattern = /^(backup|before-restore)-\d{8}T\d{6}Z-[a-f0-9-]{36}\.db$/;
 const identifier = (name: string) => `"${name.replaceAll('"', '""')}"`;
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 function fail(message: string, status = 400): never { throw Object.assign(new Error(message), { status }); }
+/** Additive tables owned by this till, never compared with or replaced by a backup:
+ * lockout counters, and the staff change history (a restore must not erase it). */
+const LOCAL_TABLES = `('auth_failures','staff_events')`;
 function schema(db: Db) {
-  return JSON.stringify(db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name!='auth_failures' AND tbl_name!='auth_failures' ORDER BY type,name").all());
+  return JSON.stringify(db.prepare(`SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT IN ${LOCAL_TABLES} ORDER BY type,name`).all());
 }
 function tables(db: Db): string[] {
-  return (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='auth_failures' ORDER BY name").all() as { name: string }[]).map(row => row.name);
+  return (db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ${LOCAL_TABLES} ORDER BY name`).all() as { name: string }[]).map(row => row.name);
 }
 function counts(db: Db) {
   return Object.fromEntries(['orders', 'order_items', 'payments', 'stock_movements', 'products', 'users', 'checkout_intents']

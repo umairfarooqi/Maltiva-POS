@@ -70,6 +70,23 @@ db.prepare(`
   )
 `).run();
 
+// Account change history (same table the server writes; see src/services/staffEvents.ts).
+db.exec(`CREATE TABLE IF NOT EXISTS staff_events (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    actor_id TEXT,
+    actor_username TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_staff_events_created ON staff_events(created_at);`);
+const recordEvent = (targetId, action, detail) => db.prepare(`INSERT INTO staff_events
+  (id,created_at,actor_id,actor_username,target_id,target_username,action,detail)
+  VALUES (?,?,NULL,'command line',?,?,?,?)`)
+  .run(randomUUID(), new Date().toISOString(), targetId, username, action, detail);
+
 const pinHash = hashSecret(pin);
 const passwordHash = hashSecret(password);
 const existing = db.prepare('SELECT id, username FROM users WHERE lower(username) = ?').get(username);
@@ -85,8 +102,10 @@ if (existing) {
     db.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(existing.id);
   }
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='auth_failures'").get()) {
-    db.prepare('DELETE FROM auth_failures WHERE key=?').run(`account:${existing.id}`);
+    const base = `account:${existing.id}`;
+    db.prepare('DELETE FROM auth_failures WHERE key IN (?,?,?)').run(base, `${base}:pin`, `${base}:password`);
   }
+  recordEvent(existing.id, 'reset_by_cli', 'admin role, active, PIN and password reset');
   console.log(`Updated existing administrator account "${username}" (active=1, PIN and password reset).`);
 } else {
   const id = `user-${randomUUID()}`;
@@ -94,6 +113,7 @@ if (existing) {
     INSERT INTO users (id, name, username, email, password, pin, role, avatar, active, branch, securityQuestion, securityAnswer)
     VALUES (?, ?, ?, ?, ?, ?, 'admin', '', 1, ?, 'Registered 4-digit PIN', ?)
   `).run(id, name, username, email, passwordHash, pinHash, branch, pinHash);
+  recordEvent(id, 'created', 'admin');
   console.log(`Created administrator account "${username}" (${name}).`);
 }
 })();

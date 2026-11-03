@@ -14,6 +14,17 @@ export class AccountLockouts {
   key(userId: string | undefined, identifier: string) {
     return userId ? `account:${userId}` : `unknown:${createHash('sha256').update(identifier).digest('hex')}`;
   }
+  /** Sign-in counters are kept per credential type, so guessing 4-digit PINs at the
+   * till cannot lock an administrator out of password sign-in. A 4-digit secret is
+   * a PIN attempt; passwords are at least 6 characters. */
+  signInKey(userId: string | undefined, identifier: string, secret: string) {
+    return `${this.key(userId, identifier)}:${/^\d{4}$/.test(secret) ? 'pin' : 'password'}`;
+  }
+  /** Unlocks every sign-in counter for an account. */
+  clearAccount(userId: string) {
+    const base = `account:${userId}`;
+    this.db.prepare('DELETE FROM auth_failures WHERE key IN (?,?,?)').run(base, `${base}:pin`, `${base}:password`);
+  }
   isLocked(key: string, now = Date.now()) {
     const row = this.db.prepare('SELECT until_ms FROM auth_failures WHERE key=?').get(key) as { until_ms: number } | undefined;
     return !!row && row.until_ms > now;

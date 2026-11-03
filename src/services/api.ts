@@ -1,4 +1,4 @@
-import { Order, Product, Category, TableItem, User, LoginStaff, InventoryLog, PrinterSettings } from '../types/pos';
+import { Order, Product, Category, TableItem, User, LoginStaff, InventoryLog, PrinterSettings, StaffEvent } from '../types/pos';
 import { PosStorage } from './storage';
 import { PendingOutbox } from './pendingOutbox';
 import { checkoutData } from './clientPrivacy';
@@ -588,12 +588,23 @@ export const PosApi = {
     return body;
   },
 
-  async resetUserPin(id: string, pin: string, password?: string): Promise<User> {
+  /** Recent staff account changes, newest first (administrators only). */
+  async getStaffEvents(): Promise<StaffEvent[]> {
+    const owner = captureSession();
+    const res = await sessionFetch('/api/users/events', { headers: authHeaders() });
+    const body = await res.json();
+    owner.assertCurrent();
+    if (!res.ok) throw new Error(body.error || 'Could not load account history.');
+    return body.events;
+  },
+
+  /** currentPassword is required by the server when you change your own PIN or password. */
+  async resetUserPin(id: string, pin: string, password?: string, currentPassword?: string): Promise<User> {
     const owner = captureSession();
     const res = await sessionFetch(`/api/users/${encodeURIComponent(id)}/reset-pin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ pin, ...(password ? { password } : {}) }),
+      body: JSON.stringify({ pin, ...(password ? { password } : {}), ...(currentPassword ? { currentPassword } : {}) }),
     });
     const body = await res.json();
     owner.assertCurrent();

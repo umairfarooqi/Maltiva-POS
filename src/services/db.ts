@@ -6,6 +6,7 @@ import { initOrderNumbering } from './orderNumbering';
 import { initCheckoutOrigins } from './checkoutOrigin';
 import { initDatabaseGeneration } from './databaseGeneration';
 import { initReceiptLookup } from './receiptLookup';
+import { ensureStaffEvents } from './staffEvents';
 
 const DB_DIR = process.env.MALTIVA_POS_DB_DIR || process.cwd();
 const DB_PATH = path.join(DB_DIR, 'maltiva_pos.db');
@@ -47,6 +48,7 @@ export async function initDb() {
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);`);
+  ensureStaffEvents(db);
 
   // 2. Categories Table
   db.prepare(`

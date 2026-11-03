@@ -157,7 +157,7 @@ describe('App login screen and staff PIN reset', () => {
     await user.type(screen.getByPlaceholderText('4-digit PIN'), '9876');
     await user.click(screen.getByRole('button', { name: 'Save New PIN' }));
 
-    expect(onResetUserPin).toHaveBeenCalledWith('user-cashier', '9876', undefined);
+    expect(onResetUserPin).toHaveBeenCalledWith('user-cashier', '9876', undefined, undefined);
     expect(await screen.findByText(/Credentials updated and account unlocked for Front Cashier/i)).toBeVisible();
   });
 });

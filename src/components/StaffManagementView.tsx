@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserPlus, KeyRound, Check } from 'lucide-react';
-import { User, UserRole } from '../types/pos';
+import { StaffEvent, User, UserRole } from '../types/pos';
 import { Dialog, DialogHeader } from './ui/Dialog';
 import { Button } from './ui/Button';
 import { Input, Select } from './ui/Field';
@@ -11,7 +11,30 @@ interface StaffManagementViewProps {
   currentUser: User;
   onAddUser: (user: Partial<User> & { password: string; pin: string }) => Promise<void>;
   onToggleUserActive: (userId: string, active: boolean) => Promise<void>;
-  onResetUserPin?: (userId: string, pin: string, password?: string) => Promise<void>;
+  onResetUserPin?: (userId: string, pin: string, password?: string, currentPassword?: string) => Promise<void>;
+  /** Loads the account change history. The panel is hidden when not provided. */
+  loadStaffEvents?: () => Promise<StaffEvent[]>;
+}
+
+const ACTION_TEXT: Record<StaffEvent['action'], string> = {
+  created: 'created',
+  renamed: 'renamed',
+  role_changed: 'changed the role of',
+  suspended: 'suspended',
+  reactivated: 'reactivated',
+  password_changed: 'changed the password of',
+  pin_changed: 'changed the PIN of',
+  reset_by_cli: 'reset',
+};
+
+function eventDetail(event: StaffEvent) {
+  if (!event.detail) return '';
+  return event.action === 'created' ? `as ${event.detail}` : event.detail;
+}
+
+function eventTime(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
@@ -20,6 +43,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   onAddUser,
   onToggleUserActive,
   onResetUserPin,
+  loadStaffEvents,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
@@ -37,8 +61,22 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [resetTarget, setResetTarget] = useState<User | null>(null);
   const [resetPin, setResetPin] = useState('');
   const [resetPassword, setResetPassword] = useState('');
+  const [resetCurrentPassword, setResetCurrentPassword] = useState('');
   const [resetError, setResetError] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const resettingSelf = resetTarget?.id === currentUser.id;
+
+  // Account history reloads whenever the staff list changes (every change updates it).
+  const [events, setEvents] = useState<StaffEvent[] | null>(null);
+  const [eventsError, setEventsError] = useState('');
+  useEffect(() => {
+    if (!loadStaffEvents) return;
+    let cancelled = false;
+    loadStaffEvents()
+      .then(next => { if (!cancelled) { setEvents(next); setEventsError(''); } })
+      .catch(error => { if (!cancelled) setEventsError((error as Error).message || 'Could not load account history.'); });
+    return () => { cancelled = true; };
+  }, [loadStaffEvents, users]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +129,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
     setResetTarget(u);
     setResetPin('');
     setResetPassword('');
+    setResetCurrentPassword('');
     setResetError('');
     setListError('');
     setListSuccess('');
@@ -107,10 +146,14 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       setResetError('New password must be at least 6 characters (or leave blank to keep current password).');
       return;
     }
+    if (resettingSelf && !resetCurrentPassword) {
+      setResetError('Enter your current password to change your own PIN or password.');
+      return;
+    }
     setIsResetting(true);
     setResetError('');
     try {
-      await onResetUserPin(resetTarget.id, resetPin, resetPassword || undefined);
+      await onResetUserPin(resetTarget.id, resetPin, resetPassword || undefined, resettingSelf ? resetCurrentPassword : undefined);
       setListSuccess(`Credentials updated and account unlocked for ${resetTarget.name}.`);
       setResetTarget(null);
     } catch (error) {
@@ -303,6 +346,39 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
         </table>
       </div>
 
+      {/* Account change history */}
+      {loadStaffEvents && (
+        <section aria-labelledby="staff-history-heading" className="pos-panel overflow-hidden">
+          <div className="flex items-baseline justify-between gap-3 px-4 py-3 border-b border-pos-border bg-pos-inset">
+            <h2 id="staff-history-heading" className="text-xs font-bold text-pos-text uppercase tracking-wider">
+              Account history
+            </h2>
+            <p className="text-xs text-pos-muted">Who created, changed or suspended each account. Kept through database restores.</p>
+          </div>
+          {eventsError ? (
+            <div role="alert" className={alertClasses('danger', 'm-4')}>{eventsError}</div>
+          ) : events === null ? (
+            <p className="p-4 text-xs text-pos-muted">Loading account history...</p>
+          ) : events.length === 0 ? (
+            <p className="p-4 text-xs text-pos-muted">No account changes recorded yet.</p>
+          ) : (
+            <ol className="divide-y divide-pos-divider max-h-80 overflow-y-auto">
+              {events.map(event => (
+                <li key={event.id} className="flex items-start justify-between gap-4 px-4 py-2.5 text-xs">
+                  <p className="text-pos-secondary min-w-0">
+                    <span className="font-semibold text-pos-text">{event.actorId ? `@${event.actorUsername}` : event.actorUsername}</span>
+                    {' '}{ACTION_TEXT[event.action] ?? event.action}{' '}
+                    <span className="font-semibold text-pos-text">@{event.targetUsername}</span>
+                    {eventDetail(event) && <span className="text-pos-muted"> · {eventDetail(event)}</span>}
+                  </p>
+                  <time dateTime={event.createdAt} className="shrink-0 text-pos-muted tabular-nums">{eventTime(event.createdAt)}</time>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      )}
+
       {/* MODAL: Add New Staff */}
       {isModalOpen && (
         <Dialog size="md" label="Add staff member" busy={isSaving} onClose={() => setIsModalOpen(false)} className="p-4">
@@ -486,6 +562,25 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
                   className="w-full"
                 />
               </div>
+
+              {resettingSelf && (
+                <div>
+                  <label htmlFor="staffmanagementview-field-9" className="text-xs font-bold text-pos-secondary block mb-1">
+                    Your Current Password *
+                  </label>
+                  <Input size="compact" id="staffmanagementview-field-9"
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    value={resetCurrentPassword}
+                    onChange={e => setResetCurrentPassword(e.target.value)}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-pos-muted mt-0.5">
+                    Changing your own sign-in details signs you out on every till.
+                  </p>
+                </div>
+              )}
 
               </div>
               <div className="shrink-0 border-t border-pos-divider mt-3 pt-3 flex justify-end gap-2">

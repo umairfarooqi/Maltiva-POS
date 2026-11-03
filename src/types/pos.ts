@@ -138,6 +138,22 @@ export interface OrderItem {
   bundledProducts?: BundledProduct[];
 }
 
+/** One entry in the staff account change history (admin only). */
+export type StaffAction =
+  | 'created' | 'renamed' | 'role_changed' | 'suspended' | 'reactivated'
+  | 'password_changed' | 'pin_changed' | 'reset_by_cli';
+
+export interface StaffEvent {
+  id: string;
+  createdAt: string;
+  actorId: string | null;
+  actorUsername: string;
+  targetId: string;
+  targetUsername: string;
+  action: StaffAction;
+  detail: string;
+}
+
 /** The only account fields exposed before authentication. */
 export type LoginStaff = Pick<User, 'id' | 'name' | 'username' | 'avatar'>;
 

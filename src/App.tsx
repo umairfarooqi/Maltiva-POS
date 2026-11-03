@@ -909,9 +909,9 @@ export default function App() {
     setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
 
-  const handleResetUserPin = async (userId: string, pin: string, password?: string) => {
+  const handleResetUserPin = async (userId: string, pin: string, password?: string, currentPassword?: string) => {
     const owner = captureSession();
-    const updated = await PosApi.resetUserPin(userId, pin, password);
+    const updated = await PosApi.resetUserPin(userId, pin, password, currentPassword);
     owner.assertCurrent();
     setAllUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
   };
@@ -1094,6 +1094,7 @@ export default function App() {
               onAddUser={handleAddUser}
               onToggleUserActive={handleToggleUserActive}
               onResetUserPin={handleResetUserPin}
+              loadStaffEvents={PosApi.getStaffEvents}
             />
           )}
 
