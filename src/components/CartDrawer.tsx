@@ -5,6 +5,8 @@ import { CashKeypad } from './CashKeypad';
 import { CartItem, PaymentMethod } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { computeTotals, parseRupees, rupeeText } from '../shared/money';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 
 interface CartDrawerProps {
   error?: string;
@@ -78,9 +80,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <h2 className="text-base font-bold text-pos-text tracking-tight">
                 {orderNumber ? `Order ${orderNumber}` : 'New order'}
               </h2>
-              <span className="text-[10px] font-black font-mono bg-pos-selected text-pos-accent border border-pos-accent/30 px-2 py-0.5 rounded-full">
+              <Badge tone="accent">
                 {totalCount} {totalCount === 1 ? 'Item' : 'Items'}
-              </span>
+              </Badge>
             </div>
             <p className="text-[11px] text-pos-muted font-medium">
               Takeaway Ticket
@@ -163,7 +165,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </button>
                   </div>
                 </div>
-                {item.product.isDeal && <p className="text-xs text-pos-warning-text">Combo Deal</p>}
+                {item.product.isDeal && <Badge tone="accent" className="mt-0.5">Combo deal</Badge>}
                 {item.selectedVariations.length > 0 && <p className="text-xs text-pos-secondary break-words mt-1">{item.selectedVariations.map(v => v.optionName).join(', ')}</p>}
                 {item.notes && <p className="text-xs text-pos-secondary break-words mt-1">Note: {item.notes}</p>}
               </div>
@@ -284,15 +286,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             <span>{cart.length === 0 && canReprintLastOrder ? 'Last receipt' : 'Print'}</span>
           </button>
 
-          <button
+          <Button variant="primary" size="checkout"
             type="button"
             onClick={() => onPlaceOrder(cashTenderedPaisa, paymentMethod)}
             disabled={cart.length === 0 || isProcessing || !cashPaymentValid}
-            className="h-pos-touch flex-1 rounded-lg bg-pos-action hover:bg-pos-action-hover text-pos-action-text text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-40 cursor-pointer active:scale-[0.98]"
+            className="flex-1"
           >
             <Power className="w-4 h-4" />
             <span>{isProcessing ? 'Processing...' : `Complete Order (${paymentMethod === 'scan' ? 'Scan' : paymentMethod === 'card' ? 'Card' : 'Cash'})`}</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

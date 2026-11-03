@@ -21,6 +21,8 @@ import { formatPKR } from '../utils/formatCurrency';
 import { normalizeProduct } from '../utils/normalizeProduct';
 import { Dialog } from './ui/Dialog';
 import { ProductStockBadge } from './ProductStockBadge';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 
 interface ManageDishesViewProps {
   defaultLowStockThreshold?: number;
@@ -597,13 +599,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             })}
           </div>
         </div>
-        <button
+        <Button variant="primary" size="compact"
           onClick={openCreateCategoryModal}
-          className="w-full py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2"
+          className="w-full"
         >
           <Plus className="w-4 h-4" />
           Add Category
-        </button>
+        </Button>
       </aside>
 
       {/* COLUMN 2: Manage Dishes Main Area */}
@@ -634,13 +636,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <PlusCircle className="w-4 h-4" />
               Create Deal
             </button>
-            <button
+            <Button variant="primary" size="compact"
               onClick={openCreateDishModal}
-              className="px-3.5 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Add New Dish
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -713,9 +714,9 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-1">
                             {product.isDeal && (
-                              <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[9px] font-black uppercase text-pos-warning-text leading-none">
+                              <Badge tone="accent">
                                 Deal
-                              </span>
+                              </Badge>
                             )}
                             <button
                               onClick={e => {
@@ -791,7 +792,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="break-words [overflow-wrap:anywhere] text-sm font-bold text-pos-text"><button type="button" className="text-left" onClick={() => openEditDishModal(product)}>{product.name}</button></h3>
-                          {product.isDeal && <span className="rounded border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-[10px] font-bold uppercase text-pos-warning-text">Deal</span>}
+                          {product.isDeal && <Badge tone="accent">Deal</Badge>}
                         </div>
                         <span className="text-xs text-pos-muted">{product.categoryName}</span>
                         <div><ProductStockBadge product={product} /></div>
@@ -1066,19 +1067,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </div>
               </div>
               <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setIsDishModalOpen(false)}
-                  className="min-h-pos-touch px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button variant="primary"
                   type="submit"
-                  className="min-h-pos-touch px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer"
                 >
                   Save Dish
-                </button>
+                </Button>
               </div>
             </form>
           </fieldset>
@@ -1280,19 +1279,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </div>
               </div>
               <div className="shrink-0 bg-pos-surface pt-3 mt-3 pos-editor-actions flex items-center justify-end gap-3 border-t border-pos-divider">
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setIsDealModalOpen(false)}
-                  className="min-h-pos-touch px-5 py-2.5 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button variant="primary"
                   type="submit"
-                  className="min-h-pos-touch px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer"
                 >
                   Save Deal
-                </button>
+                </Button>
               </div>
             </form>
           </fieldset>
@@ -1361,19 +1358,17 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </div>
               </div>
               <div className="shrink-0 flex items-center justify-end gap-2 pt-3 mt-3 border-t border-pos-divider">
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setIsCategoryModalOpen(false)}
-                  className="px-4 py-2 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button variant="primary"
                   type="submit"
-                  className="px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
                 >
                   Save
-                </button>
+                </Button>
               </div>
             </form>
           </fieldset>
@@ -1442,13 +1437,12 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 </div>
               </div>
               <div className="shrink-0 flex items-center justify-end gap-2 pt-3 mt-3 border-t border-pos-divider">
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setIsStockModalOpen(false)}
-                  className="px-4 py-2 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised"
                 >
                   Cancel
-                </button>
+                </Button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-pos-strong hover:bg-pos-strong text-pos-strong-text rounded-md text-xs font-bold"
@@ -1476,20 +1470,18 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
               <span className="font-bold text-pos-text">"{deleteConfirmTarget.name}"</span>. This action cannot be undone.
             </p>
             <div className="flex items-center justify-center gap-3">
-              <button
+              <Button variant="ghost"
                 onClick={() => setDeleteConfirmTarget(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button variant="destructive"
                 onClick={handleExecuteDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-pos-danger-action hover:bg-pos-danger-hover text-pos-danger-action-text rounded-md text-xs font-bold transition"
               >
                 {isDeleting ? 'Deleting...' : 'Yes, Delete'}
-              </button>
+              </Button>
             </div>
           </fieldset>
         </Dialog>

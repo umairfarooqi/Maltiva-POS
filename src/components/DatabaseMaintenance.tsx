@@ -1,8 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { MaintenanceApi, BackupFile, RestorePreview } from '../services/maintenanceApi';
 import { Dialog } from './ui/Dialog';
+import { buttonClasses } from './ui/Button';
 
-const button = 'min-h-pos-touch rounded-md border border-pos-control px-4 py-2 text-sm font-semibold disabled:opacity-50';
+const button = buttonClasses({ variant: 'outline' });
+const primaryButton = buttonClasses();
+const destructiveButton = buttonClasses({ variant: 'destructive' });
 const input = 'mt-1 min-h-pos-touch w-full rounded-md border border-pos-control bg-pos-inset px-3 py-2';
 export function DatabaseMaintenance() {
   const [files, setFiles] = useState<BackupFile[]>([]);
@@ -40,7 +43,7 @@ export function DatabaseMaintenance() {
       <p className="mt-1 text-xs text-pos-secondary">Supports this POS database version, up to 64 MB.</p>
     </div>
     <div className="flex flex-wrap gap-3">
-      <button type="button" disabled={busy} className={`${button} bg-pos-action text-pos-action-text`} onClick={() => void run(async () => {
+      <button type="button" disabled={busy} className={primaryButton} onClick={() => void run(async () => {
         const backup = await MaintenanceApi.create();
         setDirectory(backup.directory);
         setNotice(`Backup saved on server: ${backup.filename}. Download it below.`);
@@ -55,7 +58,7 @@ export function DatabaseMaintenance() {
     </div>
     {directory && <p className="break-all text-sm text-pos-secondary">Server backup folder <code className="font-mono text-pos-text">{directory}</code></p>}
     <div>
-      <a href="/menu-data-template.json" download className={`${button} inline-flex items-center`}>Download menu data template</a>
+      <a href="/menu-data-template.json" download className={button}>Download menu data template</a>
       <p className="mt-2 text-xs text-pos-secondary">Fill in categories and products for data mapping. Amounts use paisa (100 paisa = Rs. 1). The template is separate from database restore.</p>
     </div>
     {busy && !preview && <p role="status" className="text-sm">Checking and saving database files…</p>}
@@ -90,7 +93,7 @@ export function DatabaseMaintenance() {
         </div>
         <div className="flex shrink-0 justify-end gap-3 border-t border-pos-divider p-4">
           <button type="button" className={button} disabled={busy} onClick={cancelPreview}>Cancel restore</button>
-          <button type="submit" disabled={busy || confirmation !== 'RESTORE' || !password} className={`${button} bg-pos-danger-action text-pos-danger-action-text`}>{busy ? 'Restoring…' : 'Restore database'}</button>
+          <button type="submit" disabled={busy || confirmation !== 'RESTORE' || !password} className={destructiveButton}>{busy ? 'Restoring…' : 'Restore database'}</button>
         </div>
       </form>
     </Dialog>}

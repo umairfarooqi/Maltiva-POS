@@ -24,6 +24,7 @@ import { PosStorage } from '../services/storage';
 import { Dialog } from './ui/Dialog';
 import { useTheme } from '../services/theme';
 import { DatabaseMaintenance } from './DatabaseMaintenance';
+import { Button } from './ui/Button';
 
 interface SettingsViewProps {
   settings: PrinterSettings;
@@ -387,14 +388,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
       <div className="shrink-0 flex flex-wrap items-center justify-end gap-3 border-t border-pos-border bg-pos-chrome p-3">
         {saveError && <p role="alert" className="flex-1 text-sm text-pos-danger-text">{saveError}</p>}
-        <button
+        <Button variant="primary"
           disabled={isSaving || currentUser.role !== 'admin'}
           onClick={handleSave}
-          className="flex items-center gap-2 px-5 py-3 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition-colors cursor-pointer"
         >
           {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
           <span>{isSaving ? 'Saving...' : saved ? 'Settings Applied!' : 'Apply All Changes'}</span>
-        </button>
+        </Button>
       </div>
       {isWipeSalesDialogOpen && (
         <Dialog role="alertdialog" label="Clear cached sales?" onClose={() => setIsWipeSalesDialogOpen(false)} className="bg-pos-surface rounded-lg max-w-sm w-full p-6 border border-pos-border text-center">
@@ -408,20 +408,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               Clear cached sales history on this device. Pending sales remain available for recovery; saved sales reload from the server.
             </p>
             <div className="flex items-center justify-center gap-3">
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => setIsWipeSalesDialogOpen(false)}
-                className="px-4 py-2 rounded-md text-xs font-bold text-pos-secondary hover:bg-pos-raised transition"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button variant="destructive"
                 type="button"
                 onClick={handleClearDemoOrders}
-                className="px-4 py-2 bg-pos-danger-action hover:bg-pos-danger-hover text-pos-danger-action-text rounded-md text-xs font-bold transition"
               >
                 Clear cached sales
-              </button>
+              </Button>
             </div>
         </Dialog>
       )}

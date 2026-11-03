@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserPlus, X, KeyRound, Check } from 'lucide-react';
 import { User, UserRole } from '../types/pos';
 import { Dialog } from './ui/Dialog';
+import { Button } from './ui/Button';
 
 interface StaffManagementViewProps {
   users: User[];
@@ -129,13 +130,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           </p>
         </div>
 
-        <button
+        <Button variant="primary" size="compact"
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span>Add Staff Member</span>
-        </button>
+        </Button>
       </div>
 
       {/* Role Permissions Matrix Explainer Card */}
@@ -431,20 +431,18 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               </div>
               <div className="shrink-0 border-t border-pos-divider mt-3 pt-3 flex justify-end gap-2">
-                <button
+                <Button variant="ghost"
                   type="button"
                   disabled={isSaving} onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-pos-muted"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button variant="primary"
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2.5 bg-pos-action text-pos-action-text rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
                 >
                   {isSaving ? 'Creating...' : 'Create Staff Account'}
-                </button>
+                </Button>
               </div>
               </fieldset>
             </form>
@@ -511,20 +509,18 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               </div>
               <div className="shrink-0 border-t border-pos-divider mt-3 pt-3 flex justify-end gap-2">
-                <button
+                <Button variant="ghost"
                   type="button"
                   disabled={isResetting} onClick={() => setResetTarget(null)}
-                  className="px-4 py-2 text-xs font-semibold text-pos-muted"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button variant="primary"
                   type="submit"
                   disabled={isResetting}
-                  className="px-5 py-2 bg-pos-action text-pos-action-text rounded-md text-xs font-bold hover:bg-pos-action-hover transition disabled:opacity-60"
                 >
                   {isResetting ? 'Updating...' : 'Save New PIN'}
-                </button>
+                </Button>
               </div>
               </fieldset>
             </form>

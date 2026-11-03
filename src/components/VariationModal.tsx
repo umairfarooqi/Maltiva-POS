@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react';
 import { CartItem, Product, SelectedVariationItem, VariationGroup } from '../types/pos';
 import { Dialog } from './ui/Dialog';
 import { formatPKR } from '../utils/formatCurrency';
+import { Button } from './ui/Button';
 
 interface VariationModalProps {
   product: Product;
@@ -257,14 +258,14 @@ export const VariationModal: React.FC<VariationModalProps> = ({
             </button>
           </div>
 
-          <button
+          <Button variant="primary" size="checkout"
             onClick={handleAdd}
             disabled={maximumQuantity < 1 || quantity > maximumQuantity}
-            className="min-w-[160px] min-h-pos-touch flex-1 py-3 px-3 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-sm font-bold flex flex-wrap gap-2 items-center justify-between transition disabled:opacity-40"
+            className="min-w-[160px] flex-1 flex-wrap justify-between! tabular-nums"
           >
             <span>{initialItem ? 'Update item' : 'Add to Order'}</span>
             <span className="font-mono">{formatPKR(totalPricePaisa)}</span>
-          </button>
+          </Button>
         </div>
     </Dialog>
   );

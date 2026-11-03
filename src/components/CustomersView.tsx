@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, UserPlus, Phone, Mail, Award, Clock } from 'lucide-react';
 import { Customer } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { Button } from './ui/Button';
 
 interface CustomersViewProps {
   customers: Customer[];
@@ -47,10 +48,10 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             />
           </div>
 
-          <button className="flex items-center gap-1.5 px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition">
+          <Button variant="primary" size="compact">
             <UserPlus className="w-3.5 h-3.5" />
             <span>New Customer</span>
-          </button>
+          </Button>
         </div>
       </div>
 

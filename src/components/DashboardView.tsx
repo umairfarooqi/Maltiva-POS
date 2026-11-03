@@ -14,6 +14,8 @@ import {
 import { Order, Product, User } from '../types/pos';
 import { dateRange } from '../utils/dateRange';
 import { formatPKR } from '../utils/formatCurrency';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 
 interface DashboardViewProps {
   orders: Order[];
@@ -99,9 +101,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pos-surface p-4 sm:p-5 rounded-lg border border-pos-border">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-pos-selected text-pos-accent">
+            <Badge tone="accent">
               Admin Executive Sales
-            </span>
+            </Badge>
             <span className="text-xs text-pos-muted">Maltiva Crust • Phase 3 DHA Lahore</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-pos-text tracking-tight">
@@ -112,13 +114,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        <button
+        <Button variant="primary" size="compact"
           onClick={() => onNavigateToTab('order_line')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition cursor-pointer self-start md:self-auto"
+          className="self-start md:self-auto"
         >
           <Receipt className="w-4 h-4" />
           <span>Go to Order Line</span>
-        </button>
+        </Button>
       </div>
 
       {/* Date & Payment Filter Bar */}
@@ -301,9 +303,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <span className="text-xs font-mono font-bold text-pos-accent bg-pos-selected px-2 py-1 rounded">
+          <Badge tone="accent" className="py-1 text-sm font-semibold">
             Total: {formatPKR(totalSales)}
-          </span>
+          </Badge>
         </div>
 
         {filteredOrders.length > 0 && (
@@ -356,15 +358,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {order.items.map(it => `${it.quantity}x ${it.productName}`).join(', ')}
                     </td>
                     <td className="p-4">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          order.paymentMethod === 'cash'
-                            ? 'bg-pos-info-bg text-pos-info-text border border-pos-info-border'
-                            : 'bg-pos-warning-bg text-pos-warning-text border border-pos-warning-border'
-                        }`}
-                      >
+                      <Badge tone={order.paymentMethod === 'cash' ? 'info' : 'neutral'} className="capitalize">
                         {order.paymentMethod}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="p-4 text-right font-black font-mono text-pos-text text-sm">
                       {formatPKR(order.totalPaisa)}

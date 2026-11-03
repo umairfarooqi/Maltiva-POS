@@ -12,6 +12,7 @@ import {
 import { User, LoginStaff } from '../types/pos';
 import { PosApi } from '../services/api';
 import { MaltivaLogo } from './MaltivaLogo';
+import { Button } from './ui/Button';
 
 interface LoginScreenProps {
   notice?: React.ReactNode;
@@ -381,10 +382,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </div>
 
                 {/* Primary Button */}
-                <button
+                <Button variant="primary"
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-pos-touch bg-pos-action hover:bg-pos-action-hover active:scale-[0.99] text-pos-action-text rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-60"
+                  className="w-full"
                 >
                   {isLoading ? (
                     <span>Verifying...</span>
@@ -394,7 +395,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
-                </button>
+                </Button>
               </form>
             ) : (
               /* Form: Password Mode */
@@ -442,10 +443,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   </div>
                 </div>
 
-                <button
+                <Button variant="primary"
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-pos-touch bg-pos-action hover:bg-pos-action-hover active:scale-[0.99] text-pos-action-text rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-60"
+                  className="w-full"
                 >
                   {isLoading ? (
                     <span>Verifying...</span>
@@ -455,7 +456,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
-                </button>
+                </Button>
               </form>
             )}
 

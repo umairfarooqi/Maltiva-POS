@@ -6,6 +6,7 @@ import { formatPKR } from '../utils/formatCurrency';
 import { assignedPickupToken } from '../utils/orderReference';
 import { receiptText } from '../utils/receiptText';
 import { prepareReceiptPrint, printReceipt } from '../utils/printReceipt';
+import { Button } from './ui/Button';
 
 interface ThermalReceiptModalProps {
   order: Order | null;
@@ -391,14 +392,13 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             >
               Done
             </button>
-            <button
+            <Button variant="primary"
               onClick={handlePrint}
               disabled={isPrinting}
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
             >
               <Printer className="w-4 h-4" />
               <span>Print {activeTab === 'both' ? 'Both Slips (2)' : activeTab === 'customer' ? 'Customer Slip' : 'Kitchen Slip'}</span>
-            </button>
+            </Button>
           </div>
         </div>
     </Dialog>

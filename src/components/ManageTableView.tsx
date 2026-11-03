@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { TableItem, Order } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { Button } from './ui/Button';
 
 interface ManageTableViewProps {
   tables: TableItem[];
@@ -111,19 +112,19 @@ export const ManageTableView: React.FC<ManageTableViewProps> = ({
               {/* Status Switchers & Start Order */}
               <div className="pt-3 border-t border-pos-divider space-y-2">
                 {table.status === 'occupied' ? (
-                  <button
+                  <Button variant="primary" size="compact"
                     onClick={() => onSelectTableForOrder(table)}
-                    className="w-full py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
+                    className="w-full"
                   >
                     View / Edit Bill
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button variant="outline" size="compact"
                     onClick={() => onSelectTableForOrder(table)}
-                    className="w-full py-2 bg-pos-selected hover:bg-pos-action text-pos-accent hover:text-pos-action-text rounded-md text-xs font-bold transition"
+                    className="w-full"
                   >
                     Seat & Start Order
-                  </button>
+                  </Button>
                 )}
 
                 <div className="grid grid-cols-3 gap-1 text-[10px]">

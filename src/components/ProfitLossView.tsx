@@ -13,6 +13,7 @@ import {
 import { Order, Product, Category, UserRole } from '../types/pos';
 import { dateRange } from '../utils/dateRange';
 import { formatPKR } from '../utils/formatCurrency';
+import { Button } from './ui/Button';
 
 interface ProfitLossViewProps {
   orders: Order[];
@@ -201,13 +202,12 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             <span>Print Report</span>
           </button>
 
-          <button
+          <Button variant="primary" size="compact"
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-4 py-2 bg-pos-action hover:bg-pos-action-hover text-pos-action-text rounded-md text-xs font-bold transition"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
-          </button>
+          </Button>
         </div>
       </div>
 

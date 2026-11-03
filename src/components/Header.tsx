@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, ShoppingCart } from 'lucide-react';
 import { User } from '../types/pos';
+import { Button } from './ui/Button';
 
 interface HeaderProps {
   currentUser: User;
@@ -35,15 +36,15 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right: Mobile Cart Trigger & User Profile */}
       <div className="flex items-center gap-3 shrink-0">
         {onOpenMobileCart && (
-          <button
+          <Button variant="primary" size="compact"
             onClick={onOpenMobileCart}
             aria-label={`Open cart, ${cartItemCount} items`}
-            className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pos-action text-pos-action-text font-bold text-xs active:scale-95 transition"
+            className="lg:hidden tabular-nums"
             title="View Cart"
           >
             <ShoppingCart className="w-4 h-4" aria-hidden="true" />
             <span>{cartItemCount}</span>
-          </button>
+          </Button>
         )}
 
         <div className="flex items-center gap-2.5">

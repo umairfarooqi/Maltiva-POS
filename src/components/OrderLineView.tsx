@@ -17,6 +17,7 @@ import { Product, Category, CartItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { normalizeProduct } from '../utils/normalizeProduct';
 import { ProductStockBadge } from './ProductStockBadge';
+import { Button } from './ui/Button';
 
 interface OrderLineViewProps {
   isLocked?: boolean;
@@ -309,7 +310,7 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                         </span>
 
                         {qtyInCart === 0 ? (
-                          <button
+                          <Button variant="primary"
                             type="button"
                             disabled={cannotAdd}
                             aria-label={`Add one ${product.name}`}
@@ -317,11 +318,11 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                               e.stopPropagation();
                               addItem();
                             }}
-                            className="min-h-pos-touch gap-1.5 px-3 shrink-0 rounded-lg bg-pos-action hover:bg-pos-action-hover text-pos-action-text flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
+                            className="shrink-0"
                           >
                             <Plus className="w-4 h-4" aria-hidden="true" />
                             <span className="text-sm font-bold">{hasVariations ? 'Choose' : 'Add'}</span>
-                          </button>
+                          </Button>
                         ) : (
                           <div
                             onClick={e => e.stopPropagation()}
@@ -339,14 +340,13 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                             <span className="text-xs font-black font-mono text-pos-accent min-w-[18px] text-center">
                               {qtyInCart}
                             </span>
-                            <button
+                            <Button variant="primary" size="icon-compact"
                               disabled={cannotAdd}
                               onClick={addItem}
                               aria-label={`Add one ${product.name}`}
-                              className="w-9 h-9 rounded-md bg-pos-action hover:bg-pos-action-hover text-pos-action-text flex items-center justify-center transition cursor-pointer disabled:opacity-40 active:scale-95"
                             >
                               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -360,17 +360,17 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
       {
                 totalCartQty > 0 && onOpenMobileCart && (
                   <div className="lg:hidden fixed bottom-4 right-4 z-40">
-                    <button
+                    <Button variant="primary" size="checkout"
                       onClick={onOpenMobileCart}
                       aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
-                      className="inline-flex max-w-[calc(100vw-2rem)] items-center gap-3 bg-pos-action hover:bg-pos-action-hover text-pos-action-text py-3 px-4 rounded-xl border border-pos-accent font-bold text-sm transition active:scale-[0.98] cursor-pointer"
+                      className="max-w-[calc(100vw-2rem)] gap-3! shadow-lg tabular-nums"
                     >
                       <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-black">
                         {totalCartQty}
                       </span>
                       <span className="whitespace-nowrap">Checkout</span>
                       <span className="text-base font-black whitespace-nowrap font-mono">{formatPKR(totalCartPrice)}</span>
-                    </button>
+                    </Button>
                   </div>
                 )
               }

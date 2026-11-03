@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ReceiptsApi, ReceiptFilters, ReceiptSummary } from '../services/receiptsApi';
 import { Order } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
+import { buttonClasses } from './ui/Button';
 
 const control = 'min-h-pos-touch rounded-md border border-pos-control bg-pos-inset px-3 py-2 text-sm disabled:opacity-50';
+const action = buttonClasses({ variant: 'outline' });
 export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order: Order) => void; onBack: () => void }) {
   const [filters, setFilters] = useState<ReceiptFilters>({});
   const [applied, setApplied] = useState<ReceiptFilters>({});
@@ -51,7 +53,7 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
   return <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-pos-canvas" aria-labelledby="receipts-title">
     <div className="shrink-0 border-b border-pos-divider p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h1 id="receipts-title" className="text-lg font-bold">Receipts</h1>
-        <button type="button" className={control} onClick={onBack}>Back to order</button></div>
+        <button type="button" className={action} onClick={onBack}>Back to order</button></div>
       <p className="mt-1 text-sm text-pos-secondary">Find and reprint saved receipts. Your active cart stays in place.</p>
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 space-y-4" tabIndex={0} role="region" aria-label="Receipt search and results">
@@ -60,22 +62,22 @@ export function ReceiptsView({ onOpenReceipt, onBack }: { onOpenReceipt: (order:
         <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-to">To business date<input id="receipt-to" type="date" max={today || undefined} className={control} value={filters.to || ''} onChange={event => change('to', event.target.value)} /></label>
         <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor="receipt-reference">Order reference<input id="receipt-reference" type="text" placeholder="e.g. 0001" maxLength={200} className={control} value={filters.reference || ''} onChange={event => change('reference', event.target.value)} /></label>
         <label className="flex flex-col gap-1 text-sm" htmlFor="receipt-token">Token<input id="receipt-token" type="text" inputMode="numeric" maxLength={16} className={`${control} w-28`} value={filters.token || ''} onChange={event => change('token', event.target.value)} /></label>
-        <button type="submit" disabled={busy} className={`${control} bg-pos-action text-pos-action-text font-semibold`}>Search receipts</button>
-        {Object.values(filters).some(value => value.trim()) && <button type="button" className={control} onClick={clear}>Clear filters</button>}
+        <button type="submit" disabled={busy} className={buttonClasses()}>Search receipts</button>
+        {Object.values(filters).some(value => value.trim()) && <button type="button" className={action} onClick={clear}>Clear filters</button>}
       </form>
       <p className="text-xs text-pos-secondary">Dates follow the store business day. Blank dates mean today; choose up to 31 days. Enter any part of the order reference to search across all dates. A token needs one business date.</p>
       {busy && <p role="status">Loading saved receipts…</p>}
-      {error && <div role="alert" className="text-sm text-pos-danger-text">{error} <button type="button" disabled={busy} className={control} onClick={() => retry.current()}>Retry lookup</button></div>}
+      {error && <div role="alert" className="text-sm text-pos-danger-text">{error} <button type="button" disabled={busy} className={action} onClick={() => retry.current()}>Retry lookup</button></div>}
       {!busy && searched && !rows.length && !error && <p role="status">No saved receipts found. Check the date, order reference or token.</p>}
       {rows.length > 0 && <ul className="divide-y divide-pos-divider border-y border-pos-divider">
         {rows.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="min-w-0"><p className="break-all font-semibold">{row.orderNumber} <span className="text-pos-secondary">· {row.tokenNumber > 0 ? `Token #${row.tokenNumber}` : 'Legacy receipt'}</span></p>
             <p className="text-sm text-pos-secondary">{new Date(row.createdAt).toLocaleString(undefined, { timeZone: zone })} · {row.cashierName}</p>
             <p className="text-sm">{formatPKR(row.totalPaisa)} · {row.paymentMethod}</p></div>
-          <button type="button" disabled={busy} className={control} aria-label={`Open receipt ${row.orderNumber}`} onClick={() => void open(row.id)}>Open receipt</button>
+          <button type="button" disabled={busy} className={action} aria-label={`Open receipt ${row.orderNumber}`} onClick={() => void open(row.id)}>Open receipt</button>
         </li>)}
       </ul>}
-      {cursor && <button type="button" className={control} disabled={busy} onClick={() => void load(applied, cursor)}>Older results</button>}
+      {cursor && <button type="button" className={action} disabled={busy} onClick={() => void load(applied, cursor)}>Older results</button>}
     </div>
   </section>;
 }
