@@ -27,7 +27,16 @@ function counts(db: Db) {
 function revision(db: Db) {
   return `${databaseGeneration(db)}:${db.pragma('data_version', { simple: true })}:${(db.prepare('SELECT total_changes() n').get() as { n: number }).n}`;
 }
+/** A damaged or unrelated file makes SQLite itself throw. That is a problem with the
+ * chosen file, not a server failure, so answer with a clear 400 instead. */
 function verify(file: string, live: Db) {
+  try { return inspect(file, live); }
+  catch (error: any) {
+    if (error?.status || !String(error?.code || '').startsWith('SQLITE_')) throw error;
+    fail('This file is damaged or is not a Maltiva POS backup.');
+  }
+}
+function inspect(file: string, live: Db) {
   const source = new Database(file, { readonly: true, fileMustExist: true });
   try {
     source.pragma('trusted_schema=OFF');

@@ -109,7 +109,12 @@ describe('catalog edits preserve authoritative stock', () => {
     expect((await adjust(4, `retry-${sequence}`)).status).toBe(200);
     expect(quantity()).toBe(24); expect(ledgerCount()).toBe(1);
     db.exec("CREATE TRIGGER fail_stock_log BEFORE INSERT ON inventory_logs BEGIN SELECT RAISE(ABORT,'forced log failure'); END");
-    try { expect((await adjust(1, `failed-${sequence}`)).status).toBe(400); }
+    try {
+      // A database failure is a server error: 500 with no internal detail.
+      const failed = await adjust(1, `failed-${sequence}`);
+      expect(failed.status).toBe(500);
+      expect(JSON.stringify(await failed.json())).not.toContain('forced log failure');
+    }
     finally { db.exec('DROP TRIGGER fail_stock_log'); }
     expect(quantity()).toBe(24); expect(ledgerCount()).toBe(1);
   });

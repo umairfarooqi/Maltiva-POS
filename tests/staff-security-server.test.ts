@@ -92,6 +92,46 @@ describe('staff account history, host guard and self-service re-authentication',
     expect((await events()).map(event => event.id)).toEqual(before.map(event => event.id));
   });
 
+  it('keeps every email unique and rejects malformed ones and short new passwords', async () => {
+    const create = (overrides: object) => call('/api/users', adminToken, 'POST',
+      { name: 'Email Check', username: 'email.check', role: 'cashier', password: 'long-enough', pin: '3690', ...overrides });
+    // The fixture cashier uses cashier@maltivacrust.com: another account may not claim it.
+    expect((await create({ email: 'CASHIER@maltivacrust.com' })).status).toBe(409);
+    expect((await create({ email: 'not-an-email' })).status).toBe(400);
+    const short = await create({ password: 'short7!' });
+    expect(short.status).toBe(400);
+    expect((await short.json()).error).toBe('Password must be at least 8 characters.');
+    expect((await call('/api/users/user-cashier/reset-pin', adminToken, 'POST', { pin: '1357', password: 'short7!' })).status).toBe(400);
+    const ok = await create({ email: 'Email.Check@Example.com' });
+    expect(ok.status).toBe(201);
+    expect((await ok.json()).email).toBe('email.check@example.com');
+  });
+
+  it('sends a generic message for database errors instead of internal details', async () => {
+    db.exec("CREATE TRIGGER fail_category BEFORE INSERT ON categories BEGIN SELECT RAISE(ABORT, 'secret internal detail'); END");
+    try {
+      const res = await call('/api/categories', adminToken, 'POST', { name: 'Leaky', icon: 'x' });
+      expect(res.status).toBe(500);
+      expect(JSON.stringify(await res.json())).not.toContain('secret internal detail');
+    } finally { db.exec('DROP TRIGGER fail_category'); }
+    // Validation messages written for staff are still shown.
+    const invalid = await call('/api/inventory/adjust', adminToken, 'POST', { operationId: 'op-1', productId: 'x', changeAmount: 1, type: 'bogus' });
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json()).error).toBe('Invalid stock operation');
+  });
+
+  it('hashes plain-text credentials left by older versions when the server starts', async () => {
+    db.prepare(`INSERT INTO users (id, name, username, email, password, pin, role, active)
+      VALUES ('legacy-plain', 'Legacy Plain', 'legacy.plain', 'legacy.plain@fixture.test', 'plain-text-pass', '4444', 'cashier', 1)`).run();
+    await server.stop(); await server.start();
+    const row = db.prepare("SELECT password, pin FROM users WHERE id = 'legacy-plain'").get() as any;
+    expect(row.password).toMatch(/^s1\$/);
+    expect(row.pin).toMatch(/^s1\$/);
+    const plain = db.prepare("SELECT count(*) n FROM users WHERE (password IS NOT NULL AND password NOT LIKE 's1$%') OR (pin IS NOT NULL AND pin NOT LIKE 's1$%')").get();
+    expect(plain).toEqual({ n: 0 });
+    expect(await login('legacy.plain', 'plain-text-pass')).toBeTruthy();
+  }, 30000);
+
   it('requires your current password to change your own PIN or password', async () => {
     const own = '/api/users/user-admin';
     for (const [route, method] of [[`${own}/reset-pin`, 'POST'], [own, 'PUT']] as const) {

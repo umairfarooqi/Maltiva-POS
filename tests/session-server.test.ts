@@ -88,7 +88,9 @@ describe('persisted session lifecycle', () => {
     const token = await login('atomic-reset', 'staff-secret');
     db.exec("CREATE TRIGGER fail_revoke BEFORE DELETE ON auth_sessions BEGIN SELECT RAISE(ABORT, 'forced revoke failure'); END");
     try {
-      expect((await request(`/api/users/${id}/reset-pin`, server.token, 'POST', { pin: '9999' })).status).toBe(400);
+      const failed = await request(`/api/users/${id}/reset-pin`, server.token, 'POST', { pin: '9999' });
+      expect(failed.status).toBe(500);
+      expect(JSON.stringify(await failed.json())).not.toContain('forced revoke failure');
     } finally { db.exec('DROP TRIGGER fail_revoke'); }
     expect((await request('/api/auth/session', token)).status).toBe(200);
     expect(await login('atomic-reset', '2468')).toBeTruthy();

@@ -87,7 +87,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       setUsernameError(`Username "${cleanUsername}" is already taken. Please choose another.`);
       return;
     }
-    if (password.length < 6) { setUsernameError('Password must be at least 6 characters.'); return; }
+    if (password.length < 8) { setUsernameError('Password must be at least 8 characters.'); return; }
     if (!/^\d{4}$/.test(pin)) { setUsernameError('PIN must be exactly 4 digits.'); return; }
 
     setIsSaving(true);
@@ -142,8 +142,8 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
       setResetError('New PIN must be exactly 4 digits.');
       return;
     }
-    if (resetPassword && resetPassword.length < 6) {
-      setResetError('New password must be at least 6 characters (or leave blank to keep current password).');
+    if (resetPassword && resetPassword.length < 8) {
+      setResetError('New password must be at least 8 characters (or leave blank to keep current password).');
       return;
     }
     if (resettingSelf && !resetCurrentPassword) {
@@ -466,12 +466,12 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
                 <div>
                   <label htmlFor="staffmanagementview-field-5" className="text-xs font-bold text-pos-secondary block mb-1">
-                    Password * (min 6 characters)
+                    Password * (min 8 characters)
                   </label>
                   <Input size="compact" id="staffmanagementview-field-5"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
                     autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -551,7 +551,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
               <div>
                 <label htmlFor="staffmanagementview-field-8" className="text-xs font-bold text-pos-secondary block mb-1">
-                  New Password (optional, min 6 chars)
+                  New Password (optional, min 8 characters)
                 </label>
                 <Input size="compact" id="staffmanagementview-field-8"
                   type="password"

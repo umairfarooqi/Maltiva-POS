@@ -32,6 +32,29 @@ export function hashSecret(secret: string): string {
   return `${HASH_PREFIX}${salt.toString('hex')}$${scryptSync(secret, salt, 32).toString('hex')}`;
 }
 function isHashed(stored?: string | null): boolean { return !!stored && stored.startsWith(HASH_PREFIX); }
+/** Hashes a legacy plaintext value. An empty value stays empty: a PIN must never be
+ * copied into the password column, or it would open staff sessions. */
+function hashIfPlain(stored: string | null): string | null { return !stored || isHashed(stored) ? stored : hashSecret(stored); }
+
+/** Databases from older versions stored some PINs and passwords as plain text. Hash
+ * them all at startup instead of waiting for each person's next sign-in. */
+export function hashLegacyCredentials(): number {
+  const rows = db.prepare('SELECT id, password, pin, securityAnswer FROM users').all() as any[];
+  const plain = rows.filter(row => [row.password, row.pin, row.securityAnswer].some(value => value && !isHashed(value)));
+  const update = db.prepare('UPDATE users SET password = ?, pin = ?, securityAnswer = ? WHERE id = ?');
+  db.transaction(() => { for (const row of plain) update.run(hashIfPlain(row.password), hashIfPlain(row.pin), hashIfPlain(row.securityAnswer), row.id); })();
+  if (plain.length) console.log(`Hashed plain-text credentials for ${plain.length} staff account(s).`);
+  return plain.length;
+}
+
+/** Answers a failed request. Errors with a status, and plain validation errors from our
+ * own checks, are written for staff. Database and system errors carry a code and can
+ * include SQL or file paths: log those here and send a generic message. */
+function sendError(res: Response, error: any, fallback = 'The request could not be completed. Try again.') {
+  if (error?.status) { res.status(error.status).json({ error: error.message, code: error.recoveryCode }); return; }
+  if (!(error instanceof Error) || (error as any).code) { console.error(error); res.status(500).json({ error: fallback }); return; }
+  res.status(400).json({ error: error.message, code: (error as any).recoveryCode });
+}
 function verifySecret(stored: string | null | undefined, input: string): boolean {
   if (!stored || typeof input !== 'string' || !input) return false;
   if (isHashed(stored)) {
@@ -133,9 +156,11 @@ const recordFailure = (key: string) => lockouts.fail(key);
 const clearFailures = (key: string) => lockouts.clear(key);
 
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
+/** New passwords protect manager and admin sessions. Existing shorter ones still sign in. */
+const MIN_PASSWORD = 8;
 function validateNewCredentials(body: any, requirePassword = true): string | null {
   if (requirePassword || body.password !== undefined) {
-    if (typeof body.password !== 'string' || body.password.length < 6) return 'Password must be at least 6 characters.';
+    if (typeof body.password !== 'string' || body.password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
   }
   if (requirePassword || body.pin !== undefined) {
     if (typeof body.pin !== 'string' || !/^\d{4}$/.test(body.pin)) return 'PIN must be exactly 4 digits.';
@@ -381,7 +406,7 @@ async function startServer() {
   });
   app.post('/api/inventory/adjust', requireStrictRole(['admin', 'manager']), (req, res) => {
     try { res.json(adjustInventory.immediate(req.body, (req as any).caller)); }
-    catch (error: any) { res.status(error.status || 400).json({ error: error.message }); }
+    catch (error: any) { sendError(res, error); }
   });
 
   // CATEGORIES CRUD
@@ -478,7 +503,7 @@ async function startServer() {
       const quote = reviewCheckout.immediate(req.body, caller);
       res.json(isCashier ? stripOrderCostAndProfit(quote) : quote);
     }
-    catch (error: any) { res.status(error.status || 400).json({ error: error.message, code: error.recoveryCode }); }
+    catch (error: any) { sendError(res, error); }
   });
   const createOrder = db.transaction((input: any, key: string, caller: any) => {
     const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
@@ -560,7 +585,8 @@ async function startServer() {
   app.post('/api/auth/login', (req: Request, res: Response) => {
     const username = String(req.body?.username || '').trim().toLowerCase();
     const secret = String(req.body?.pin ?? req.body?.password ?? '');
-    const user = db.prepare('SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1').get(username, username) as any;
+    const user = db.prepare(`SELECT * FROM users WHERE (lower(username) = ? OR lower(email) = ?) AND active = 1
+      ORDER BY lower(username) = ? DESC LIMIT 1`).get(username, username, username) as any;
     const lockKey = lockouts.signInKey(user?.id, username, secret);
     if (isLocked(lockKey)) {
       res.status(429).json({ error: lockKey.endsWith(':pin')
@@ -575,12 +601,10 @@ async function startServer() {
       : verifySecret(user.pin, secret) ? 'till' : null;
     if (user && scope) {
       clearFailures(lockKey);
-      // Hash legacy plaintext values in place. An empty credential stays empty: a PIN
-      // must never be copied into the password column, or it would open staff sessions.
-      const upgrade = (stored: string | null) => !stored || isHashed(stored) ? stored : hashSecret(stored);
+      // Accounts added outside the server can still hold plain text; hash on first use.
       if (!isHashed(user.password) || !isHashed(user.pin) || !isHashed(user.securityAnswer)) {
         db.prepare('UPDATE users SET password = ?, pin = ?, securityAnswer = ? WHERE id = ?').run(
-          upgrade(user.password), upgrade(user.pin), upgrade(user.securityAnswer), user.id);
+          hashIfPlain(user.password), hashIfPlain(user.pin), hashIfPlain(user.securityAnswer), user.id);
       }
       const session = signToken(user.id, scope);
       res.json({ success: true, user: publicUser(sessionUser(user, scope)), ...session });
@@ -637,6 +661,13 @@ async function startServer() {
     if (!['admin', 'manager', 'cashier'].includes(b.role)) { res.status(400).json({ error: 'Choose a valid role.' }); return; }
     const invalid = validateNewCredentials(b);
     if (invalid) { res.status(400).json({ error: invalid }); return; }
+    const email = String(b.email || `${username}@maltivacrust.com`).trim().toLowerCase();
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: 'Enter a valid email address.' }); return; }
+    // Sign-in accepts a username or an email, so an email can never belong to two accounts.
+    if (db.prepare('SELECT 1 FROM users WHERE lower(email) = ?').get(email)) {
+      res.status(409).json({ error: `Email "${email}" is already used by another account.` }); return;
+    }
+    b.email = email;
     if (db.prepare('SELECT 1 FROM users WHERE lower(username) = ?').get(username)) {
       res.status(409).json({ error: `Username "${username}" is already taken.` }); return;
     }
@@ -699,8 +730,8 @@ async function startServer() {
       res.status(400).json({ error: 'PIN must be exactly 4 digits.' });
       return;
     }
-    if (b.password !== undefined && (typeof b.password !== 'string' || b.password.length < 6)) {
-      res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    if (b.password !== undefined && (typeof b.password !== 'string' || b.password.length < MIN_PASSWORD)) {
+      res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD} characters.` });
       return;
     }
     const caller = (req as any).caller;
@@ -802,7 +833,7 @@ async function startServer() {
   });
 
   app.use((error: any, _req: Request, res: Response, _next: any) => {
-    res.status(error.status || 400).json({ error: error.message || 'Invalid request' });
+    sendError(res, error);
   });
   // Vite Middleware
   if (process.env.NODE_ENV !== 'production') {
@@ -840,6 +871,7 @@ async function startServer() {
 
 export async function startPosServer() {
   await initDb();
+  hashLegacyCredentials();
   seedDatabase();
   return startServer();
 }

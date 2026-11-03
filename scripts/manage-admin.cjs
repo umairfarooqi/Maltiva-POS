@@ -38,11 +38,11 @@ if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
   process.exit(1);
 }
 if (!/^\d{4}$/.test(pin)) {
-  console.error('Error: --pin must be dispelled as exactly 4 digits.');
+  console.error('Error: --pin must be exactly 4 digits.');
   process.exit(1);
 }
-if (password.length < 6) {
-  console.error('Error: --password must be at least 6 characters.');
+if (password.length < 8) {
+  console.error('Error: --password must be at least 8 characters.');
   process.exit(1);
 }
 
