@@ -739,6 +739,21 @@ export default function App() {
     }
   };
 
+  const discardRejectedOrders = async (targets: Order[]) => {
+    if (!targets.length || orderInFlight.current) return;
+    const keys = new Set(targets.map(o => o.idempotencyKey || o.id));
+    const ids = new Set(targets.map(o => o.id));
+    await Promise.all(Array.from(keys).map(key => PendingOutbox.remove(key)));
+    setOrders(prev => prev.filter(o => !ids.has(o.id)));
+    if (checkoutAttempt.current && ids.has(checkoutAttempt.current.id)) {
+      checkoutAttempt.current = undefined;
+      attemptCart.current = '';
+      if (cart.length === 0) PosStorage.clearDraft();
+      else PosStorage.setDraft({ cart, paymentMethod, attempt: undefined });
+    }
+    setSaleFeedback(prev => prev?.state === 'rejected' && ids.has(prev.order.id) ? null : prev);
+  };
+
   const handleReviewRejected = (order: Order) => {
     if (cart.length || orderInFlight.current) return;
     const restored = order.items.map(item => ({
@@ -988,18 +1003,41 @@ export default function App() {
                 <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-pos-inset px-4 py-2 text-sm shrink-0">
                   {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
                     ? `Pending — ${saleFeedback.error || 'recovery copy stored; waiting for the server.'}` : `Rejected — ${saleFeedback.error}`}
-                  {saleFeedback.state === 'rejected' && (cart.length
-                    ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-pos-success-text">Retry sale</button>
-                    : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-pos-success-text">Review rejected sale</button>)}
+                  {saleFeedback.state === 'rejected' && (
+                    <>
+                      {cart.length
+                        ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-pos-success-text">Retry sale</button>
+                        : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-pos-success-text">Review rejected sale</button>}
+                      <button type="button" disabled={isProcessingOrder} onClick={() => void discardRejectedOrders([saleFeedback.order])} className="ml-3 font-semibold text-pos-danger-text">Discard</button>
+                    </>
+                  )}
                 </div>
               )}
-              {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
-                <div key={order.id} role="alert" className={alertClasses('warning')}>
-                  Rejected {order.orderNumber}: {order.rejectionReason}
-                  <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-pos-success-text">Review rejected order {order.orderNumber}</button>
-                  {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
-                </div>
-              ))}
+              {(() => {
+                const extraRejected = orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id);
+                const allRejected = [
+                  ...(saleFeedback?.state === 'rejected' ? [saleFeedback.order] : []),
+                  ...extraRejected,
+                ];
+                return (
+                  <>
+                    {allRejected.length >= 2 && (
+                      <div className="flex items-center justify-between bg-pos-inset px-4 py-1.5 text-xs border-b border-pos-divider">
+                        <span className="font-semibold text-pos-secondary">{allRejected.length} rejected orders</span>
+                        <button type="button" disabled={isProcessingOrder} onClick={() => void discardRejectedOrders(allRejected)} className="font-semibold text-pos-danger-text">Clear all rejected</button>
+                      </div>
+                    )}
+                    {extraRejected.map(order => (
+                      <div key={order.id} role="alert" className={alertClasses('warning')}>
+                        Rejected {order.orderNumber}: {order.rejectionReason}
+                        <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-pos-success-text">Review rejected order {order.orderNumber}</button>
+                        <button type="button" disabled={isProcessingOrder} onClick={() => void discardRejectedOrders([order])} className="ml-3 font-semibold text-pos-danger-text">Discard</button>
+                        {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </section>
           )}
 
