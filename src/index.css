@@ -167,10 +167,16 @@ button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-
     print-color-adjust: exact;
   }
 
-  #thermal-receipt-print-area .text-\[10px\],
-  #thermal-receipt-print-area .text-\[11px\],
-  #thermal-receipt-print-area .text-xs {
+  #thermal-receipt-print-area {
     font-weight: 600;
+  }
+
+  #thermal-receipt-print-area strong,
+  #thermal-receipt-print-area b,
+  #thermal-receipt-print-area .font-bold,
+  #thermal-receipt-print-area .font-extrabold,
+  #thermal-receipt-print-area .font-black {
+    font-weight: 800 !important;
   }
 
   #profit-loss-print-area {

@@ -135,62 +135,66 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               }`}
             >
               {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-bold">{persistenceLabel}</p>}
-              <div className="text-center pb-3 border-b border-dashed border-pos-control">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-pos-accent block mb-0.5">
+              <div className="text-center pb-3 border-b-2 border-dashed border-pos-control">
+                <span className="text-xs uppercase font-bold tracking-widest text-pos-accent block mb-1">
                   Customer Receipt
                 </span>
-                <h2 className="text-base font-bold tracking-tight text-pos-text">
+                <h2 className="text-lg font-black tracking-tight text-pos-text">
                   {settings.storeName || 'Maltiva Crust'}
                 </h2>
-                <p className="text-[11px] font-bold text-pos-secondary">
+                <p className="text-xs font-bold text-pos-secondary mt-0.5">
                   Counter Takeaway
                 </p>
-                <p className="text-[10px] text-pos-muted">
+                <p className="text-xs font-semibold text-pos-muted mt-0.5">
                   {settings.tagline || 'Fresh food. Clear pickup.'}
                 </p>
-                <p className="text-[10px] text-pos-muted">
-                  {settings.address}
-                </p>
-                <p className="text-[10px] text-pos-secondary font-bold mt-0.5">
-                  {settings.whatsApp && `WhatsApp: ${settings.whatsApp}`}
-                </p>
+                {settings.address && (
+                  <p className="text-xs font-semibold text-pos-muted">
+                    {settings.address}
+                  </p>
+                )}
+                {settings.whatsApp && (
+                  <p className="text-xs font-bold text-pos-secondary mt-1">
+                    WhatsApp: {settings.whatsApp}
+                  </p>
+                )}
               </div>
 
               {/* Token & Order Bar */}
-              <div className="py-2.5 my-1 text-center bg-pos-inset rounded border border-pos-border">
-                <span className="text-[10px] text-pos-muted uppercase tracking-wider block">
+              <div className="py-3 my-2 text-center bg-pos-inset rounded-lg border-2 border-pos-border">
+                <span className="text-xs font-bold text-pos-muted uppercase tracking-wider block">
                   Takeaway Pickup Token
                 </span>
-                <span className="text-2xl font-bold text-pos-text tracking-tight">
+                <span className="text-3xl font-black text-pos-text tracking-tight my-0.5 block">
                   {tokenLabel}
                 </span>
-                <p className="text-[10px] text-pos-muted font-mono mt-0.5">
+                <p className="text-xs font-semibold text-pos-muted font-mono mt-0.5">
                   {referenceLabel} <span className="break-all">{order.orderNumber}</span> • {formattedDate} {formattedTime}
                 </p>
-                <p className="text-[10px] text-pos-muted">
+                <p className="text-xs font-semibold text-pos-muted mt-0.5">
                   Cashier: {order.cashierName}
                 </p>
               </div>
 
               {/* Items List */}
-              <div className="py-2 border-b border-dashed border-pos-control space-y-2">
-                <div className="flex justify-between text-[10px] font-bold text-pos-muted uppercase">
+              <div className="py-2.5 border-b-2 border-dashed border-pos-control space-y-2">
+                <div className="flex justify-between text-xs font-black text-pos-muted uppercase pb-1 border-b border-pos-border">
                   <span>Item</span>
                   <span>Amount</span>
                 </div>
 
                 {order.items.map(it => (
-                  <div key={it.id} className="text-xs">
+                  <div key={it.id} className="text-xs sm:text-sm">
                     <div className="flex justify-between items-start gap-1">
-                      <span className="font-bold min-w-0 flex-1">
+                      <span className="font-extrabold min-w-0 flex-1">
                         {it.quantity}x {it.productName}
                       </span>
-                      <span className="font-bold shrink-0">{formatPKR(it.totalPricePaisa)}</span>
+                      <span className="font-extrabold shrink-0">{formatPKR(it.totalPricePaisa)}</span>
                     </div>
 
                     {/* Deal inclusions */}
                     {it.bundledProducts && it.bundledProducts.length > 0 && (
-                      <div className="pl-3 text-[10px] text-pos-muted space-y-0.5 mt-0.5">
+                      <div className="pl-3 text-xs font-semibold text-pos-muted space-y-0.5 mt-0.5">
                         {it.bundledProducts.map((b, idx) => (
                           <div key={idx}>• {b.quantity}x {b.productName}</div>
                         ))}
@@ -198,48 +202,48 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                     )}
 
                     {it.selectedVariations && it.selectedVariations.length > 0 && (
-                      <div className="pl-3 text-[10px] text-pos-muted">
+                      <div className="pl-3 text-xs font-semibold text-pos-muted">
                         + {it.selectedVariations.map(v => v.optionName).join(', ')}
                       </div>
                     )}
                     {it.notes && (
-                      <p className="mt-1 text-[10px] text-pos-secondary">Note: {it.notes}</p>
+                      <p className="mt-1 text-xs font-bold text-pos-secondary">Note: {it.notes}</p>
                     )}
                   </div>
                 ))}
               </div>
 
               {/* Totals */}
-              <div className="py-2.5 border-b border-dashed border-pos-control space-y-1 text-xs">
+              <div className="py-2.5 border-b-2 border-dashed border-pos-control space-y-1.5 text-xs sm:text-sm font-semibold">
                 <div className="flex justify-between text-pos-secondary">
                   <span>Subtotal</span>
-                  <span>{formatPKR(order.subtotalPaisa)}</span>
+                  <span className="font-bold">{formatPKR(order.subtotalPaisa)}</span>
                 </div>
                 {order.taxPaisa > 0 && (
                   <div className="flex justify-between text-pos-secondary">
                     <span>Tax</span>
-                    <span>{formatPKR(order.taxPaisa)}</span>
+                    <span className="font-bold">{formatPKR(order.taxPaisa)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-bold text-pos-text pt-1 border-t border-pos-border">
+                <div className="flex justify-between text-base sm:text-lg font-black text-pos-text pt-1.5 border-t-2 border-pos-border">
                   <span>{isPending ? 'TOTAL' : isDraft ? 'TOTAL (UNPAID)' : 'TOTAL PAID'}</span>
                   <span>{formatPKR(order.totalPaisa)}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-pos-muted pt-0.5">
-                  <span>Payment Mode</span>
-                  <span className="uppercase font-bold">{order.paymentMethod}</span>
+                <div className="flex justify-between text-xs text-pos-muted pt-0.5">
+                  <span className="font-bold">Payment Mode</span>
+                  <span className="uppercase font-black">{order.paymentMethod}</span>
                 </div>
                 {order.persistenceState === 'saved' && order.paymentMethod === 'cash' && order.cashTenderedPaisa != null && <>
-                  <div className="flex justify-between"><span>Cash received</span><span>{formatPKR(order.cashTenderedPaisa)}</span></div>
-                  {order.changeDuePaisa != null && <div className="flex justify-between"><span>Change</span><span>{formatPKR(order.changeDuePaisa)}</span></div>}
+                  <div className="flex justify-between text-xs font-bold"><span>Cash received</span><span>{formatPKR(order.cashTenderedPaisa)}</span></div>
+                  {order.changeDuePaisa != null && <div className="flex justify-between text-xs font-bold"><span>Change</span><span>{formatPKR(order.changeDuePaisa)}</span></div>}
                 </>}
               </div>
 
               {/* Customer Footer */}
-              <div className="pt-3 text-center text-[10px] text-pos-muted space-y-0.5">
+              <div className="pt-3 text-center text-xs font-semibold text-pos-muted space-y-1">
                 <p className="font-bold text-pos-secondary">Thank you for ordering at {settings.storeName || 'Maltiva Crust'}!</p>
                 <p>{settings.tagline || 'Fresh food. Clear pickup.'}</p>
-                {settings.whatsApp && <p>Order / WhatsApp: {settings.whatsApp}</p>}
+                {settings.whatsApp && <p className="font-bold">Order / WhatsApp: {settings.whatsApp}</p>}
               </div>
             </div>
           )}
@@ -265,20 +269,20 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
             >
               {persistenceLabel && <p className="border-b border-dashed border-pos-control pb-2 mb-2 text-center font-bold">{persistenceLabel}</p>}
               <div className="text-center pb-2 border-b-2 border-pos-control">
-                <span className="text-[11px] font-bold uppercase tracking-wider block bg-pos-strong text-pos-strong-text py-0.5 rounded">
+                <span className="text-xs font-black uppercase tracking-wider block bg-pos-strong text-pos-strong-text py-1 rounded">
                   *** KITCHEN ORDER SLIP ***
                 </span>
-                <p className="text-[10px] font-bold text-pos-secondary mt-1 uppercase">
+                <p className="text-xs font-bold text-pos-secondary mt-1 uppercase">
                   TAKEAWAY COUNTER
                 </p>
-                <div className="my-2 py-2 bg-pos-raised rounded-md border border-pos-control">
-                  <span className="text-3xl font-bold text-pos-text tracking-tight block">
+                <div className="my-2 py-2.5 bg-pos-raised rounded-md border-2 border-pos-control">
+                  <span className="text-4xl font-black text-pos-text tracking-tight block">
                     TOKEN {tokenLabel}
                   </span>
-                  <p className="text-[11px] font-bold text-pos-secondary font-mono mt-0.5">
+                  <p className="text-xs font-bold text-pos-secondary font-mono mt-0.5">
                     {referenceLabel} <span className="break-all">{order.orderNumber}</span> • {formattedTime}
                   </p>
-                  <p className="text-[10px] text-pos-muted">
+                  <p className="text-xs font-semibold text-pos-muted mt-0.5">
                     Cashier: {order.cashierName}
                   </p>
                 </div>
@@ -286,25 +290,25 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
 
               {/* Kitchen Food Preparation Checklist */}
               <div className="py-3 border-b-2 border-pos-control space-y-3">
-                <div className="text-[10px] font-bold text-pos-muted uppercase tracking-wider">
+                <div className="text-xs font-black text-pos-muted uppercase tracking-wider">
                   PREPARATION CHECKLIST:
                 </div>
 
                 {order.items.map(it => (
-                  <div key={it.id} className="border-b border-dashed border-pos-border pb-2 last:border-none">
-                    <div className="flex items-start gap-2">
-                      <span className="w-5 h-5 rounded bg-pos-strong text-pos-strong-text flex items-center justify-center font-bold text-xs shrink-0">
+                  <div key={it.id} className="border-b border-dashed border-pos-border pb-2.5 last:border-none">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-6 h-6 rounded bg-pos-strong text-pos-strong-text flex items-center justify-center font-black text-sm shrink-0">
                         {it.quantity}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <span className="text-sm font-bold text-pos-text leading-tight block">
+                        <span className="text-sm sm:text-base font-black text-pos-text leading-tight block">
                           {it.productName.toUpperCase()}
                         </span>
 
                         {/* Deal items inside */}
                         {it.bundledProducts && it.bundledProducts.length > 0 && (
-                          <div className="mt-1 pl-1 bg-pos-warning-bg p-1.5 rounded border border-pos-warning-border text-[11px] text-pos-warning-text space-y-0.5 font-bold">
-                            <span className="text-[10px] text-pos-warning-text block uppercase">Includes:</span>
+                          <div className="mt-1 pl-1.5 bg-pos-warning-bg p-1.5 rounded border border-pos-warning-border text-xs text-pos-warning-text space-y-0.5 font-bold">
+                            <span className="text-xs font-black text-pos-warning-text block uppercase">Includes:</span>
                             {it.bundledProducts.map((b, idx) => (
                               <div key={idx}>&bull; {b.quantity}x {b.productName}</div>
                             ))}
@@ -312,13 +316,13 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                         )}
 
                         {it.selectedVariations && it.selectedVariations.length > 0 && (
-                          <div className="mt-0.5 text-[11px] text-pos-secondary font-bold">
+                          <div className="mt-0.5 text-xs text-pos-secondary font-bold">
                             + {it.selectedVariations.map(v => v.optionName).join(' + ')}
                           </div>
                         )}
 
                         {it.notes && (
-                          <div className="mt-1 bg-pos-danger-bg text-pos-danger-text p-1 rounded font-bold text-[10px]">
+                          <div className="mt-1 bg-pos-danger-bg text-pos-danger-text p-1.5 rounded font-black text-xs">
                             ** NOTE: {it.notes} **
                           </div>
                         )}
