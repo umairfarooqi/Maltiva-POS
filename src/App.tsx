@@ -1070,6 +1070,8 @@ export default function App() {
                 currentUser={currentUser}
                 onNavigateToTab={setActiveTab}
                 onSelectOrderPreview={order => { setReceiptModalOrder(order); }}
+                storeName={printerSettings.storeName}
+                address={printerSettings.address}
               />
             )}
 
@@ -1079,6 +1081,8 @@ export default function App() {
                 products={products}
                 categories={categories}
                 userRole={currentUser.role}
+                storeName={printerSettings.storeName}
+                address={printerSettings.address}
               />
             )}
 

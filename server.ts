@@ -769,6 +769,9 @@ async function startServer() {
 
     res.json({
       storeName: settingsMap.storeName || 'Maltiva Crust',
+      tagline: settingsMap.tagline || '',
+      address: settingsMap.address || '',
+      whatsApp: settingsMap.whatsApp || '',
       ...taxSettings(db), moneySchemaVersion: 2,
       paperWidth: settingsMap.paperWidth || '58mm',
       autoPrintDualSlips: settingsMap.autoPrintDualSlips === 'true',

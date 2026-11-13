@@ -37,4 +37,24 @@ describe('category deletion and local images (server)', () => {
     expect(res.status).toBe(201);
     expect((db.prepare("SELECT icon FROM categories WHERE id='cat-img'").get() as any).icon).toBe(icon);
   });
+
+  it('persists and returns complete store identity in printer settings', async () => {
+    const putRes = await request('/api/settings/printer', 'PUT', {
+      storeName: 'Custom Burger Joint',
+      tagline: 'Best Burgers in Town',
+      address: 'Shop 12, Food Street',
+      whatsApp: '03001234567',
+    });
+    expect(putRes.status).toBe(200);
+
+    const getRes = await request('/api/settings/printer', 'GET');
+    expect(getRes.status).toBe(200);
+    const body = await getRes.json();
+    expect(body).toMatchObject({
+      storeName: 'Custom Burger Joint',
+      tagline: 'Best Burgers in Town',
+      address: 'Shop 12, Food Street',
+      whatsApp: '03001234567',
+    });
+  });
 });

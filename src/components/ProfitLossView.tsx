@@ -22,6 +22,8 @@ interface ProfitLossViewProps {
   products: Product[];
   categories: Category[];
   userRole: UserRole;
+  storeName?: string;
+  address?: string;
 }
 
 export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
@@ -29,6 +31,8 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
   products,
   categories,
   userRole,
+  storeName = 'Maltiva Crust',
+  address = 'Phase 3 DHA Lahore',
 }) => {
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom'>('month');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -185,7 +189,9 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
             <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-pos-selected text-pos-accent">
               Admin Confidential
             </span>
-            <span className="text-xs text-pos-muted">Maltiva Crust • Phase 3 DHA Lahore</span>
+            <span className="text-xs text-pos-muted">
+              {[storeName, address].filter(Boolean).join(' • ')}
+            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-pos-text tracking-tight">
             Profit & Loss Audit
@@ -266,7 +272,9 @@ export const ProfitLossView: React.FC<ProfitLossViewProps> = ({
         </div>
         <div className="hidden print:block border-b border-pos-control pb-4">
           <h1 className="text-2xl font-bold text-pos-text">Profit &amp; Loss Audit</h1>
-          <p className="text-sm text-pos-secondary">Maltiva Crust • Phase 3 DHA Lahore</p>
+          <p className="text-sm text-pos-secondary">
+            {[storeName, address].filter(Boolean).join(' • ')}
+          </p>
         </div>
 
         {/* Primary KPI Metrics Grid */}

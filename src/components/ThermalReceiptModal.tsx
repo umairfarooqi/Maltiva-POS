@@ -146,7 +146,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
                   Counter Takeaway
                 </p>
                 <p className="text-[10px] text-pos-muted">
-                  Fresh food. Clear pickup.
+                  {settings.tagline || 'Fresh food. Clear pickup.'}
                 </p>
                 <p className="text-[10px] text-pos-muted">
                   {settings.address}
@@ -238,7 +238,7 @@ export const ThermalReceiptModal: React.FC<ThermalReceiptModalProps> = ({
               {/* Customer Footer */}
               <div className="pt-3 text-center text-[10px] text-pos-muted space-y-0.5">
                 <p className="font-bold text-pos-secondary">Thank you for ordering at {settings.storeName || 'Maltiva Crust'}!</p>
-                <p>Fresh food. Clear pickup.</p>
+                <p>{settings.tagline || 'Fresh food. Clear pickup.'}</p>
                 {settings.whatsApp && <p>Order / WhatsApp: {settings.whatsApp}</p>}
               </div>
             </div>

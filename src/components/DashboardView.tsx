@@ -25,6 +25,8 @@ interface DashboardViewProps {
   currentUser: User;
   onNavigateToTab: (tab: any) => void;
   onSelectOrderPreview?: (order: Order) => void;
+  storeName?: string;
+  address?: string;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -33,6 +35,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentUser: _currentUser,
   onNavigateToTab,
   onSelectOrderPreview,
+  storeName = 'Maltiva Crust',
+  address = 'Phase 3 DHA Lahore',
 }) => {
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom'>('today');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'cash' | 'card' | 'scan' | 'other'>('all');
@@ -106,7 +110,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Badge tone="accent">
               Admin Executive Sales
             </Badge>
-            <span className="text-xs text-pos-muted">Maltiva Crust • Phase 3 DHA Lahore</span>
+            <span className="text-xs text-pos-muted">
+              {[storeName, address].filter(Boolean).join(' • ')}
+            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-pos-text tracking-tight">
             Daily Sales & Counter Reports

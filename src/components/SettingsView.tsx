@@ -152,6 +152,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
             </div>
             <div className="md:col-span-2">
+              <label htmlFor="settingsview-field-tagline" className="text-xs font-bold text-pos-secondary block mb-1.5">Tagline / Slogan</label>
+              <Input id="settingsview-field-tagline"
+                type="text"
+                value={formData.tagline ?? ''}
+                onChange={e => setFormData({ ...formData, tagline: e.target.value })}
+                placeholder="e.g. Fresh food. Clear pickup."
+                className="w-full"
+              />
+            </div>
+            <div className="md:col-span-2">
               <label htmlFor="settingsview-field-2" className="text-xs font-bold text-pos-secondary block mb-1.5">Location / Address</label>
               <div className="relative">
                 <MapPin className="w-4 h-4 text-pos-muted absolute left-3 top-1/2 -translate-y-1/2" />

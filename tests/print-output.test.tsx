@@ -129,4 +129,21 @@ describe('print output', () => {
     expect(printArea).toHaveTextContent('Customer Selling Revenue');
     expect(printArea).toHaveTextContent('Rs. 1,000');
   });
+
+  it('renders configured store identity on the P&L print summary', () => {
+    render(
+      <ProfitLossView
+        orders={[{ ...order, createdAt: new Date().toISOString() }]}
+        products={[product]}
+        categories={[]}
+        userRole="admin"
+        storeName="Custom Burger Joint"
+        address="Shop 12, Food Street"
+      />
+    );
+
+    const printArea = document.querySelector('#profit-loss-print-area');
+    expect(printArea).toBeInTheDocument();
+    expect(printArea).toHaveTextContent('Custom Burger Joint • Shop 12, Food Street');
+  });
 });
