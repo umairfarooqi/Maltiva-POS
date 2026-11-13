@@ -81,7 +81,9 @@
   border-radius: var(--pos-radius-panel);
 }
 
-button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-pressed); }
+button.bg-pos-action:not(:disabled):active {
+  background-color: var(--pos-action-pressed);
+}
 
 /* Custom subtle scrollbar */
 ::-webkit-scrollbar {
@@ -234,7 +236,9 @@ button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-
   color: var(--pos-accent);
 }
 
-.theme-switch-thumb { background-color: var(--pos-switch-thumb); }
+.theme-switch-thumb {
+  background-color: var(--pos-switch-thumb);
+}
 
 /* Portal ancestors must not clip the print-only receipt. */
 @media print {
@@ -247,18 +251,26 @@ button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-
     overflow: visible !important;
   }
 }
+
 /* Allow narrow receipt columns to wrap long names, notes and store details. */
 .receipt-content {
   overflow-wrap: anywhere;
 }
+
 .receipt-content :where(div, span, p) {
   min-width: 0;
 }
 
 /* Direct touch scrolling remains available in each independently scrolling panel. */
 @media (any-pointer: coarse) {
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  .category-actions { display: flex; }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .category-actions {
+    display: flex;
+  }
 }
 
 @media screen and (any-pointer: coarse) {
@@ -266,16 +278,48 @@ button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-
     min-height: var(--pos-size-touch);
     min-width: var(--pos-size-touch);
   }
-  :where(label:has(input[type="checkbox"]), label:has(input[type="radio"])) { min-height: var(--pos-size-touch); }
+
+  :where(label:has(input[type="checkbox"]), label:has(input[type="radio"])) {
+    min-height: var(--pos-size-touch);
+  }
 }
+
 /* Native selects must be allowed to shrink around long option labels. */
-.pos-editor :where(input, select, textarea), .pos-editor .grid > div { min-width: 0; max-width: 100%; }
+.pos-editor :where(input, select, textarea),
+.pos-editor .grid>div {
+  min-width: 0;
+  max-width: 100%;
+}
 
 @media screen and (min-width: 1024px) and (max-height: 720px) {
-  .customer-confirmation { min-height: 100%; padding-block: 16px; }
-  .customer-confirmation > svg { width: 32px; height: 32px; margin-bottom: 12px; }
-  .customer-confirmation > h1 { font-size: 36px; line-height: 40px; }
-  .customer-confirmation > p { margin-top: 12px; font-size: 16px; line-height: 24px; }
-  .customer-confirmation > p.text-7xl { font-size: 64px; line-height: 1; }
-  main:has(> .customer-confirmation) { padding: 16px; }
+  .customer-confirmation {
+    min-height: 100%;
+    padding-block: 16px;
+  }
+
+  .customer-confirmation>svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 12px;
+  }
+
+  .customer-confirmation>h1 {
+    font-size: 36px;
+    line-height: 40px;
+  }
+
+  .customer-confirmation>p {
+    margin-top: 12px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .customer-confirmation>p.text-7xl {
+    font-size: 64px;
+    line-height: 1;
+  }
+
+  main:has(> .customer-confirmation) {
+    padding: 16px;
+  }
 }
