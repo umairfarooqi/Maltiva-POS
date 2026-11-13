@@ -200,6 +200,10 @@ export async function initDb() {
   `).run();
 
   await migrateMoney(db);
+  const migratedProductColumns = db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>;
+  if (!migratedProductColumns.some(column => column.name === 'original_price_paisa')) {
+    db.prepare(`ALTER TABLE products ADD COLUMN original_price_paisa INTEGER CHECK (original_price_paisa IS NULL OR typeof(original_price_paisa) = 'integer')`).run();
+  }
   initOrderNumbering(db);
   initCheckoutOrigins(db);
   initDatabaseGeneration(db);

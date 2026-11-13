@@ -68,6 +68,13 @@ const FAST_FOOD_CATEGORY_EMOJIS = [
   { emoji: '🍦', label: 'ice cream' },
 ];
 
+function parseOptionalOriginalPrice(raw: string, sellingPricePaisa: number, label = 'selling price'): number | null {
+  if (!raw.trim()) return null;
+  const orig = parseRupees(raw);
+  if (orig < sellingPricePaisa) throw new Error(`Original price cannot be less than ${label}`);
+  return orig > sellingPricePaisa ? orig : null;
+}
+
 export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   products,
   defaultLowStockThreshold = 5,
@@ -199,6 +206,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   const [formName, setFormName] = useState('');
   const [formCategoryId, setFormCategoryId] = useState('cat-pizza');
   const [formPrice, setFormPrice] = useState('0');
+  const [formOriginalPrice, setFormOriginalPrice] = useState('');
   const [formCostPrice, setFormCostPrice] = useState('0');
   const [formStock, setFormStock] = useState('30');
   const [formMinThreshold, setFormMinThreshold] = useState('5');
@@ -215,6 +223,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
   const [dealName, setDealName] = useState('');
   const [dealCategoryId, setDealCategoryId] = useState('cat-deals');
   const [dealPrice, setDealPrice] = useState('0');
+  const [dealOriginalPrice, setDealOriginalPrice] = useState('');
   const [dealCostPrice, setDealCostPrice] = useState('0');
   const [dealStock, setDealStock] = useState('0');
   const [dealMinThreshold, setDealMinThreshold] = useState('5');
@@ -240,6 +249,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         : categories[0]?.id || 'cat-pizza'
     );
     setFormPrice('0');
+    setFormOriginalPrice('');
     setFormCostPrice('0');
     setFormStock('0');
     setFormMinThreshold(String(defaultLowStockThreshold));
@@ -259,6 +269,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setFormName(product.name || '');
     setFormCategoryId(product.categoryId || categories[0]?.id || 'cat-pizza');
     setFormPrice(product.pricePaisa != null && !isNaN(product.pricePaisa) ? rupeeText(product.pricePaisa) : '');
+    setFormOriginalPrice(product.originalPricePaisa != null && !isNaN(product.originalPricePaisa) ? rupeeText(product.originalPricePaisa) : '');
     setFormCostPrice(product.costPricePaisa != null && !isNaN(product.costPricePaisa) ? rupeeText(product.costPricePaisa) : '');
     setFormStock(product.stockQuantity != null ? product.stockQuantity.toString() : '0');
     setFormMinThreshold(product.minStockThreshold != null ? product.minStockThreshold.toString() : '5');
@@ -289,6 +300,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setDealName('');
     setDealCategoryId('cat-deals');
     setDealPrice('0');
+    setDealOriginalPrice('');
     setDealCostPrice('0');
     setDealStock('0');
     setDealMinThreshold(String(defaultLowStockThreshold));
@@ -305,6 +317,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
     setDealName(dealProduct.name || '');
     setDealCategoryId(dealProduct.categoryId || 'cat-deals');
     setDealPrice(dealProduct.pricePaisa != null && !isNaN(dealProduct.pricePaisa) ? rupeeText(dealProduct.pricePaisa) : '');
+    setDealOriginalPrice(dealProduct.originalPricePaisa != null && !isNaN(dealProduct.originalPricePaisa) ? rupeeText(dealProduct.originalPricePaisa) : '');
     setDealCostPrice(dealProduct.costPricePaisa != null && !isNaN(dealProduct.costPricePaisa) ? rupeeText(dealProduct.costPricePaisa) : '');
     setDealStock(dealProduct.stockQuantity != null ? dealProduct.stockQuantity.toString() : '0');
     setDealMinThreshold(dealProduct.minStockThreshold != null ? dealProduct.minStockThreshold.toString() : '5');
@@ -343,8 +356,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       setSaveError('Each variation group needs a name and at least one named option.'); return;
     }
 
-    let parsedPrice: number, parsedCost: number;
-    try { parsedPrice = parseRupees(formPrice); parsedCost = parseRupees(formCostPrice); setMoneyError(''); }
+    let parsedPrice: number, parsedCost: number, parsedOriginalPrice: number | null = null;
+    try {
+      parsedPrice = parseRupees(formPrice);
+      parsedCost = parseRupees(formCostPrice);
+      parsedOriginalPrice = parseOptionalOriginalPrice(formOriginalPrice, parsedPrice, 'selling price');
+      setMoneyError('');
+    }
     catch (error) { setMoneyError((error as Error).message); return; }
     const parsedStock = Number(formStock);
     if (!editingProduct && (!formStock.trim() || !Number.isSafeInteger(parsedStock) || parsedStock < 0)) {
@@ -368,6 +386,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         categoryId: formCategoryId || editingProduct?.categoryId || 'cat-special',
         categoryName: category?.name || editingProduct?.categoryName || 'Special Dishes',
         pricePaisa: finalPrice,
+        originalPricePaisa: parsedOriginalPrice,
         costPricePaisa: finalCost,
         ...(!editingProduct ? { stockQuantity: parsedStock } : {}),
         minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingProduct?.minStockThreshold ?? 5),
@@ -390,8 +409,13 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
       id: 'cat-deals',
     };
 
-    let parsedPrice: number, parsedCost: number;
-    try { parsedPrice = parseRupees(dealPrice); parsedCost = parseRupees(dealCostPrice); setMoneyError(''); }
+    let parsedPrice: number, parsedCost: number, parsedOriginalPrice: number | null = null;
+    try {
+      parsedPrice = parseRupees(dealPrice);
+      parsedCost = parseRupees(dealCostPrice);
+      parsedOriginalPrice = parseOptionalOriginalPrice(dealOriginalPrice, parsedPrice, 'deal price');
+      setMoneyError('');
+    }
     catch (error) { setMoneyError((error as Error).message); return; }
     const parsedStock = Number(dealStock);
     if (!editingDeal && (!dealStock.trim() || !Number.isSafeInteger(parsedStock) || parsedStock < 0)) {
@@ -415,6 +439,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
         categoryId: dealCategoryId || editingDeal?.categoryId || 'cat-deals',
         categoryName: category.name,
         pricePaisa: finalPrice,
+        originalPricePaisa: parsedOriginalPrice,
         costPricePaisa: finalCost,
         ...(!editingDeal ? { stockQuantity: parsedStock } : {}),
         minStockThreshold: !isNaN(parsedMinThreshold) ? parsedMinThreshold : (editingDeal?.minStockThreshold ?? 5),
@@ -740,9 +765,16 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-pos-divider">
                         <div className="flex flex-col">
                           <span className="text-xs text-pos-muted">Price</span>
-                          <span className="text-sm font-bold tabular-nums text-pos-text whitespace-nowrap">
-                            {formatPKR(safePrice)}
-                          </span>
+                          <div className="flex items-baseline gap-1.5 flex-wrap">
+                            <span className="text-sm font-bold tabular-nums text-pos-text whitespace-nowrap">
+                              {formatPKR(safePrice)}
+                            </span>
+                            {product.originalPricePaisa != null && product.originalPricePaisa > safePrice && (
+                              <span className="text-xs text-pos-muted line-through tabular-nums whitespace-nowrap">
+                                {formatPKR(product.originalPricePaisa)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex flex-col text-right">
                           <span className="text-xs text-pos-muted">Margin</span>
@@ -795,9 +827,16 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         <span className="block text-xs text-pos-muted">Margin</span>
                         <span className="text-xs font-semibold tabular-nums text-pos-secondary">{safePrice > 0 ? (((safePrice - (Number(product.costPricePaisa) || 0)) / safePrice) * 100).toFixed(0) : 0}%</span>
                       </div>
-                      <span className="text-sm font-bold tabular-nums text-pos-text">
-                        {formatPKR(safePrice)}
-                      </span>
+                      <div className="flex items-baseline gap-1.5">
+                        {product.originalPricePaisa != null && product.originalPricePaisa > safePrice && (
+                          <span className="text-xs text-pos-muted line-through tabular-nums">
+                            {formatPKR(product.originalPricePaisa)}
+                          </span>
+                        )}
+                        <span className="text-sm font-bold tabular-nums text-pos-text">
+                          {formatPKR(safePrice)}
+                        </span>
+                      </div>
                       <Button variant="ghost" size="icon" onClick={e => toggleProductMenu(e, product.id)} aria-label={`Actions for ${product.name}`} aria-haspopup="menu" aria-expanded={openMenuProductId === product.id} >
                         <MoreVertical className="w-4 h-4" />
                       </Button>
@@ -888,23 +927,23 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       required
                     />
                   </div>
+                  <div className="group">
+                    <label htmlFor="manage-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                      Category
+                    </label>
+                    <Select id="manage-field-3"
+                      value={formCategoryId}
+                      onChange={e => setFormCategoryId(e.target.value)}
+                      className="w-full"
+                    >
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="group">
-                      <label htmlFor="manage-field-3" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                        Category
-                      </label>
-                      <Select id="manage-field-3"
-                        value={formCategoryId}
-                        onChange={e => setFormCategoryId(e.target.value)}
-                        className="w-full"
-                      >
-                        {categories.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
                     <div className="group">
                       <label htmlFor="manage-field-4" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Selling Price (PKR)
@@ -915,6 +954,18 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         onChange={e => { setFormPrice(e.target.value); setMoneyError(''); }}
                         className="w-full tabular-nums"
                         required
+                      />
+                    </div>
+                    <div className="group">
+                      <label htmlFor="manage-field-orig-price" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Original Price (PKR)
+                      </label>
+                      <Input id="manage-field-orig-price"
+                        type="number"
+                        placeholder="Optional (for discount)"
+                        value={formOriginalPrice}
+                        onChange={e => { setFormOriginalPrice(e.target.value); setMoneyError(''); }}
+                        className="w-full tabular-nums"
                       />
                     </div>
                   </div>
@@ -1050,8 +1101,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
           <fieldset disabled={isSaving || isDeleting} className="contents">
             <DialogHeader title={editingDeal ? 'Edit Deal' : 'Create New Deal'} onClose={() => setIsDealModalOpen(false)} closeLabel="Close deal editor" className="mb-3" />
             <form onSubmit={handleSaveDeal} className="min-h-0 flex flex-col overflow-hidden">
-              <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 pr-1">
-                <div className="space-y-5">
+              <div className="min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-5 pr-1">
+                <div className="space-y-4">
                   <div className="group">
                     <label htmlFor="manage-field-9" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Deal Title
@@ -1064,7 +1115,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="group">
                       <label htmlFor="manage-field-10" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Deal Price (PKR)
@@ -1078,6 +1129,20 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       />
                     </div>
                     <div className="group">
+                      <label htmlFor="manage-field-deal-orig" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
+                        Original Price (PKR)
+                      </label>
+                      <Input id="manage-field-deal-orig"
+                        type="number"
+                        placeholder="Optional (e.g. 200)"
+                        value={dealOriginalPrice}
+                        onChange={e => { setDealOriginalPrice(e.target.value); setMoneyError(''); }}
+                        className="w-full tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="group">
                       <label htmlFor="manage-field-11" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         Estimated Cost
                       </label>
@@ -1088,8 +1153,6 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         className="w-full tabular-nums"
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="group">
                       <label htmlFor="manage-field-12" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                         {editingDeal ? 'Stock when opened' : 'Opening stock'}
@@ -1104,8 +1167,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       />
                       {editingDeal && <p id="deal-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                     </div>
-                    <ImageUploadField id="manage-field-13" label="Deal Image" value={dealImage} onChange={setDealImage} />
                   </div>
+                  <ImageUploadField id="manage-field-13" label="Deal Image" value={dealImage} onChange={setDealImage} />
                   <div className="group">
                     <label htmlFor="manage-field-14" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Description
@@ -1113,67 +1176,74 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     <Textarea id="manage-field-14"
                       value={dealDescription}
                       onChange={e => setDealDescription(e.target.value)}
-                      rows={3}
+                      rows={2}
                       className="w-full"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <label htmlFor="manage-field-15" className="text-xs font-bold text-pos-secondary block mb-2 uppercase tracking-wider">
+                <div className="flex flex-col min-h-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="manage-field-15" className="text-xs font-bold text-pos-secondary uppercase tracking-wider">
                       Bundled Items
                     </label>
+                    <span className="text-xs font-medium text-pos-muted tabular-nums">
+                      {dealBundledItems.length} {dealBundledItems.length === 1 ? 'item' : 'items'}
+                    </span>
+                  </div>
 
-                    <div className="flex items-center gap-2 mb-3">
-                      <Select size="compact" id="manage-field-15"
-                        value={selectedProductToAdd}
-                        onChange={e => setSelectedProductToAdd(e.target.value)}
-                        className="flex-1"
-                      >
-                        <option value="">Select Existing Dish...</option>
-                        {products
-                          .filter(p => !p.isDeal)
-                          .map(p => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({formatPKR(p.pricePaisa)})
-                            </option>
-                          ))}
-                      </Select>
-                      <Button variant="secondary" size="compact"
-                        type="button"
-                        onClick={handleAddProductToDeal}
-                      >
-                        Add
-                      </Button>
+                  <div className="flex-1 min-h-0 flex flex-col rounded-md border border-pos-border bg-pos-inset p-3 gap-3">
+                    <div className="space-y-2 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Select size="compact" id="manage-field-15"
+                          value={selectedProductToAdd}
+                          onChange={e => setSelectedProductToAdd(e.target.value)}
+                          className="flex-1 min-w-0"
+                        >
+                          <option value="">Select Existing Dish...</option>
+                          {products
+                            .filter(p => !p.isDeal)
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({formatPKR(p.pricePaisa)})
+                              </option>
+                            ))}
+                        </Select>
+                        <Button variant="secondary" size="compact"
+                          type="button"
+                          onClick={handleAddProductToDeal}
+                        >
+                          Add
+                        </Button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Input size="compact"
+                          type="text"
+                          placeholder="Or Custom Item (e.g. 1.5L Cold Drink)"
+                          value={customItemInput}
+                          onChange={e => setCustomItemInput(e.target.value)}
+                          className="flex-1 min-w-0"
+                        />
+                        <Button variant="secondary" size="compact"
+                          type="button"
+                          onClick={handleAddCustomItemToDeal}
+                        >
+                          Custom
+                        </Button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-4">
-                      <Input size="compact"
-                        type="text"
-                        placeholder="Or Custom Item (e.g. 1.5L Cold Drink)"
-                        value={customItemInput}
-                        onChange={e => setCustomItemInput(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button variant="secondary" size="compact"
-                        type="button"
-                        onClick={handleAddCustomItemToDeal}
-                      >
-                        Custom
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <div className="border-t border-pos-divider pt-3 flex-1 min-h-[140px] max-h-72 overflow-y-auto space-y-2 pr-1">
                       {dealBundledItems.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between bg-pos-inset p-2.5 rounded-md border border-pos-control text-xs"
+                          className="flex items-center justify-between gap-2 bg-pos-surface p-2.5 rounded-md border border-pos-control text-xs"
                         >
-                          <span className="font-medium text-pos-text truncate max-w-[150px]">
+                          <span className="font-medium text-pos-text truncate min-w-0 flex-1">
                             {item.productName}
                           </span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <QuantityStepper
                               size="compact"
                               value={item.quantity}
@@ -1186,7 +1256,6 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                               type="button"
                               aria-label={`Remove ${item.productName} from deal`}
                               onClick={() => handleRemoveDealItem(idx)}
-                              className="ml-2"
                             >
                               <X className="w-3.5 h-3.5" />
                             </Button>
@@ -1194,7 +1263,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         </div>
                       ))}
                       {dealBundledItems.length === 0 && (
-                        <p className="text-xs text-pos-muted text-center py-4 bg-pos-inset rounded-md border border-dashed border-pos-control">
+                        <p className="text-xs text-pos-muted text-center py-6 bg-pos-surface rounded-md border border-dashed border-pos-control">
                           No items added to deal yet.
                         </p>
                       )}

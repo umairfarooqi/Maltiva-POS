@@ -15,7 +15,7 @@ export function fromMoneyRow(table: string, row: any): any {
   for (const [old, col] of Object.entries(moneyColumns[table] || {})) {
     out[apiNames[old] || `${old}Paisa`] = out[col]; delete out[col];
   }
-  for (const [col, key] of Object.entries({ net_revenue_paisa: 'netRevenuePaisa', line_discount_paisa: 'lineDiscountPaisa', tax_bp: 'taxBp', tax_inclusive: 'taxInclusive', profit_incomplete: 'profitIncomplete', legacy_derived: 'legacyDerived' })) {
+  for (const [col, key] of Object.entries({ net_revenue_paisa: 'netRevenuePaisa', line_discount_paisa: 'lineDiscountPaisa', original_price_paisa: 'originalPricePaisa', tax_bp: 'taxBp', tax_inclusive: 'taxInclusive', profit_incomplete: 'profitIncomplete', legacy_derived: 'legacyDerived' })) {
     if (out[col] !== undefined) { out[key] = out[col]; delete out[col]; }
   }
   if (out.marginBp !== undefined) out.profitMarginPercent = out.marginBp / 100;
@@ -27,7 +27,7 @@ export function toMoneyRow(table: string, input: any): any {
     const key = apiNames[old] || `${old}Paisa`;
     if (input[key] !== undefined) { row[col] = input[key]; delete row[key]; }
   }
-  for (const [key, col] of Object.entries({ netRevenuePaisa: 'net_revenue_paisa', lineDiscountPaisa: 'line_discount_paisa', taxBp: 'tax_bp', taxInclusive: 'tax_inclusive', profitIncomplete: 'profit_incomplete', legacyDerived: 'legacy_derived' })) {
+  for (const [key, col] of Object.entries({ netRevenuePaisa: 'net_revenue_paisa', lineDiscountPaisa: 'line_discount_paisa', originalPricePaisa: 'original_price_paisa', taxBp: 'tax_bp', taxInclusive: 'tax_inclusive', profitIncomplete: 'profit_incomplete', legacyDerived: 'legacy_derived' })) {
     if (row[key] !== undefined) { row[col] = row[key]; delete row[key]; }
   }
   return row;

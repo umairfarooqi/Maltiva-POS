@@ -71,6 +71,7 @@ export function normalizeProduct(raw: Partial<Product>): Product {
     categoryId: raw.categoryId || DEFAULT_UNCATEGORIZED_CATEGORY.id,
     categoryName: raw.categoryName || DEFAULT_UNCATEGORIZED_CATEGORY.name,
     pricePaisa: raw.pricePaisa === undefined ? 0 : integer(priceValue),
+    originalPricePaisa: raw.originalPricePaisa == null ? null : integer(Number(raw.originalPricePaisa), 'Original price'),
     costPricePaisa: raw.costPricePaisa === undefined ? 0 : integer(costValue),
     stockQuantity: Number.isFinite(stockValue) ? Math.max(0, stockValue) : 0,
     minStockThreshold: Number.isFinite(thresholdValue) ? Math.max(0, thresholdValue) : 5,

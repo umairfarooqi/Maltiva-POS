@@ -5,6 +5,7 @@ export interface Product {
   categoryId: string;
   categoryName: string;
   pricePaisa: number;
+  originalPricePaisa?: number | null;
   costPricePaisa: number;
   stockQuantity: number;
   minStockThreshold: number;

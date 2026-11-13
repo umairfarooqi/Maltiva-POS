@@ -227,6 +227,10 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 .filter(item => item.product.id === product.id && item.selectedVariations.length === 0 && !item.notes?.trim())
                 .reduce((sum, item) => sum + item.quantity, 0);
               const hasVariations = product.variations && product.variations.length > 0;
+              const hasDiscount = product.originalPricePaisa != null && product.originalPricePaisa > product.pricePaisa;
+              const discountPct = hasDiscount
+                ? Math.round(((product.originalPricePaisa! - product.pricePaisa) / product.originalPricePaisa!) * 100)
+                : 0;
 
               return (
                 <div
@@ -266,6 +270,11 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                       </button>
 
                       <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1">
+                        {discountPct > 0 && (
+                          <span className="rounded-md border border-pos-success-border bg-pos-success-bg px-1.5 py-0.5 text-xs font-bold text-pos-success-text leading-none tabular-nums">
+                            -{discountPct}%
+                          </span>
+                        )}
                         {product.isDeal && (
                           <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-xs font-semibold text-pos-warning-text leading-none">
                             Deal
@@ -308,9 +317,16 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
 
                   {/* Bottom Bar: Price on Left + Touch Action Controls on Right */}
                   <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-pos-divider px-3 py-2">
-                    <span className="text-base font-bold text-pos-text tabular-nums whitespace-nowrap">
-                      {formatPKR(product.pricePaisa)}
-                    </span>
+                    <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
+                      <span className="text-base font-bold text-pos-text tabular-nums whitespace-nowrap">
+                        {formatPKR(product.pricePaisa)}
+                      </span>
+                      {product.originalPricePaisa != null && product.originalPricePaisa > product.pricePaisa && (
+                        <span className="text-xs font-medium text-pos-muted line-through tabular-nums whitespace-nowrap">
+                          {formatPKR(product.originalPricePaisa)}
+                        </span>
+                      )}
+                    </div>
 
                     {qtyInCart === 0 ? (
                       <Button variant="primary"

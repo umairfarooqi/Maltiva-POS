@@ -225,6 +225,10 @@ function insertMapped(table: string, input: any) {
 function validateProduct(data: any) {
   if (data.moneySchemaVersion !== 2) problem('Reload the menu before saving: paisa schema required');
   integer(data.pricePaisa); integer(data.costPricePaisa);
+  if (data.originalPricePaisa !== undefined && data.originalPricePaisa !== null) {
+    integer(data.originalPricePaisa, 'Original price');
+    if (data.originalPricePaisa < data.pricePaisa) problem('Original price cannot be less than selling price');
+  }
   if (!Array.isArray(data.variations) || !Array.isArray(data.bundledProducts)) problem('Invalid menu options');
   for (const group of data.variations) for (const option of group.options) {
     integer(option.priceDeltaPaisa, 'Option price', true); integer(option.costDeltaPaisa, 'Option cost', true);
@@ -363,7 +367,7 @@ async function startServer() {
     if (!loadProduct(db, id)) problem('Product not found', 404);
     // Stock snapshots from menu forms are never inventory commands. Preserve
     // concurrent sales/adjustments, including requests from older clients.
-    const fields = ['name', 'categoryId', 'categoryName', 'pricePaisa', 'costPricePaisa',
+    const fields = ['name', 'categoryId', 'categoryName', 'pricePaisa', 'originalPricePaisa', 'costPricePaisa',
       'minStockThreshold', 'image', 'description', 'isAvailable', 'isDeal'] as const;
     const catalog = Object.fromEntries(fields.filter(field => data[field] !== undefined).map(field => [field, data[field]]));
     const row = mappedValues('products', {
