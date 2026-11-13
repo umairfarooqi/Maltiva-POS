@@ -19,6 +19,8 @@ import {
 import { Product, Category, VariationGroup, User, DealBundleItem } from '../types/pos';
 import { formatPKR } from '../utils/formatCurrency';
 import { normalizeProduct } from '../utils/normalizeProduct';
+import { isEmbeddedImage } from '../utils/imageUpload';
+import { ImageUploadField } from './ImageUploadField';
 import { Dialog, DialogHeader } from './ui/Dialog';
 import { ProductStockBadge } from './ProductStockBadge';
 import { Badge } from './ui/Badge';
@@ -560,12 +562,14 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                 <div
                   key={cat.id}
                   className={`group relative w-full flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${isSelected
-                      ? 'bg-pos-surface text-pos-accent border-pos-accent'
-                      : 'bg-pos-surface border-pos-border/70 text-pos-secondary hover:border-pos-control hover:bg-pos-surface'
+                    ? 'bg-pos-surface text-pos-accent border-pos-accent'
+                    : 'bg-pos-surface border-pos-border/70 text-pos-secondary hover:border-pos-control hover:bg-pos-surface'
                     }`}
                 >
                   <button type="button" onClick={() => setSelectedCategoryId(cat.id)} aria-pressed={isSelected} className="flex min-h-pos-touch min-w-0 flex-1 items-center gap-2 truncate text-left">
-                    <span className="w-6 text-center text-base shrink-0">{cat.icon || '🍽'}</span>
+                    {isEmbeddedImage(cat.icon)
+                      ? <img src={cat.icon} alt="" className="h-6 w-6 shrink-0 rounded object-cover" />
+                      : <span className="w-6 text-center text-base shrink-0">{cat.icon || '🍽'}</span>}
                     <span className="truncate">{cat.name}</span>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
@@ -941,17 +945,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       {editingProduct && <p id="dish-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                     </div>
                   </div>
-                  <div className="group">
-                    <label htmlFor="manage-field-7" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                      Image URL
-                    </label>
-                    <Input id="manage-field-7"
-                      type="text"
-                      value={formImage}
-                      onChange={e => setFormImage(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
+                  <ImageUploadField id="manage-field-7" label="Dish Image" value={formImage} onChange={setFormImage} />
                   <div className="group">
                     <label htmlFor="manage-field-8" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
                       Description
@@ -1110,17 +1104,7 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                       />
                       {editingDeal && <p id="deal-stock-help" className="mt-1 text-xs text-pos-muted">Use Adjust Stock from the product menu to record quantity changes.</p>}
                     </div>
-                    <div className="group">
-                      <label htmlFor="manage-field-13" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
-                        Image URL
-                      </label>
-                      <Input id="manage-field-13"
-                        type="text"
-                        value={dealImage}
-                        onChange={e => setDealImage(e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
+                    <ImageUploadField id="manage-field-13" label="Deal Image" value={dealImage} onChange={setDealImage} />
                   </div>
                   <div className="group">
                     <label htmlFor="manage-field-14" className="text-xs font-bold text-pos-secondary block mb-1.5 uppercase tracking-wider">
@@ -1257,16 +1241,23 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                     required
                   />
                 </div>
+                <ImageUploadField
+                  id="category-image-input"
+                  label="Category Image"
+                  size={160}
+                  value={isEmbeddedImage(catIconInput) ? catIconInput : ''}
+                  onChange={v => setCatIconInput(v || '🍽️')}
+                />
                 <div>
                   <label htmlFor="category-icon-input" className="text-xs font-bold text-pos-secondary block mb-1 uppercase tracking-wider">
-                    Icon Emoji
+                    {isEmbeddedImage(catIconInput) ? 'Or use an emoji instead' : 'Icon Emoji'}
                   </label>
                   <Input id="category-icon-input"
                     type="text"
-                    value={catIconInput}
+                    value={isEmbeddedImage(catIconInput) ? '' : catIconInput}
                     onChange={e => setCatIconInput(e.target.value)}
                     className="w-full text-lg text-center"
-                    required
+                    required={!isEmbeddedImage(catIconInput)}
                   />
                   <div className="mt-2 grid grid-cols-5 gap-2">
                     {FAST_FOOD_CATEGORY_EMOJIS.map(({ emoji, label }) => (
@@ -1276,8 +1267,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
                         onClick={() => setCatIconInput(emoji)}
                         aria-label={`Use ${label} emoji`}
                         className={`h-10 rounded-md border text-lg transition hover:border-pos-accent hover:bg-pos-selected focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pos-accent ${catIconInput === emoji
-                            ? 'border-pos-accent bg-pos-selected'
-                            : 'border-pos-border bg-pos-surface'
+                          ? 'border-pos-accent bg-pos-selected'
+                          : 'border-pos-border bg-pos-surface'
                           }`}
                       >
                         {emoji}
@@ -1386,7 +1377,8 @@ export const ManageDishesView: React.FC<ManageDishesViewProps> = ({
             <h3 className="text-lg font-bold text-pos-text mb-2">Are you sure?</h3>
             <p className="text-xs text-pos-muted mb-6">
               You are about to delete{' '}
-              <span className="font-bold text-pos-text">"{deleteConfirmTarget.name}"</span>. This action cannot be undone.
+              <span className="font-bold text-pos-text">"{deleteConfirmTarget.name}"</span>.
+              {deleteConfirmTarget.type === 'category' && ' All dishes and deals in this category will be deleted too.'} This action cannot be undone.
             </p>
             <div className="flex items-center justify-center gap-3">
               <Button variant="ghost"

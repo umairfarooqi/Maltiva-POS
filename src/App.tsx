@@ -54,7 +54,7 @@ export default function App() {
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
   const sessionGeneration = useRef(0);
   const verifiedToken = useRef<string | null>(null);
-  const verifySession = useRef<() => Promise<void>>(async () => {});
+  const verifySession = useRef<() => Promise<void>>(async () => { });
 
   const [allUsers, setAllUsers] = useState<User[]>(() => PosStorage.getUsers());
   const [loginStaff, setLoginStaff] = useState<LoginStaff[]>([]);
@@ -254,11 +254,11 @@ export default function App() {
       totalPaisa,
       lastPlacedOrder: currentUser && customerConfirmation
         ? {
-            orderNumber: customerConfirmation.orderNumber,
-            tokenNumber: customerConfirmation.tokenNumber,
-            totalPaisa: customerConfirmation.totalPaisa,
-            persistenceState: customerConfirmation.persistenceState,
-          }
+          orderNumber: customerConfirmation.orderNumber,
+          tokenNumber: customerConfirmation.tokenNumber,
+          totalPaisa: customerConfirmation.totalPaisa,
+          persistenceState: customerConfirmation.persistenceState,
+        }
         : null,
     };
 
@@ -642,9 +642,11 @@ export default function App() {
       synced: false,
     };
 
-    newOrder = { ...newOrder, paymentMethod: selectedPaymentMethod,
+    newOrder = {
+      ...newOrder, paymentMethod: selectedPaymentMethod,
       cashTenderedPaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa : undefined,
-      changeDuePaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa - newOrder.totalPaisa : 0 };
+      changeDuePaisa: selectedPaymentMethod === 'cash' ? cashTenderedPaisa - newOrder.totalPaisa : 0
+    };
     checkoutAttempt.current = newOrder;
     attemptCart.current = JSON.stringify(cart);
     try {
@@ -680,10 +682,14 @@ export default function App() {
         newOrder = { ...newOrder, ...quote };
         checkoutAttempt.current = newOrder;
         if (changed) {
-          const reviewedCart = cart.map((entry, index) => ({ ...entry,
+          const reviewedCart = cart.map((entry, index) => ({
+            ...entry,
             ...quote.items[index], cartItemId: entry.cartItemId,
-            product: { ...entry.product, name: quote.items[index].productName,
-              categoryName: quote.items[index].categoryName } }));
+            product: {
+              ...entry.product, name: quote.items[index].productName,
+              categoryName: quote.items[index].categoryName
+            }
+          }));
           attemptCart.current = JSON.stringify(reviewedCart);
           setCart(reviewedCart);
           setPrinterSettings(previous => ({ ...previous, taxBp: quote.taxBp, taxInclusive: quote.taxInclusive }));
@@ -737,9 +743,11 @@ export default function App() {
     if (cart.length || orderInFlight.current) return;
     const restored = order.items.map(item => ({
       cartItemId: item.id,
-      product: normalizeProduct({ ...(products.find(product => product.id === item.productId) || {}),
+      product: normalizeProduct({
+        ...(products.find(product => product.id === item.productId) || {}),
         id: item.productId, name: item.productName, categoryName: item.categoryName,
-        pricePaisa: item.unitPricePaisa, costPricePaisa: item.unitCostPaisa, bundledProducts: item.bundledProducts }),
+        pricePaisa: item.unitPricePaisa, costPricePaisa: item.unitCostPaisa, bundledProducts: item.bundledProducts
+      }),
       quantity: item.quantity, selectedVariations: item.selectedVariations, notes: item.notes,
       unitPricePaisa: item.unitPricePaisa, unitCostPaisa: item.unitCostPaisa ?? products.find(p => p.id === item.productId)?.costPricePaisa ?? 0,
       totalPricePaisa: item.totalPricePaisa, totalCostPaisa: item.totalCostPaisa ?? 0,
@@ -851,22 +859,9 @@ export default function App() {
     if (categoryId === DEFAULT_UNCATEGORIZED_CATEGORY.id) return;
     await PosApi.deleteCategory(categoryId, isOnline);
     owner.assertCurrent();
-    setCategories(prev => {
-      const next = prev.filter(category => category.id !== categoryId);
-      return next.some(category => category.id === DEFAULT_UNCATEGORIZED_CATEGORY.id)
-        ? next
-        : [...next, DEFAULT_UNCATEGORIZED_CATEGORY];
-    });
+    setCategories(prev => prev.filter(category => category.id !== categoryId));
     owner.assertCurrent();
-    setProducts(prev => prev.map(product =>
-      product.categoryId === categoryId
-        ? normalizeProduct({
-            ...product,
-            categoryId: DEFAULT_UNCATEGORIZED_CATEGORY.id,
-            categoryName: DEFAULT_UNCATEGORIZED_CATEGORY.name,
-          })
-        : product
-    ));
+    setProducts(prev => prev.filter(product => product.categoryId !== categoryId));
   };
 
   const handleAdjustStock = async (
@@ -933,14 +928,14 @@ export default function App() {
     return (
       <>
 
-      <LoginScreen
-        notice={<>{sessionNotice && <div role="status" className="p-3 text-sm text-pos-text">{sessionNotice}
-          {PosStorage.getToken() && <button type="button" onClick={() => { setSessionChecking(true); void verifySession.current(); }} className="ml-3 underline">Retry session check</button>}
-        </div>}{pendingBadge}</>}
-        onLoginSuccess={handleLoginSuccess}
-        availableUsers={loginStaff}
-        isOnline={isOnline}
-      />
+        <LoginScreen
+          notice={<>{sessionNotice && <div role="status" className="p-3 text-sm text-pos-text">{sessionNotice}
+            {PosStorage.getToken() && <button type="button" onClick={() => { setSessionChecking(true); void verifySession.current(); }} className="ml-3 underline">Retry session check</button>}
+          </div>}{pendingBadge}</>}
+          onLoginSuccess={handleLoginSuccess}
+          availableUsers={loginStaff}
+          isOnline={isOnline}
+        />
       </>
     );
   }
@@ -952,163 +947,163 @@ export default function App() {
   return (
     <div className="w-screen h-screen overflow-hidden bg-pos-chrome font-sans antialiased text-pos-text">
       <div className="flex h-full w-full overflow-hidden">
-      {/* Sidebar: Role-gated */}
-      <Sidebar
-        activeTab={activeTab}
-        onSelectTab={tab => {
-          if (currentUser.role === 'cashier' && !['order_line', 'receipts'].includes(tab)) {
-            return;
-          }
-          if (tab !== activeTab && ['dashboard', 'profit_loss'].includes(tab)) setReportReadyKey('');
-          setActiveTab(tab);
-        }}
-        userRole={currentUser.role}
-        userName={currentUser.name}
-        userAvatar={currentUser.avatar}
-        isMobileOpen={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        onLogout={handleLogout}
-      />
-
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-pos-chrome">
-        {/* Top Header - Clean, No Search Bar, No Bell, No Next Token */}
-        <Header
-          currentUser={currentUser}
-          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
-          onOpenMobileCart={() => { setActiveTab('order_line'); setIsMobileCartOpen(true); }}
-          cartItemCount={cart.reduce((sum, it) => sum + it.quantity, 0)}
+        {/* Sidebar: Role-gated */}
+        <Sidebar
+          activeTab={activeTab}
+          onSelectTab={tab => {
+            if (currentUser.role === 'cashier' && !['order_line', 'receipts'].includes(tab)) {
+              return;
+            }
+            if (tab !== activeTab && ['dashboard', 'profit_loss'].includes(tab)) setReportReadyKey('');
+            setActiveTab(tab);
+          }}
+          userRole={currentUser.role}
+          userName={currentUser.name}
+          userAvatar={currentUser.avatar}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          onLogout={handleLogout}
         />
 
-        {(pendingOfflineCount > 0 || recoveryError || saleFeedback || orders.some(order => order.persistenceState === 'rejected')) && (
-          <section aria-label="Sale notifications" tabIndex={0} className="shrink-0 max-h-[20dvh] overflow-y-auto">
-        {pendingBadge}
-        {recoveryError && <div role="alert" className={alertClasses('warning')}>{recoveryError}</div>}
-        {orders.filter(order => order.persistenceState === 'pending' && order.recoveryBlockedReason).map(order => (
-          <div key={`blocked-${order.id}`} role="alert" className={alertClasses('warning')}>
-            Pending {order.orderNumber}: {order.recoveryBlockedReason}
-          </div>
-        ))}
-        {saleFeedback && (
-          <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-pos-inset px-4 py-2 text-sm shrink-0">
-            {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
-              ? `Pending — ${saleFeedback.error || 'recovery copy stored; waiting for the server.'}` : `Rejected — ${saleFeedback.error}`}
-            {saleFeedback.state === 'rejected' && (cart.length
-              ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-pos-success-text">Retry sale</button>
-              : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-pos-success-text">Review rejected sale</button>)}
-          </div>
-        )}
-        {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
-          <div key={order.id} role="alert" className={alertClasses('warning')}>
-            Rejected {order.orderNumber}: {order.rejectionReason}
-            <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-pos-success-text">Review rejected order {order.orderNumber}</button>
-            {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
-          </div>
-        ))}
-          </section>
-        )}
+        {/* Main Container */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-pos-chrome">
+          {/* Top Header - Clean, No Search Bar, No Bell, No Next Token */}
+          <Header
+            currentUser={currentUser}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+            onOpenMobileCart={() => { setActiveTab('order_line'); setIsMobileCartOpen(true); }}
+            cartItemCount={cart.reduce((sum, it) => sum + it.quantity, 0)}
+          />
 
-        {/* View Body */}
-        <div className="min-h-0 flex-1 flex overflow-hidden">
-          {['order_line', 'receipts'].includes(activeTab) && (
-            <div hidden={activeTab !== 'order_line'} className={`min-h-0 min-w-0 flex-1 ${activeTab === 'order_line' ? 'flex' : 'hidden'}`}>
-              <OrderLineView
-                isLocked={isProcessingOrder}
+          {(pendingOfflineCount > 0 || recoveryError || saleFeedback || orders.some(order => order.persistenceState === 'rejected')) && (
+            <section aria-label="Sale notifications" tabIndex={0} className="shrink-0 max-h-[20dvh] overflow-y-auto">
+              {pendingBadge}
+              {recoveryError && <div role="alert" className={alertClasses('warning')}>{recoveryError}</div>}
+              {orders.filter(order => order.persistenceState === 'pending' && order.recoveryBlockedReason).map(order => (
+                <div key={`blocked-${order.id}`} role="alert" className={alertClasses('warning')}>
+                  Pending {order.orderNumber}: {order.recoveryBlockedReason}
+                </div>
+              ))}
+              {saleFeedback && (
+                <div role={saleFeedback.state === 'rejected' ? 'alert' : 'status'} aria-label="Sale result" className="bg-pos-inset px-4 py-2 text-sm shrink-0">
+                  {saleFeedback.state === 'saved' ? 'Saved — sale confirmed by the server.' : saleFeedback.state === 'pending'
+                    ? `Pending — ${saleFeedback.error || 'recovery copy stored; waiting for the server.'}` : `Rejected — ${saleFeedback.error}`}
+                  {saleFeedback.state === 'rejected' && (cart.length
+                    ? <button type="button" disabled={isProcessingOrder} onClick={() => void handlePlaceOrder(saleFeedback.order.cashTenderedPaisa ?? saleFeedback.order.totalPaisa, paymentMethod)} className="ml-3 font-semibold text-pos-success-text">Retry sale</button>
+                    : <button type="button" disabled={isProcessingOrder} onClick={() => handleReviewRejected(saleFeedback.order)} className="ml-3 font-semibold text-pos-success-text">Review rejected sale</button>)}
+                </div>
+              )}
+              {orders.filter(order => order.persistenceState === 'rejected' && order.id !== saleFeedback?.order.id).map(order => (
+                <div key={order.id} role="alert" className={alertClasses('warning')}>
+                  Rejected {order.orderNumber}: {order.rejectionReason}
+                  <button type="button" disabled={cart.length > 0 || isProcessingOrder} onClick={() => handleReviewRejected(order)} className="ml-3 font-semibold text-pos-success-text">Review rejected order {order.orderNumber}</button>
+                  {cart.length > 0 && <span className="ml-2">Finish or clear the current cart to review.</span>}
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* View Body */}
+          <div className="min-h-0 flex-1 flex overflow-hidden">
+            {['order_line', 'receipts'].includes(activeTab) && (
+              <div hidden={activeTab !== 'order_line'} className={`min-h-0 min-w-0 flex-1 ${activeTab === 'order_line' ? 'flex' : 'hidden'}`}>
+                <OrderLineView
+                  isLocked={isProcessingOrder}
+                  products={products}
+                  categories={categories}
+                  cart={cart}
+                  onQuickAddToCart={handleQuickAddToCart}
+                  onQuickDecrementFromCart={handleQuickDecrementFromCart}
+                  onOpenVariationModal={product => { if (!orderInFlight.current && canAddQuantity(product, 1)) { setEditingCartItem(undefined); setVariationModalProduct(product); } }}
+                  onOpenMobileCart={() => setIsMobileCartOpen(true)}
+                />
+                <CartDrawer
+                  error={cartError}
+                  cart={cart}
+                  orderNumber=""
+                  tokenNumber={0}
+                  onUpdateQuantity={handleUpdateCartQuantity}
+                  onRemoveItem={handleRemoveCartItem}
+                  onEditItem={item => { if (!orderInFlight.current) { setEditingCartItem(item); setVariationModalProduct(item.product); } }}
+                  onClearCart={handleClearCart}
+                  taxBp={printerSettings.taxBp}
+                  taxInclusive={printerSettings.taxInclusive}
+                  paymentMethod={paymentMethod}
+                  onSelectPaymentMethod={setPaymentMethod}
+                  onPlaceOrder={handlePlaceOrder}
+                  canReprintLastOrder={Boolean(lastSavedOrder)}
+                  onOpenPrintModal={() => {
+                    if (cart.length) handleOpenPrintCurrentCart();
+                    else if (lastSavedOrder) setReceiptModalOrder(lastSavedOrder);
+                  }}
+                  isProcessing={isProcessingOrder}
+                  isMobileOpen={isMobileCartOpen}
+                  onCloseMobile={() => setIsMobileCartOpen(false)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'receipts' && <ReceiptsView onOpenReceipt={setReceiptModalOrder} onBack={() => setActiveTab('order_line')} />}
+            {activeTab === 'manage_dishes' && !catalogReady && <div role="status" className="p-4">Loading current menu… <button type="button" onClick={() => void handleManualSync()} className="underline">Retry menu loading</button></div>}
+            {activeTab === 'manage_dishes' && catalogReady && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+              <ManageDishesView
                 products={products}
                 categories={categories}
-                cart={cart}
-                onQuickAddToCart={handleQuickAddToCart}
-                onQuickDecrementFromCart={handleQuickDecrementFromCart}
-                onOpenVariationModal={product => { if (!orderInFlight.current && canAddQuantity(product, 1)) { setEditingCartItem(undefined); setVariationModalProduct(product); } }}
-                onOpenMobileCart={() => setIsMobileCartOpen(true)}
+                currentUser={currentUser}
+                defaultLowStockThreshold={printerSettings.globalLowStockThreshold ?? 5}
+                onSaveProduct={handleSaveProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onSaveCategory={handleSaveCategory}
+                onUpdateCategory={handleUpdateCategory}
+                onDeleteCategory={handleDeleteCategory}
+                onAdjustStock={handleAdjustStock}
               />
-              <CartDrawer
-                error={cartError}
-                cart={cart}
-                orderNumber=""
-                tokenNumber={0}
-                onUpdateQuantity={handleUpdateCartQuantity}
-                onRemoveItem={handleRemoveCartItem}
-                onEditItem={item => { if (!orderInFlight.current) { setEditingCartItem(item); setVariationModalProduct(item.product); } }}
-                onClearCart={handleClearCart}
-                taxBp={printerSettings.taxBp}
-                taxInclusive={printerSettings.taxInclusive}
-                paymentMethod={paymentMethod}
-                onSelectPaymentMethod={setPaymentMethod}
-                onPlaceOrder={handlePlaceOrder}
-                canReprintLastOrder={Boolean(lastSavedOrder)}
-                onOpenPrintModal={() => {
-                  if (cart.length) handleOpenPrintCurrentCart();
-                  else if (lastSavedOrder) setReceiptModalOrder(lastSavedOrder);
-                }}
-                isProcessing={isProcessingOrder}
-                isMobileOpen={isMobileCartOpen}
-                onCloseMobile={() => setIsMobileCartOpen(false)}
+            )}
+
+            {['dashboard', 'profit_loss'].includes(activeTab) && (!reportReady || reportLoading || reportError) && <div className="min-h-0 flex-1 overflow-auto p-4">
+              {reportError && !reportLoading ? <div role="alert">{reportError} <button type="button" className="min-h-11 border border-pos-control rounded-md px-4 ml-3" onClick={() => setReportRetry(value => value + 1)}>Retry report</button></div> : <p role="status">Loading complete saved sales…</p>}
+            </div>}
+            {activeTab === 'dashboard' && reportReady && !reportLoading && !reportError && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+              <DashboardView
+                orders={orders}
+                products={products}
+                currentUser={currentUser}
+                onNavigateToTab={setActiveTab}
+                onSelectOrderPreview={order => { setReceiptModalOrder(order); }}
               />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'receipts' && <ReceiptsView onOpenReceipt={setReceiptModalOrder} onBack={() => setActiveTab('order_line')} />}
-          {activeTab === 'manage_dishes' && !catalogReady && <div role="status" className="p-4">Loading current menu… <button type="button" onClick={() => void handleManualSync()} className="underline">Retry menu loading</button></div>}
-          {activeTab === 'manage_dishes' && catalogReady && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
-            <ManageDishesView
-              products={products}
-              categories={categories}
-              currentUser={currentUser}
-              defaultLowStockThreshold={printerSettings.globalLowStockThreshold ?? 5}
-              onSaveProduct={handleSaveProduct}
-              onDeleteProduct={handleDeleteProduct}
-              onSaveCategory={handleSaveCategory}
-              onUpdateCategory={handleUpdateCategory}
-              onDeleteCategory={handleDeleteCategory}
-              onAdjustStock={handleAdjustStock}
-            />
-          )}
+            {activeTab === 'profit_loss' && reportReady && !reportLoading && !reportError && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+              <ProfitLossView
+                orders={orders}
+                products={products}
+                categories={categories}
+                userRole={currentUser.role}
+              />
+            )}
 
-          {['dashboard', 'profit_loss'].includes(activeTab) && (!reportReady || reportLoading || reportError) && <div className="min-h-0 flex-1 overflow-auto p-4">
-            {reportError && !reportLoading ? <div role="alert">{reportError} <button type="button" className="min-h-11 border border-pos-control rounded-md px-4 ml-3" onClick={() => setReportRetry(value => value + 1)}>Retry report</button></div> : <p role="status">Loading complete saved sales…</p>}
-          </div>}
-          {activeTab === 'dashboard' && reportReady && !reportLoading && !reportError && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
-            <DashboardView
-              orders={orders}
-              products={products}
-              currentUser={currentUser}
-              onNavigateToTab={setActiveTab}
-              onSelectOrderPreview={order => { setReceiptModalOrder(order); }}
-            />
-          )}
+            {activeTab === 'staff' && currentUser.role === 'admin' && (
+              <StaffManagementView
+                users={allUsers}
+                currentUser={currentUser}
+                onAddUser={handleAddUser}
+                onToggleUserActive={handleToggleUserActive}
+                onResetUserPin={handleResetUserPin}
+                loadStaffEvents={PosApi.getStaffEvents}
+              />
+            )}
 
-          {activeTab === 'profit_loss' && reportReady && !reportLoading && !reportError && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
-            <ProfitLossView
-              orders={orders}
-              products={products}
-              categories={categories}
-              userRole={currentUser.role}
-            />
-          )}
-
-          {activeTab === 'staff' && currentUser.role === 'admin' && (
-            <StaffManagementView
-              users={allUsers}
-              currentUser={currentUser}
-              onAddUser={handleAddUser}
-              onToggleUserActive={handleToggleUserActive}
-              onResetUserPin={handleResetUserPin}
-              loadStaffEvents={PosApi.getStaffEvents}
-            />
-          )}
-
-          {activeTab === 'settings' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
-            <SettingsView
-              settings={printerSettings}
-              onSaveSettings={handleSaveSettings}
-              currentUser={currentUser}
-              onResetCustomerDisplay={() => setCustomerConfirmation(null)}
-              onOpenTestPrint={() => handleOpenPrintCurrentCart(true)}
-            />
-          )}
+            {activeTab === 'settings' && (currentUser.role === 'admin' || currentUser.role === 'manager') && (
+              <SettingsView
+                settings={printerSettings}
+                onSaveSettings={handleSaveSettings}
+                currentUser={currentUser}
+                onResetCustomerDisplay={() => setCustomerConfirmation(null)}
+                onOpenTestPrint={() => handleOpenPrintCurrentCart(true)}
+              />
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
       {cartError && !variationModalProduct && !isMobileCartOpen && <div role="alert" className={alertClasses('danger', 'fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 max-w-[calc(100vw-2rem)]')}>{cartError}<button type="button" aria-label="Dismiss stock message" onClick={() => setCartError('')}>Dismiss</button></div>}
@@ -1136,28 +1131,28 @@ export default function App() {
 
       {isLogoutConfirmOpen && (
         <Dialog size="sm" role="alertdialog" label="Log out?" onClose={() => setIsLogoutConfirmOpen(false)} className="p-6">
-            <h2 id="logout-confirm-title" className="mb-2 text-lg font-bold text-pos-text">
-              Log out?
-            </h2>
-            <p id="logout-confirm-description" className="mb-6 text-sm text-pos-secondary">
-              Are you sure you want to log out of this terminal?
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsLogoutConfirmOpen(false)}
-                className="rounded-md px-4 py-2 text-sm font-semibold text-pos-secondary hover:bg-pos-raised"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmLogout}
-                className="rounded-md bg-pos-danger-hover px-4 py-2 text-sm font-semibold text-pos-danger-action-text hover:bg-pos-danger-hover"
-              >
-                Log out
-              </button>
-            </div>
+          <h2 id="logout-confirm-title" className="mb-2 text-lg font-bold text-pos-text">
+            Log out?
+          </h2>
+          <p id="logout-confirm-description" className="mb-6 text-sm text-pos-secondary">
+            Are you sure you want to log out of this terminal?
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsLogoutConfirmOpen(false)}
+              className="rounded-md px-4 py-2 text-sm font-semibold text-pos-secondary hover:bg-pos-raised"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmLogout}
+              className="rounded-md bg-pos-danger-hover px-4 py-2 text-sm font-semibold text-pos-danger-action-text hover:bg-pos-danger-hover"
+            >
+              Log out
+            </button>
+          </div>
         </Dialog>
       )}
     </div>

@@ -153,6 +153,26 @@ button.bg-pos-action:not(:disabled):active { background-color: var(--pos-action-
     max-width: 58mm;
   }
 
+  /* Thermal printers are 1-bit: any gray is dithered into faint dots.
+     Force pure black text/borders and white backgrounds on the receipt. */
+  #thermal-receipt-print-area,
+  #thermal-receipt-print-area * {
+    color: #000 !important;
+    background: #fff !important;
+    border-color: #000 !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #thermal-receipt-print-area .text-\[10px\],
+  #thermal-receipt-print-area .text-\[11px\],
+  #thermal-receipt-print-area .text-xs {
+    font-weight: 600;
+  }
+
   #profit-loss-print-area {
     position: absolute !important;
     left: 0;

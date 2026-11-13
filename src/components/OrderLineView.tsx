@@ -20,6 +20,7 @@ import { ProductStockBadge } from './ProductStockBadge';
 import { Button } from './ui/Button';
 import { Input } from './ui/Field';
 import { QuantityStepper } from './ui/QuantityStepper';
+import { isEmbeddedImage } from '../utils/imageUpload';
 
 interface OrderLineViewProps {
   isLocked?: boolean;
@@ -176,19 +177,21 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                 onClick={() => setActiveCategoryId(cat.id)}
                 aria-pressed={isSelected}
                 className={`h-pos-touch px-3 rounded-lg transition-all duration-150 flex items-center gap-2 shrink-0 cursor-pointer text-left border active:scale-[0.98] ${isSelected
-                    ? 'border-pos-accent bg-pos-selected text-pos-accent shadow-xs'
-                    : 'border-pos-border bg-pos-surface text-pos-secondary hover:border-pos-control hover:text-pos-text'
+                  ? 'border-pos-accent bg-pos-selected text-pos-accent shadow-xs'
+                  : 'border-pos-border bg-pos-surface text-pos-secondary hover:border-pos-control hover:text-pos-text'
                   }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-pos-accent' : 'text-pos-muted'}`} aria-hidden="true" />
+                {isEmbeddedImage(cat.icon)
+                  ? <img src={cat.icon} alt="" className="w-5 h-5 shrink-0 rounded object-cover" />
+                  : <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-pos-accent' : 'text-pos-muted'}`} aria-hidden="true" />}
                 <div className="flex items-center gap-2">
                   <h3 className={`text-xs font-bold whitespace-nowrap ${isSelected ? 'text-pos-accent' : 'text-pos-text'}`}>
                     {cleanCategoryLabel(cat.name)}
                   </h3>
                   <p
                     className={`text-xs tabular-nums font-bold px-1.5 py-0.5 rounded-md ${isSelected
-                        ? 'bg-pos-surface text-pos-accent'
-                        : 'bg-pos-raised text-pos-muted'
+                      ? 'bg-pos-surface text-pos-accent'
+                      : 'bg-pos-raised text-pos-muted'
                       }`}
                   >
                     {actualCount} items
@@ -236,34 +239,34 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                     }`}
                 >
                   <div>
-                      {/* Top Row: 1:1 Image + Badges */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          disabled={cannotAdd}
-                          aria-label={`Add ${product.name}`}
-                          onClick={e => {
-                            e.stopPropagation();
-                            addItem();
+                    {/* Top Row: 1:1 Image + Badges */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        disabled={cannotAdd}
+                        aria-label={`Add ${product.name}`}
+                        onClick={e => {
+                          e.stopPropagation();
+                          addItem();
+                        }}
+                        className="block aspect-[2/1] max-h-32 w-full overflow-hidden bg-pos-inset disabled:opacity-60"
+                      >
+                        <img
+                          src={product.image || '/placeholder-dish.svg'}
+                          loading="lazy"
+                          decoding="async"
+                          alt={product.name}
+                          onError={event => {
+                            if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
+                              event.currentTarget.src = '/placeholder-dish.svg';
+                            }
                           }}
-                          className="block aspect-[2/1] max-h-32 w-full overflow-hidden bg-pos-inset disabled:opacity-60"
-                        >
-                          <img
-                            src={product.image || '/placeholder-dish.svg'}
-                            loading="lazy"
-                            decoding="async"
-                            alt={product.name}
-                            onError={event => {
-                              if (!event.currentTarget.src.endsWith('/placeholder-dish.svg')) {
-                                event.currentTarget.src = '/placeholder-dish.svg';
-                              }
-                            }}
-                            className={`h-full w-full ${product.image ? 'object-cover' : 'object-contain p-5'}`}
-                          />
-                        </button>
+                          className={`h-full w-full ${product.image ? 'object-cover' : 'object-contain p-5'}`}
+                        />
+                      </button>
 
-                        <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1">
-                          {product.isDeal && (
+                      <div className="pointer-events-none absolute right-2 top-2 flex flex-col items-end gap-1">
+                        {product.isDeal && (
                           <span className="rounded-md border border-pos-warning-border bg-pos-warning-bg px-1.5 py-0.5 text-xs font-semibold text-pos-warning-text leading-none">
                             Deal
                           </span>
@@ -277,92 +280,92 @@ export const OrderLineView: React.FC<OrderLineViewProps> = ({
                       </div>
                     </div>
 
-                        {/* Full-Width Category & Dish Name (No Side Cramping) */}
-                        <div className="px-3 pt-3 pb-2 space-y-0.5">
-                          <span className="block truncate text-xs font-semibold text-pos-muted">
-                            {product.isDeal ? 'Combo Deal' : cleanCategoryLabel(product.categoryName)}
-                          </span>
+                    {/* Full-Width Category & Dish Name (No Side Cramping) */}
+                    <div className="px-3 pt-3 pb-2 space-y-0.5">
+                      <span className="block truncate text-xs font-semibold text-pos-muted">
+                        {product.isDeal ? 'Combo Deal' : cleanCategoryLabel(product.categoryName)}
+                      </span>
 
-                        <h3 className="min-h-10 text-[15px] font-bold leading-snug text-pos-text">
-                          <button
-                            type="button"
-                            disabled={cannotAdd}
-                            onClick={e => {
-                              e.stopPropagation();
-                              addItem();
-                            }}
-                            className="text-left w-full disabled:opacity-60 cursor-pointer"
-                          >
-                            <span className="line-clamp-2">{product.name}</span>
-                          </button>
-                        </h3>
+                      <h3 className="min-h-10 text-[15px] font-bold leading-snug text-pos-text">
+                        <button
+                          type="button"
+                          disabled={cannotAdd}
+                          onClick={e => {
+                            e.stopPropagation();
+                            addItem();
+                          }}
+                          className="text-left w-full disabled:opacity-60 cursor-pointer"
+                        >
+                          <span className="line-clamp-2">{product.name}</span>
+                        </button>
+                      </h3>
 
-                        {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && (
-                          <p className="text-xs font-medium text-pos-warning-text">Max stock in order</p>
-                        )}
-                      </div>
+                      {product.isAvailable && product.stockQuantity > 0 && qtyInCart >= product.stockQuantity && (
+                        <p className="text-xs font-medium text-pos-warning-text">Max stock in order</p>
+                      )}
                     </div>
-
-                      {/* Bottom Bar: Price on Left + Touch Action Controls on Right */}
-                      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-pos-divider px-3 py-2">
-                        <span className="text-base font-bold text-pos-text tabular-nums whitespace-nowrap">
-                          {formatPKR(product.pricePaisa)}
-                        </span>
-
-                        {qtyInCart === 0 ? (
-                          <Button variant="primary"
-                            type="button"
-                            disabled={cannotAdd}
-                            aria-label={`Add one ${product.name}`}
-                            onClick={e => {
-                              e.stopPropagation();
-                              addItem();
-                            }}
-                            className="shrink-0"
-                          >
-                            <Plus className="w-4 h-4" aria-hidden="true" />
-                            <span className="text-sm font-bold">{hasVariations ? 'Choose' : 'Add'}</span>
-                          </Button>
-                        ) : (
-                          <QuantityStepper
-                            size="compact"
-                            primaryIncrement
-                            className="border-pos-accent/50"
-                            value={qtyInCart}
-                            decrementLabel={`Remove one ${product.name}`}
-                            incrementLabel={`Add one ${product.name}`}
-                            decrementDisabled={isLocked || plainQty === 0}
-                            decrementTitle={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
-                            incrementDisabled={cannotAdd}
-                            onDecrement={() => onQuickDecrementFromCart(product)}
-                            onIncrement={() => addItem()}
-                          />
-                        )}
-                      </div>
-                    </div>
-                    );
-            })}
                   </div>
-        )}
+
+                  {/* Bottom Bar: Price on Left + Touch Action Controls on Right */}
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-pos-divider px-3 py-2">
+                    <span className="text-base font-bold text-pos-text tabular-nums whitespace-nowrap">
+                      {formatPKR(product.pricePaisa)}
+                    </span>
+
+                    {qtyInCart === 0 ? (
+                      <Button variant="primary"
+                        type="button"
+                        disabled={cannotAdd}
+                        aria-label={`Add one ${product.name}`}
+                        onClick={e => {
+                          e.stopPropagation();
+                          addItem();
+                        }}
+                        className="shrink-0"
+                      >
+                        <Plus className="w-4 h-4" aria-hidden="true" />
+                        <span className="text-sm font-bold">{hasVariations ? 'Choose' : 'Add'}</span>
+                      </Button>
+                    ) : (
+                      <QuantityStepper
+                        size="compact"
+                        primaryIncrement
+                        className="border-pos-accent/50"
+                        value={qtyInCart}
+                        decrementLabel={`Remove one ${product.name}`}
+                        incrementLabel={`Add one ${product.name}`}
+                        decrementDisabled={isLocked || plainQty === 0}
+                        decrementTitle={plainQty === 0 ? 'Use the cart to edit customized items' : undefined}
+                        incrementDisabled={cannotAdd}
+                        onDecrement={() => onQuickDecrementFromCart(product)}
+                        onIncrement={() => addItem()}
+                      />
+                    )}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {
-                totalCartQty > 0 && onOpenMobileCart && (
-                  <div className="lg:hidden fixed bottom-4 right-4 z-40">
-                    <Button variant="primary" size="checkout"
-                      onClick={onOpenMobileCart}
-                      aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
-                      className="max-w-[calc(100vw-2rem)] gap-3! shadow-lg tabular-nums"
-                    >
-                      <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-bold">
-                        {totalCartQty}
-                      </span>
-                      <span className="whitespace-nowrap">Checkout</span>
-                      <span className="text-base font-bold whitespace-nowrap tabular-nums">{formatPKR(totalCartPrice)}</span>
-                    </Button>
-                  </div>
-                )
-              }
+        totalCartQty > 0 && onOpenMobileCart && (
+          <div className="lg:hidden fixed bottom-4 right-4 z-40">
+            <Button variant="primary" size="checkout"
+              onClick={onOpenMobileCart}
+              aria-label={`Proceed to checkout, ${totalCartQty} items, ${formatPKR(totalCartPrice)}`}
+              className="max-w-[calc(100vw-2rem)] gap-3! shadow-lg tabular-nums"
+            >
+              <span className="w-7 h-7 shrink-0 rounded-lg bg-pos-surface text-pos-accent flex items-center justify-center text-xs font-bold">
+                {totalCartQty}
+              </span>
+              <span className="whitespace-nowrap">Checkout</span>
+              <span className="text-base font-bold whitespace-nowrap tabular-nums">{formatPKR(totalCartPrice)}</span>
+            </Button>
+          </div>
+        )
+      }
     </div>
-        );
+  );
 };

@@ -106,7 +106,7 @@ async function sendSale(order: Order): Promise<SaleResult> {
   } finally { clearTimeout(timeout); }
   if (response.status === 201) {
     if (body?.order?.id && Array.isArray(body.order.items) &&
-        (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
+      (body.order.idempotencyKey || body.order.id) === order.idempotencyKey) {
       const canonical = await saved(body.order);
       return { success: true, state: 'saved', order: owner.isCurrent() ? canonical : checkoutData(canonical) };
     }
@@ -130,8 +130,10 @@ let replay: Promise<{ syncedCount: number; rejectedCount: number; pendingCount: 
 async function persistProduct(url: string, method: string, product: Omit<Product, 'stockQuantity'>): Promise<Product> {
   let response: Response;
   try {
-    response = await sessionFetch(url, { method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify(product), signal: AbortSignal.timeout(5000) });
+    response = await sessionFetch(url, {
+      method, headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(product), signal: AbortSignal.timeout(5000)
+    });
   } catch (error) {
     if ((error as Error).name === 'SessionChangedError') throw error;
     throw new Error('Menu changes need the local server. Keep this form and retry when it is available.');
@@ -207,8 +209,10 @@ export const PosApi = {
   async saveMoneySettings(settings: PrinterSettings): Promise<void> {
     const owner = captureSession();
     ++catalogRequest;
-    const response = await sessionFetch('/api/settings/printer', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify(settings), signal: AbortSignal.timeout(5000) });
+    const response = await sessionFetch('/api/settings/printer', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(settings), signal: AbortSignal.timeout(5000)
+    });
     owner.assertCurrent();
     ++catalogRequest;
     if (response.status === 403) throw new Error('Only an administrator can change store, tax and printer settings.');
@@ -217,8 +221,10 @@ export const PosApi = {
   async quoteOrder(order: Order): Promise<{ quote?: any; unreachable?: boolean; error?: string; code?: string }> {
     const owner = captureSession();
     try {
-      const response = await sessionFetch('/api/orders/quote', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(order), signal: AbortSignal.timeout(5000) });
+      const response = await sessionFetch('/api/orders/quote', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(order), signal: AbortSignal.timeout(5000)
+      });
       const body = await response.json();
       owner.assertCurrent();
       if (!response.ok) return { error: body.error || 'Could not price this basket. Review the items.', code: body.code };
@@ -459,20 +465,11 @@ export const PosApi = {
     owner.assertCurrent();
     ++catalogRequest;
     const cats = PosStorage.getCategories().filter(c => c.id !== categoryId);
-    if (!cats.some(category => category.id === DEFAULT_UNCATEGORIZED_CATEGORY.id)) {
-      cats.push(DEFAULT_UNCATEGORIZED_CATEGORY);
-    }
     PosStorage.setCategories(cats);
 
-    const products = PosStorage.getProducts().map(product =>
-      product.categoryId === categoryId
-        ? normalizeProduct({
-            ...product,
-            categoryId: DEFAULT_UNCATEGORIZED_CATEGORY.id,
-            categoryName: DEFAULT_UNCATEGORIZED_CATEGORY.name,
-          })
-        : normalizeProduct(product)
-    );
+    const products = PosStorage.getProducts()
+      .filter(product => product.categoryId !== categoryId)
+      .map(product => normalizeProduct(product));
     PosStorage.setProducts(products);
 
     owner.assertCurrent();
@@ -493,8 +490,10 @@ export const PosApi = {
     const signature = JSON.stringify({ productId, changeAmount, reason, type, userId: user.id });
     const operationId = stockAdjustmentKeys.get(signature) || crypto.randomUUID();
     stockAdjustmentKeys.set(signature, operationId);
-    const response = await sessionFetch('/api/inventory/adjust', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name }) });
+    const response = await sessionFetch('/api/inventory/adjust', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ operationId, productId, changeAmount, reason, type, userId: user.id, userName: user.name })
+    });
     owner.assertCurrent();
     if (!response.ok) throw new Error('Stock adjustment could not be confirmed. Keep this form open and retry.');
     const result = await response.json();

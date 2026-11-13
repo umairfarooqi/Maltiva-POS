@@ -15,10 +15,10 @@ import { assertSaleGeneration, databaseGeneration, wasDatabaseRestored } from '.
 import { DatabaseBackups } from './src/services/databaseBackups';
 import { findReceipts, receiptTimestamp } from './src/services/receiptLookup';
 import db, { initDb } from './src/services/db';
-import { 
-  INITIAL_CATEGORIES, 
-  INITIAL_PRODUCTS, 
-  INITIAL_PRINTER_SETTINGS 
+import {
+  INITIAL_CATEGORIES,
+  INITIAL_PRODUCTS,
+  INITIAL_PRINTER_SETTINGS
 } from './src/data/initialData';
 import { Order, Category, User, InventoryLog, PrinterSettings } from './src/types/pos';
 
@@ -186,11 +186,11 @@ function seedDatabase() {
     INITIAL_PRODUCTS
       .filter(p => p.name !== 'Untitled Dish' && Number(p.pricePaisa) >= 0)
       .forEach(p => {
-      insertProd.run(
-        p.id, p.name, p.categoryId, p.categoryName, p.pricePaisa, p.costPricePaisa,
-        p.stockQuantity, p.minStockThreshold, p.image, p.description,
-        1, p.isDeal ? 1 : 0, stringifyJson(p.bundledProducts || []), stringifyJson(p.variations || [])
-      );
+        insertProd.run(
+          p.id, p.name, p.categoryId, p.categoryName, p.pricePaisa, p.costPricePaisa,
+          p.stockQuantity, p.minStockThreshold, p.image, p.description,
+          1, p.isDeal ? 1 : 0, stringifyJson(p.bundledProducts || []), stringifyJson(p.variations || [])
+        );
       });
 
     // Seed initial settings
@@ -216,7 +216,7 @@ function loadOrder(id: string): Order | undefined {
 }
 function mappedValues(table: string, input: any) {
   const columns = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as any[]).map(c => c.name));
-  return Object.fromEntries(Object.entries(toMoneyRow(table, input)).filter(([k,v]) => columns.has(k) && v !== undefined).map(([k,v]) => [k, typeof v === 'boolean' ? Number(v) : v]));
+  return Object.fromEntries(Object.entries(toMoneyRow(table, input)).filter(([k, v]) => columns.has(k) && v !== undefined).map(([k, v]) => [k, typeof v === 'boolean' ? Number(v) : v]));
 }
 function insertMapped(table: string, input: any) {
   const row = mappedValues(table, input); const columns = Object.keys(row);
@@ -255,7 +255,7 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json({ inflate: false }));
+  app.use(express.json({ inflate: false, limit: '2mb' }));
 
   // Role authorization middlewares
   const requireAdmin = (req: Request, res: Response, next: any) => {
@@ -308,7 +308,7 @@ async function startServer() {
     const orders = catalogOnly ? [] : loadOrderHistory(db);
     const tables = catalogOnly ? [] : db.prepare('SELECT * FROM tables').all();
     const users = !catalogOnly && caller.role === 'admin' ? (db.prepare('SELECT * FROM users WHERE active=1').all() as any[]).map(publicUser) : [];
-    
+
     // Get settings from KV table
     const settingsRows = db.prepare('SELECT * FROM settings').all() as { key: string, value: string }[];
     const settingsMap: any = {};
@@ -366,8 +366,10 @@ async function startServer() {
     const fields = ['name', 'categoryId', 'categoryName', 'pricePaisa', 'costPricePaisa',
       'minStockThreshold', 'image', 'description', 'isAvailable', 'isDeal'] as const;
     const catalog = Object.fromEntries(fields.filter(field => data[field] !== undefined).map(field => [field, data[field]]));
-    const row = mappedValues('products', { ...catalog, variations: stringifyJson(data.variations),
-      bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString() });
+    const row = mappedValues('products', {
+      ...catalog, variations: stringifyJson(data.variations),
+      bundledProducts: stringifyJson(data.bundledProducts), updatedAt: new Date().toISOString()
+    });
     db.prepare(`UPDATE products SET ${Object.keys(row).map(k => `"${k}"=?`).join(',')} WHERE id=?`).run(...Object.values(row), id);
     return loadProduct(db, id);
   });
@@ -436,10 +438,8 @@ async function startServer() {
       return;
     }
     const transaction = db.transaction(() => {
-      db.prepare('INSERT OR IGNORE INTO categories (id, name, icon, "order") VALUES (?, ?, ?, ?)')
-        .run(fallbackId, fallbackName, '📦', 999);
-      db.prepare('UPDATE products SET categoryId = ?, categoryName = ? WHERE categoryId = ?')
-        .run(fallbackId, fallbackName, req.params.id);
+      // Deleting a category also deletes the dishes/deals in it. Past orders keep their own item snapshots.
+      db.prepare('DELETE FROM products WHERE categoryId = ?').run(req.params.id);
       db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
     });
     transaction();
@@ -506,7 +506,7 @@ async function startServer() {
     catch (error: any) { sendError(res, error); }
   });
   const createOrder = db.transaction((input: any, key: string, caller: any) => {
-    const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as {id: string} | undefined;
+    const existing = db.prepare('SELECT id FROM orders WHERE idempotency_key=?').get(key) as { id: string } | undefined;
     if (existing) return loadOrder(existing.id)!;
     assertSaleGeneration(db, input);
     assertUnreviewedOwner(db, input, key, caller);
@@ -527,29 +527,35 @@ async function startServer() {
     const cashierId = origin.id;
     const cashierName = origin.name;
     const cashierRole = origin.role;
-    const order = { ...input, ...quote, ...numbers, status: 'completed', cashierId, cashierName, cashierRole,
+    const order = {
+      ...input, ...quote, ...numbers, status: 'completed', cashierId, cashierName, cashierRole,
       recordedById: caller.id, recordedByName: caller.name, recordedByRole: caller.role,
       createdAt, idempotency_key: key, legacyDerived: false, profitIncomplete: false,
-      changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa };
+      changeDuePaisa: tenderedPaisa === null ? 0 : tenderedPaisa - quote.totalPaisa
+    };
     insertMapped('orders', order);
     for (const item of quote.items) {
       const prod = db.prepare('SELECT stockQuantity FROM products WHERE id=?').get(item.productId) as any;
-      insertMapped('order_items', { ...item, orderId: input.id, legacyDerived: false,
-        selectedVariations: stringifyJson(item.selectedVariations), bundledProducts: stringifyJson(item.bundledProducts) });
+      insertMapped('order_items', {
+        ...item, orderId: input.id, legacyDerived: false,
+        selectedVariations: stringifyJson(item.selectedVariations), bundledProducts: stringifyJson(item.bundledProducts)
+      });
       db.prepare('UPDATE products SET stockQuantity=stockQuantity-? WHERE id=?').run(item.quantity, item.productId);
       db.prepare("INSERT INTO stock_movements (id,product_id,delta,type,ref,user_id,created_at) VALUES (?,?,?,'sale',?,?,?)")
         .run(randomUUID(), item.productId, -item.quantity, input.id, cashierId, createdAt);
       db.prepare(`INSERT INTO inventory_logs (id,productId,productName,previousStock,changeAmount,newStock,type,reason,userId,userName,timestamp)
         VALUES (?,?,?,?,?,?,'sale',?,?,?,?)`).run(randomUUID(), item.productId, item.productName, prod.stockQuantity, -item.quantity,
-          prod.stockQuantity - item.quantity, `Order ${order.orderNumber}`, cashierId, cashierName, createdAt);
+        prod.stockQuantity - item.quantity, `Order ${order.orderNumber}`, cashierId, cashierName, createdAt);
     }
-    insertMapped('payments', { id: randomUUID(), order_id: input.id, method: input.paymentMethod,
-      amountPaisa: quote.totalPaisa, tenderedPaisa, created_at: createdAt });
+    insertMapped('payments', {
+      id: randomUUID(), order_id: input.id, method: input.paymentMethod,
+      amountPaisa: quote.totalPaisa, tenderedPaisa, created_at: createdAt
+    });
     return loadOrder(input.id)!;
   });
   app.post('/api/orders', requireStrictRole(['admin', 'manager', 'cashier']), (req, res) => {
     const key = req.get('Idempotency-Key') || req.body?.idempotencyKey;
-    if (typeof key !== 'string' || !key.trim() || key.length > 200) { res.status(400).json({error: 'An idempotency key is required'}); return; }
+    if (typeof key !== 'string' || !key.trim() || key.length > 200) { res.status(400).json({ error: 'An idempotency key is required' }); return; }
     const caller = (req as any).caller;
     try {
       const savedOrder = createOrder.immediate(req.body, key, caller);
@@ -589,16 +595,18 @@ async function startServer() {
       ORDER BY lower(username) = ? DESC LIMIT 1`).get(username, username, username) as any;
     const lockKey = lockouts.signInKey(user?.id, username, secret);
     if (isLocked(lockKey)) {
-      res.status(429).json({ error: lockKey.endsWith(':pin')
-        ? 'PIN sign-in is locked for 5 minutes after failed attempts. Sign in with your password or ask an administrator.'
-        : 'Password sign-in is locked for 5 minutes after failed attempts. Ask an administrator to reset it.' });
+      res.status(429).json({
+        error: lockKey.endsWith(':pin')
+          ? 'PIN sign-in is locked for 5 minutes after failed attempts. Sign in with your password or ask an administrator.'
+          : 'Password sign-in is locked for 5 minutes after failed attempts. Ask an administrator to reset it.'
+      });
       return;
     }
 
     // The password is checked first so the stronger credential decides the session scope.
     const scope: SessionScope | null = !user ? null
       : verifySecret(user.password, secret) ? 'staff'
-      : verifySecret(user.pin, secret) ? 'till' : null;
+        : verifySecret(user.pin, secret) ? 'till' : null;
     if (user && scope) {
       clearFailures(lockKey);
       // Accounts added outside the server can still hold plain text; hash on first use.
@@ -754,7 +762,7 @@ async function startServer() {
     const settingsRows = db.prepare('SELECT * FROM settings').all() as { key: string, value: string }[];
     const settingsMap: any = {};
     settingsRows.forEach(row => settingsMap[row.key] = row.value);
-    
+
     res.json({
       storeName: settingsMap.storeName || 'Maltiva Crust',
       ...taxSettings(db), moneySchemaVersion: 2,
@@ -770,7 +778,7 @@ async function startServer() {
     const data = req.body;
     if (data.taxInclusive !== undefined && typeof data.taxInclusive !== 'boolean') problem('Tax mode must be a boolean');
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
-    
+
     const settingsToSave = {
       storeName: data.storeName,
       tagline: data.tagline,
